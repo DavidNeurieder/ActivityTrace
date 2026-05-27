@@ -27,8 +27,9 @@ object QueryParser {
     )
 
     fun parse(input: String): ParsedQuery {
+        if (input.isBlank()) return ParsedQuery(keywords = emptyList())
         val lower = input.lowercase(Locale.ROOT)
-        val words = lower.split(Regex("\\s+"))
+        val words = lower.split(Regex("\\s+")).filter { it.isNotEmpty() }
 
         val keywords = mutableListOf<String>()
         var appFilter: String? = null

@@ -36,13 +36,16 @@
 - **Theme:** `ui/theme/Theme.kt` (dynamic color API 31+, fallback green seed)
 - **F-Droid metadata:** `fastlane/metadata/android/`
 
-## F-Droid release checklist (from build plan)
+## F-Droid release checklist ✓
 - LICENSE (GPL-3.0) in repo root ✓
 - README.md with build instructions ✓
-- `fastlane/metadata/android/` with descriptions and changelogs
-- All deps verified FOSS (SQLCipher BSD-3, PDFBox Apache-2.0, no Play Services)
-- Gradle reproducible builds flag needed in `build.gradle.kts`
-- Disable logging in release builds
+- `fastlane/metadata/android/` with descriptions and changelogs ✓
+- All deps verified FOSS (SQLCipher BSD-3, PDFBox Apache-2.0, no Play Services) ✓
+- Gradle reproducible builds: `android.r8.minification-repository-mode=true` in `gradle.properties` ✓
+- Disable logging in release builds: `-assumenosideeffects` for `android.util.Log` in `proguard-rules.pro` ✓
+- ProGuard minification enabled for release builds ✓
+- `isDebuggable = false` for release builds ✓
+- Note: `reproducibleBuildEnabled` requires AGP 8.5+; current AGP 8.2.2 uses R8 deterministic mode instead
 
 ## Development notes
 - Run lint: `./gradlew lint`

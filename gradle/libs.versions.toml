@@ -12,6 +12,16 @@ work = "2.9.0"
 sqlcipher = "4.5.4"
 sqliteKtx = "2.4.0"
 
+# Test
+junit = "4.13.2"
+mockk = "1.13.9"
+coroutinesTest = "1.7.3"
+turbine = "1.0.0"
+androidxTestExtJunit = "1.1.5"
+androidxTestRunner = "1.5.2"
+archCoreTesting = "2.2.0"
+robolectric = "4.11.1"
+
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -31,6 +41,19 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 sqlcipher = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
 sqlite-ktx = { group = "androidx.sqlite", name = "sqlite-ktx", version.ref = "sqliteKtx" }
+
+# Test
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "archCoreTesting" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4", version = "1.6.0" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version = "1.6.0" }
+work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
