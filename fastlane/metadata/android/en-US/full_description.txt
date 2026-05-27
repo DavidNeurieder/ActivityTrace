@@ -1,0 +1,11 @@
+Activity Trace lets you search across everything that happens on your phone — notifications, screenshots, clipboard copies, and downloaded files — using natural language. No AI, no cloud, no account. Everything stays encrypted on-device with SQLCipher + Android Keystore.
+
+Features:
+• Search notifications from any app
+• Search clipboard history
+• Search screenshot text (OCR)
+• Search downloaded documents and code files
+• Natural language date parsing ("yesterday", "last week")
+• Full encryption at rest
+• No internet permission — zero data leaves your device
+• Open source (GPL-3.0)

@@ -1,1 +1,29 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
 
+# App build outputs
+app/build/
+
+# Signing keys (never commit these)
+*.jks
+*.keystore
+*.jks.bk
+release.properties
+
+# OS files
+*.swp
+*.swo
+*~
+Thumbs.db
+.DS_Store
+
+# Environment
+.env

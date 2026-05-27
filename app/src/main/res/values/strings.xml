@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Activity Trace</string>
+    <string name="search_hint">Search your activity…</string>
+    <string name="settings_title">Settings</string>
+    <string name="retention_days">Retention period (days)</string>
+    <string name="app_exclusions">Excluded apps</string>
+    <string name="no_results">No results found</string>
+    <string name="grant_notification_access">Grant Notification Access</string>
+</resources>
