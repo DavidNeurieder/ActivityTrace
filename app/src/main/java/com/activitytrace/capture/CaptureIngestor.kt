@@ -19,14 +19,17 @@ object CaptureIngestor {
         contentType: String,
         metadata: String? = null,
     ) {
-        db?.captureDao()?.insert(
-            CapturedItem(
-                text = text,
-                appPackage = appPackage,
-                contentType = contentType,
-                timestamp = System.currentTimeMillis(),
-                metadata = metadata,
+        try {
+            db?.captureDao()?.insert(
+                CapturedItem(
+                    text = text,
+                    appPackage = appPackage,
+                    contentType = contentType,
+                    timestamp = System.currentTimeMillis(),
+                    metadata = metadata,
+                )
             )
-        )
+        } catch (_: Exception) {
+        }
     }
 }

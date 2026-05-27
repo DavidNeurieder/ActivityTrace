@@ -13,10 +13,11 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val text = sbn.notification.extras
             ?.getCharSequence(android.app.Notification.EXTRA_TEXT)
-            ?.toString() ?: return
+            ?.toString()
         val title = sbn.notification.extras
             ?.getCharSequence(android.app.Notification.EXTRA_TITLE)
             ?.toString()
+        if (text == null && title == null) return
         val fullText = listOfNotNull(title, text).joinToString(" — ")
         scope.launch {
             CaptureIngestor.ingest(
