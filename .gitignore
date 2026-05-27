@@ -27,3 +27,7 @@ Thumbs.db
 
 # Environment
 .env
+
+# docs
+/docs
+/screenshots
