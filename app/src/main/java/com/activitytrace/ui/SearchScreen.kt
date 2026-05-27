@@ -1,5 +1,6 @@
 package com.activitytrace.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.activitytrace.model.CapturedItem
@@ -40,6 +42,7 @@ fun SearchScreen(
 ) {
     val query by viewModel.query.collectAsState()
     val results by viewModel.results.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -92,12 +95,22 @@ fun SearchScreen(
                         Text(
                             text = app,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clickable {
+                                    val intent = context.packageManager
+                                        .getLaunchIntentForPackage(app)
+                                    if (intent != null) context.startActivity(intent)
+                                },
                         )
                     }
                     appItems.forEach { captured ->
                         item(key = captured.id) {
-                            ResultCard(captured)
+                            ResultCard(captured) {
+                                val intent = context.packageManager
+                                    .getLaunchIntentForPackage(captured.appPackage)
+                                if (intent != null) context.startActivity(intent)
+                            }
                         }
                     }
                     item(key = "divider_$app") {
@@ -109,9 +122,11 @@ fun SearchScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ResultCard(item: CapturedItem) {
+private fun ResultCard(item: CapturedItem, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
