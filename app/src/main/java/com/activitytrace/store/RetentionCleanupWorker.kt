@@ -17,7 +17,9 @@ class RetentionCleanupWorker(
 ) : Worker(context, params) {
 
     override fun doWork(): Result = runBlocking {
-        val cutoff = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
+        val retentionDays = getRetentionDays(applicationContext)
+        if (retentionDays <= 0) return@runBlocking Result.success()
+        val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
         val db = ActivityTraceDatabase.getInstance(applicationContext)
         db.captureDao().deleteOlderThan(cutoff)
         Result.success()
@@ -32,6 +34,10 @@ class RetentionCleanupWorker(
     }
 
     companion object {
+        private const val PREFS_NAME = "activity_trace"
+        private const val PREF_RETENTION_DAYS = "retention_days"
+        private const val DEFAULT_RETENTION_DAYS = 7
+
         fun scheduleDaily(context: Context) {
             val request = PeriodicWorkRequestBuilder<RetentionCleanupWorker>(
                 1, TimeUnit.DAYS
@@ -41,6 +47,18 @@ class RetentionCleanupWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 request,
             )
+        }
+
+        fun getRetentionDays(context: Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getInt(PREF_RETENTION_DAYS, DEFAULT_RETENTION_DAYS)
+        }
+
+        fun setRetentionDays(context: Context, days: Int) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putInt(PREF_RETENTION_DAYS, days)
+                .apply()
         }
     }
 }

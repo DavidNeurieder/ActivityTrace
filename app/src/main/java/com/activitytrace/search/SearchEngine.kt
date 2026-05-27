@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.Flow
 
 class SearchEngine(private val captureDao: CaptureDao) {
 
+    fun recentItems(): Flow<List<CapturedItem>> = captureDao.recentItems()
+
     fun search(rawQuery: String): Flow<List<CapturedItem>> {
         val parsed = QueryParser.parse(rawQuery)
         val ftsQuery = parsed.keywords.joinToString(" AND ")

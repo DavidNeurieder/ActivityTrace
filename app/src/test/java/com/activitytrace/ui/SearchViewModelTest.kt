@@ -26,6 +26,7 @@ class SearchViewModelTest {
     fun setUp() {
         dispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(dispatcher)
+        every { searchEngine.recentItems() } returns flowOf(emptyList())
         viewModel = SearchViewModel(searchEngine)
     }
 
@@ -38,6 +39,19 @@ class SearchViewModelTest {
     fun `initial state is empty`() {
         assert(viewModel.query.value == "")
         assert(viewModel.results.value.isEmpty())
+    }
+
+    @Test
+    fun `blank query shows recentItems`() {
+        every { searchEngine.search("hello") } returns flowOf(emptyList())
+        every { searchEngine.recentItems() } returns flowOf(
+            listOf(CapturedItem(text = "x", appPackage = "com.x", contentType = "text", timestamp = 1L))
+        )
+        viewModel.onQueryChange("hello")
+        viewModel.onQueryChange("")
+        val result = viewModel.results.value
+        assert(result.size == 1)
+        assert(result[0].text == "x")
     }
 
     @Test

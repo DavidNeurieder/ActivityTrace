@@ -6,13 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
     private val searchEngine: SearchEngine,
 ) : ViewModel() {
@@ -23,20 +22,26 @@ class SearchViewModel(
     private val _results = MutableStateFlow<List<CapturedItem>>(emptyList())
     val results = _results.asStateFlow()
 
-    fun onQueryChange(text: String) {
-        _query.value = text
-    }
+    private val searchQuery = MutableStateFlow("")
 
-    fun onSearch(query: String) {
+    init {
         viewModelScope.launch {
-            if (query.isBlank()) {
-                _results.value = emptyList()
-                return@launch
-            }
-            searchEngine.search(query).collect { items ->
+            searchQuery.flatMapLatest { q ->
+                if (q.isBlank()) searchEngine.recentItems()
+                else searchEngine.search(q)
+            }.collect { items ->
                 _results.value = items
             }
         }
+    }
+
+    fun onQueryChange(text: String) {
+        _query.value = text
+        searchQuery.value = text
+    }
+
+    fun onSearch(query: String) {
+        onQueryChange(query)
     }
 
     class Factory(private val searchEngine: SearchEngine) : ViewModelProvider.Factory {

@@ -6,14 +6,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import com.activitytrace.ui.OnboardingScreen
 import com.activitytrace.ui.SearchScreen
 import com.activitytrace.ui.SearchViewModel
+import com.activitytrace.ui.SettingsScreen
 import com.activitytrace.ui.theme.ActivityTraceTheme
 
 class MainActivity : ComponentActivity() {
+    private enum class Screen { Search, Settings }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -25,20 +29,24 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ActivityTraceTheme {
-                var onboarded by mutableStateOf(
-                    getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
-                        .getBoolean("onboarded", false)
-                )
+                val prefs = getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
+                var onboarded by remember { mutableStateOf(prefs.getBoolean("onboarded", false)) }
+                var screen by remember { mutableStateOf(Screen.Search) }
 
                 if (onboarded) {
-                    SearchScreen(viewModel = viewModel)
+                    when (screen) {
+                        Screen.Search -> SearchScreen(
+                            viewModel = viewModel,
+                            onNavigateToSettings = { screen = Screen.Settings },
+                        )
+                        Screen.Settings -> SettingsScreen(
+                            onBack = { screen = Screen.Search },
+                        )
+                    }
                 } else {
                     OnboardingScreen(
                         onComplete = {
-                            getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
-                                .edit()
-                                .putBoolean("onboarded", true)
-                                .apply()
+                            prefs.edit().putBoolean("onboarded", true).apply()
                             onboarded = true
                         },
                     )

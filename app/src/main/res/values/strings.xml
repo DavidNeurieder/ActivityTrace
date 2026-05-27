@@ -3,8 +3,26 @@
     <string name="app_name">Activity Trace</string>
     <string name="search_hint">Search your activity…</string>
     <string name="settings_title">Settings</string>
-    <string name="retention_days">Retention period (days)</string>
+    <string name="retention_days">Retention period</string>
     <string name="app_exclusions">Excluded apps</string>
     <string name="no_results">No results found</string>
     <string name="grant_notification_access">Grant Notification Access</string>
+    <string name="retention_never">Never</string>
+    <string name="retention_3d">3 days</string>
+    <string name="retention_7d">7 days</string>
+    <string name="retention_14d">14 days</string>
+    <string name="retention_30d">30 days</string>
+    <string name="permissions_title">Permissions</string>
+    <string name="notification_access">Notification access</string>
+    <string name="notification_access_granted">Granted</string>
+    <string name="notification_access_denied">Not granted</string>
+    <string name="data">Data</string>
+    <string name="export_database">Export database</string>
+    <string name="export_success">Database exported to Downloads/ActivityTrace/</string>
+    <string name="export_failed">Export failed</string>
+    <string name="about">About</string>
+    <string name="version">Version %s</string>
+    <string name="license">GPL-3.0-only</string>
+    <string name="source_link">github.com/anomalco/ActivityTrace</string>
+    <string name="search">Search</string>
 </resources>

@@ -2,11 +2,15 @@ package com.activitytrace.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
@@ -17,7 +21,11 @@ class SearchScreenTest {
     val composeTestRule = createComposeRule()
 
     private val searchEngine: SearchEngine = mockk()
-    private val viewModel = SearchViewModel(searchEngine)
+    private val viewModel: SearchViewModel = run {
+        every { searchEngine.recentItems() } returns flowOf(emptyList())
+        every { searchEngine.search(any()) } returns flowOf(emptyList())
+        SearchViewModel(searchEngine)
+    }
 
     @Test
     fun displaysResults() {
@@ -33,7 +41,7 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             MaterialTheme {
-                SearchScreen(viewModel)
+                SearchScreen(viewModel, onNavigateToSettings = {})
             }
         }
 
@@ -65,7 +73,7 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             MaterialTheme {
-                SearchScreen(viewModel)
+                SearchScreen(viewModel, onNavigateToSettings = {})
             }
         }
 
@@ -83,7 +91,7 @@ class SearchScreenTest {
 
         composeTestRule.setContent {
             MaterialTheme {
-                SearchScreen(viewModel)
+                SearchScreen(viewModel, onNavigateToSettings = {})
             }
         }
 
@@ -98,7 +106,7 @@ class SearchScreenTest {
     fun searchBarShowsQuery() {
         composeTestRule.setContent {
             MaterialTheme {
-                SearchScreen(viewModel)
+                SearchScreen(viewModel, onNavigateToSettings = {})
             }
         }
 
@@ -106,5 +114,30 @@ class SearchScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("hello").assertExists()
+    }
+
+    @Test
+    fun settingsButtonExists() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                SearchScreen(viewModel, onNavigateToSettings = {})
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Settings").assertExists()
+    }
+
+    @Test
+    fun settingsButtonTriggersCallback() {
+        var navigated = false
+
+        composeTestRule.setContent {
+            MaterialTheme {
+                SearchScreen(viewModel, onNavigateToSettings = { navigated = true })
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+        assert(navigated)
     }
 }
