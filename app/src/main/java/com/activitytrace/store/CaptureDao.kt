@@ -55,4 +55,38 @@ interface CaptureDao {
         }
         return searchFts(sql)
     }
+
+    fun searchLike(
+        patterns: List<String>,
+        timeRange: Pair<Long, Long>? = null,
+    ): Flow<List<CapturedItem>> {
+        val conditions = patterns.joinToString(" AND ") { "text LIKE ?" }
+        val params: Array<Any?> = patterns.toTypedArray()
+        val args: Array<Any?> = if (timeRange != null) {
+            params + timeRange.first + timeRange.second
+        } else {
+            params
+        }
+        val sql = if (timeRange != null) {
+            SimpleSQLiteQuery(
+                """
+                SELECT * FROM captured_items
+                WHERE $conditions
+                AND timestamp BETWEEN ? AND ?
+                ORDER BY timestamp DESC LIMIT 100
+                """.trimIndent(),
+                args,
+            )
+        } else {
+            SimpleSQLiteQuery(
+                """
+                SELECT * FROM captured_items
+                WHERE $conditions
+                ORDER BY timestamp DESC LIMIT 100
+                """.trimIndent(),
+                args,
+            )
+        }
+        return searchFts(sql)
+    }
 }
