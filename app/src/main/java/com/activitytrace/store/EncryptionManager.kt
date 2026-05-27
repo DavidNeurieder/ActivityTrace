@@ -14,9 +14,14 @@ object EncryptionManager {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE)
         keyStore.load(null)
 
-        if (keyStore.containsAlias(KEY_ALIAS)) {
-            val secretKey = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
-            return secretKey.secretKey.encoded
+        try {
+            if (keyStore.containsAlias(KEY_ALIAS)) {
+                val secretKey = keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry
+                return secretKey.secretKey.encoded
+            }
+        } catch (e: Exception) {
+            keyStore.deleteEntry(KEY_ALIAS)
+            context.deleteDatabase("activity_trace.db")
         }
 
         val keyGenerator = KeyGenerator.getInstance(

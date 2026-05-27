@@ -27,16 +27,22 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): ActivityTraceDatabase {
-            val passphrase = EncryptionManager.getOrCreateKey(context)
-            val factory = SupportFactory(passphrase)
-            return Room.databaseBuilder(
-                context.applicationContext,
-                ActivityTraceDatabase::class.java,
-                "activity_trace.db"
-            )
-                .openHelperFactory(factory)
-                .addCallback(FtsSetupCallback)
-                .build()
+            return try {
+                val passphrase = EncryptionManager.getOrCreateKey(context)
+                val factory = SupportFactory(passphrase)
+                Room.databaseBuilder(
+                    context.applicationContext,
+                    ActivityTraceDatabase::class.java,
+                    "activity_trace.db"
+                )
+                    .openHelperFactory(factory)
+                    .addCallback(FtsSetupCallback)
+                    .build()
+            } catch (e: Exception) {
+                context.deleteDatabase("activity_trace.db")
+                EncryptionManager.getOrCreateKey(context)
+                throw e
+            }
         }
 
         private val FtsSetupCallback = object : Callback() {

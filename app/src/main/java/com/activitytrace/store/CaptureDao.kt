@@ -4,6 +4,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SimpleSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import com.activitytrace.model.CapturedItem
 import kotlinx.coroutines.flow.Flow
 
@@ -21,6 +24,35 @@ interface CaptureDao {
     @Query("DELETE FROM captured_items WHERE timestamp < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long)
 
-    @Query("SELECT * FROM captured_items WHERE text LIKE '%' || :query || '%' ORDER BY timestamp DESC LIMIT 100")
-    fun search(query: String): Flow<List<CapturedItem>>
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun searchFts(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
+
+    fun search(
+        query: String,
+        timeRange: Pair<Long, Long>? = null,
+    ): Flow<List<CapturedItem>> {
+        val sql = if (timeRange != null) {
+            SimpleSQLiteQuery(
+                """
+                SELECT captured_items.* FROM captured_items
+                JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
+                WHERE captured_items_fts MATCH ?
+                AND captured_items.timestamp BETWEEN ? AND ?
+                ORDER BY captured_items.timestamp DESC LIMIT 100
+                """.trimIndent(),
+                arrayOf(query, timeRange.first, timeRange.second)
+            )
+        } else {
+            SimpleSQLiteQuery(
+                """
+                SELECT captured_items.* FROM captured_items
+                JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
+                WHERE captured_items_fts MATCH ?
+                ORDER BY captured_items.timestamp DESC LIMIT 100
+                """.trimIndent(),
+                arrayOf(query)
+            )
+        }
+        return searchFts(sql)
+    }
 }
