@@ -49,6 +49,8 @@ android {
         compose = true
     }
 
+    // reproducibleBuildEnabled requires AGP 8.5+; set via gradle.properties instead
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
