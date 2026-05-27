@@ -12,10 +12,13 @@ class ActivityTraceApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CaptureIngestor.init(this)
-        RetentionCleanupWorker.scheduleDaily(this)
-
-        val db = ActivityTraceDatabase.getInstance(this)
-        searchEngine = SearchEngine(db.captureDao())
+        try {
+            CaptureIngestor.init(this)
+            RetentionCleanupWorker.scheduleDaily(this)
+            val db = ActivityTraceDatabase.getInstance(this)
+            searchEngine = SearchEngine(db.captureDao())
+        } catch (_: Exception) {
+            // DB or keystore unavailable; search will be unavailable until app restart
+        }
     }
 }

@@ -30,6 +30,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="androidx.activity.ComponentActivity"
+            android:exported="true" />
+
         <service
             android:name=".capture.ActivityTraceNotificationListener"
             android:exported="false"

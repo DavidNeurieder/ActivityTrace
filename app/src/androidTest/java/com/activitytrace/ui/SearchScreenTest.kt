@@ -47,12 +47,14 @@ class SearchScreenTest {
     fun showsAppGroupHeader() {
         val items = listOf(
             CapturedItem(
+                id = 1L,
                 text = "msg1",
                 appPackage = "com.example",
                 contentType = "notification",
                 timestamp = 1000L,
             ),
             CapturedItem(
+                id = 2L,
                 text = "msg2",
                 appPackage = "com.example",
                 contentType = "notification",
@@ -85,6 +87,7 @@ class SearchScreenTest {
             }
         }
 
+        viewModel.onQueryChange("xyz")
         viewModel.onSearch("xyz")
         composeTestRule.waitForIdle()
 

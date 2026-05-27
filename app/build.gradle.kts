@@ -98,7 +98,7 @@ dependencies {
 
     androidTestImplementation(libs.compose.ui.test)
     androidTestImplementation(libs.compose.ui.test.manifest)
-    androidTestImplementation(libs.mockk)
+    androidTestImplementation(libs.mockk.android)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.work.testing)
