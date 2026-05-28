@@ -1,6 +1,8 @@
 package com.activitytrace.ui
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
@@ -248,6 +250,10 @@ private fun AboutSection(context: Context) {
                 text = "github.com/DavidNeurieder/ActivityTrace",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/DavidNeurieder/ActivityTrace"))
+                    context.startActivity(intent)
+                },
             )
         }
     }
