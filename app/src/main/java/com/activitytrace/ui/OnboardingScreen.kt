@@ -1,6 +1,5 @@
 package com.activitytrace.ui
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -50,6 +50,14 @@ fun OnboardingScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        Text(
+            text = "Grant permissions for automatic capture:",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         Button(
             onClick = {
                 context.startActivity(
@@ -58,10 +66,45 @@ fun OnboardingScreen(
             },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Grant Notification Access")
+            Text("Notification Access (recommended)")
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Accessibility Service (Android 14+)")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), use the Accessibility Service path instead on Android 14+.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
         Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "You can also add items manually via the + button on the search screen.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Divider()
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
             onClick = onComplete,

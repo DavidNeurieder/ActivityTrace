@@ -3,6 +3,7 @@ package com.activitytrace.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.activitytrace.capture.CaptureIngestor
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +43,12 @@ class SearchViewModel(
 
     fun onSearch(query: String) {
         onQueryChange(query)
+    }
+
+    fun addItem(text: String, appPackage: String) {
+        viewModelScope.launch {
+            CaptureIngestor.ingest(text, appPackage, "manual")
+        }
     }
 
     class Factory(private val searchEngine: SearchEngine) : ViewModelProvider.Factory {
