@@ -23,6 +23,6 @@
     <string name="about">About</string>
     <string name="version">Version %s</string>
     <string name="license">GPL-3.0-only</string>
-    <string name="source_link">github.com/anomalco/ActivityTrace</string>
+    <string name="source_link">github.com/DavidNeurieder/ActivityTrace</string>
     <string name="search">Search</string>
 </resources>

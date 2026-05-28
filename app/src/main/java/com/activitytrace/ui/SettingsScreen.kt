@@ -245,7 +245,7 @@ private fun AboutSection(context: Context) {
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "github.com/anomalco/ActivityTrace",
+                text = "github.com/DavidNeurieder/ActivityTrace",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
