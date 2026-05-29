@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
+import com.activitytrace.capture.AccessibilityCaptureService
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -109,13 +111,23 @@ fun SettingsScreen(
 
 @Composable
 private fun PermissionsSection(context: Context) {
-    var isGranted by remember { mutableStateOf(false) }
+    var notificationGranted by remember { mutableStateOf(false) }
+    var accessibilityGranted by remember { mutableStateOf(false) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
-            isGranted = enabledPackages.contains(context.packageName)
+            notificationGranted = enabledPackages.contains(context.packageName)
+
+            val enabledServices = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+            )
+            val serviceName =
+                "${context.packageName}/${AccessibilityCaptureService::class.java.name}"
+            accessibilityGranted =
+                enabledServices?.split(":")?.any { it.trim() == serviceName } == true
         }
     }
 
@@ -126,28 +138,60 @@ private fun PermissionsSection(context: Context) {
     )
     Spacer(Modifier.height(8.dp))
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    context.startActivity(
-                        android.content.Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        context.startActivity(
+                            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                        )
+                    }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Notification access", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (notificationGranted) "Granted" else "Not granted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (notificationGranted) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
                     )
                 }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Notification access", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = if (isGranted) "Granted" else "Not granted",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isGranted) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error,
-                )
+            }
+            Divider()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        context.startActivity(
+                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        )
+                    }
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Accessibility service", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (accessibilityGranted) "Granted" else "Not granted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (accessibilityGranted) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = "Notification Access captures notifications in real time. " +
+               "If blocked by Restricted Settings (common on F-Droid/sideloaded apps), " +
+               "enable the Accessibility Service instead (Android 14+).",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

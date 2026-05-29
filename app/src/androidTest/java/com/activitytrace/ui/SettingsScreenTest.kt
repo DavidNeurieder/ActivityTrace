@@ -46,6 +46,20 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun showsAccessibilityServiceRow() {
+        composeTestRule.onNodeWithText("Accessibility service").assertExists()
+    }
+
+    @Test
+    fun showsPermissionsExplanation() {
+        composeTestRule.onNodeWithText(
+            "Notification Access captures notifications in real time. " +
+            "If blocked by Restricted Settings (common on F-Droid/sideloaded apps), " +
+            "enable the Accessibility Service instead (Android 14+)."
+        ).assertExists()
+    }
+
+    @Test
     fun showsRetentionSection() {
         composeTestRule.onNodeWithText("Retention period").assertExists()
     }
