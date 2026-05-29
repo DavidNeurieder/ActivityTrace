@@ -79,6 +79,17 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     END;
                     """.trimIndent()
                 )
+                db.execSQL(
+                    """
+                    CREATE TRIGGER IF NOT EXISTS captured_items_fts_au
+                    AFTER UPDATE ON captured_items BEGIN
+                        INSERT INTO captured_items_fts(captured_items_fts, rowid, text, app_package, content_type)
+                        VALUES ('delete', old.rowid, old.text, old.app_package, old.content_type);
+                        INSERT INTO captured_items_fts(rowid, text, app_package, content_type)
+                        VALUES (new.rowid, new.text, new.app_package, new.content_type);
+                    END;
+                    """.trimIndent()
+                )
             }
         }
     }

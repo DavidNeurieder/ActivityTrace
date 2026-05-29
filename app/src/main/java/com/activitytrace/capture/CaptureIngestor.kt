@@ -1,13 +1,13 @@
 package com.activitytrace.capture
 
-import android.content.ContentValues
 import android.content.Context
-import android.provider.BaseColumns
+import android.util.Log
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.ActivityTraceDatabase
 
 object CaptureIngestor {
     private var db: ActivityTraceDatabase? = null
+    private const val TAG = "CaptureIngestor"
 
     fun init(ctx: Context) {
         db = ActivityTraceDatabase.getInstance(ctx.applicationContext)
@@ -29,7 +29,8 @@ object CaptureIngestor {
                     metadata = metadata,
                 )
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to ingest item (type=$contentType, pkg=$appPackage)", e)
         }
     }
 }

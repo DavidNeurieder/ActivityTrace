@@ -44,79 +44,68 @@ interface CaptureDao {
         query: String,
         timeRange: Pair<Long, Long>? = null,
         contentType: String? = null,
+        appPackage: String? = null,
     ): Flow<List<CapturedItem>> {
-        val typeClause = if (contentType != null) "AND captured_items.content_type = ?" else ""
+        val clauses = mutableListOf("captured_items_fts MATCH ?")
         val params = mutableListOf<Any>(query)
+
         if (timeRange != null) {
+            clauses.add("captured_items.timestamp BETWEEN ? AND ?")
             params.add(timeRange.first)
             params.add(timeRange.second)
         }
-        if (contentType != null) params.add(contentType)
-        val sql = if (timeRange != null) {
-            SimpleSQLiteQuery(
-                """
-                SELECT captured_items.* FROM captured_items
-                JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
-                WHERE captured_items_fts MATCH ?
-                AND captured_items.timestamp BETWEEN ? AND ?
-                $typeClause
-                ORDER BY captured_items.timestamp DESC LIMIT 100
-                """.trimIndent(),
-                params.toTypedArray(),
-            )
-        } else {
-            SimpleSQLiteQuery(
-                """
-                SELECT captured_items.* FROM captured_items
-                JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
-                WHERE captured_items_fts MATCH ?
-                $typeClause
-                ORDER BY captured_items.timestamp DESC LIMIT 100
-                """.trimIndent(),
-                params.toTypedArray(),
-            )
+        if (contentType != null) {
+            clauses.add("captured_items.content_type = ?")
+            params.add(contentType)
         }
-        return searchFts(sql)
+        if (appPackage != null) {
+            clauses.add("captured_items.app_package = ?")
+            params.add(appPackage)
+        }
+
+        val sql = """
+            SELECT captured_items.* FROM captured_items
+            JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
+            WHERE ${clauses.joinToString(" AND ")}
+            ORDER BY captured_items.timestamp DESC LIMIT 100
+        """.trimIndent()
+
+        return searchFts(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
 
     fun searchLike(
         patterns: List<String>,
         timeRange: Pair<Long, Long>? = null,
         contentType: String? = null,
+        appPackage: String? = null,
     ): Flow<List<CapturedItem>> {
         val conditions = patterns.joinToString(" AND ") { "text LIKE ?" }
         val params = mutableListOf<Any>()
         params.addAll(patterns)
+
+        val clauses = mutableListOf<String>()
         if (timeRange != null) {
+            clauses.add("timestamp BETWEEN ? AND ?")
             params.add(timeRange.first)
             params.add(timeRange.second)
         }
-        val typeClause = if (contentType != null) {
+        if (contentType != null) {
+            clauses.add("content_type = ?")
             params.add(contentType)
-            "AND content_type = ?"
-        } else ""
-        val sql = if (timeRange != null) {
-            SimpleSQLiteQuery(
-                """
-                SELECT * FROM captured_items
-                WHERE $conditions
-                AND timestamp BETWEEN ? AND ?
-                $typeClause
-                ORDER BY timestamp DESC LIMIT 100
-                """.trimIndent(),
-                params.toTypedArray(),
-            )
-        } else {
-            SimpleSQLiteQuery(
-                """
-                SELECT * FROM captured_items
-                WHERE $conditions
-                $typeClause
-                ORDER BY timestamp DESC LIMIT 100
-                """.trimIndent(),
-                params.toTypedArray(),
-            )
         }
-        return searchFts(sql)
+        if (appPackage != null) {
+            clauses.add("app_package = ?")
+            params.add(appPackage)
+        }
+
+        val whereExtra = if (clauses.isNotEmpty()) " AND ${clauses.joinToString(" AND ")}" else ""
+
+        val sql = """
+            SELECT * FROM captured_items
+            WHERE $conditions$whereExtra
+            ORDER BY timestamp DESC LIMIT 100
+        """.trimIndent()
+
+        return searchFts(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
 }

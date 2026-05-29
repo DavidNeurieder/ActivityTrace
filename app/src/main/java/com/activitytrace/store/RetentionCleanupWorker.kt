@@ -3,26 +3,25 @@ package com.activitytrace.store
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.Worker
 import androidx.work.WorkerParameters
-import kotlinx.coroutines.runBlocking
 import java.util.concurrent.TimeUnit
 
 class RetentionCleanupWorker(
     context: Context,
     params: WorkerParameters,
-) : Worker(context, params) {
+) : CoroutineWorker(context, params) {
 
-    override fun doWork(): Result = runBlocking {
+    override suspend fun doWork(): Result {
         val retentionDays = getRetentionDays(applicationContext)
-        if (retentionDays <= 0) return@runBlocking Result.success()
+        if (retentionDays <= 0) return Result.success()
         val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
         val db = ActivityTraceDatabase.getInstance(applicationContext)
         db.captureDao().deleteOlderThan(cutoff)
-        Result.success()
+        return Result.success()
     }
 
     class BootReceiver : BroadcastReceiver() {

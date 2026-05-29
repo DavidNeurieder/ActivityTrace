@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 class ClipboardCaptureService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var lastClipText: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -31,6 +32,8 @@ class ClipboardCaptureService : Service() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val listener = ClipboardManager.OnPrimaryClipChangedListener {
             val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: return@OnPrimaryClipChangedListener
+            if (clip == lastClipText) return@OnPrimaryClipChangedListener
+            lastClipText = clip
             scope.launch {
                 CaptureIngestor.ingest(
                     text = clip,

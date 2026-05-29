@@ -2,26 +2,25 @@ package com.activitytrace.capture
 
 import android.content.Context
 import android.net.Uri
+import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.activitytrace.store.ActivityTraceDatabase
-import kotlinx.coroutines.runBlocking
 import java.util.concurrent.TimeUnit
 
 class FileIndexingWorker(
     context: Context,
     params: WorkerParameters,
-) : Worker(context, params) {
+) : CoroutineWorker(context, params) {
 
-    override fun doWork(): Result = runBlocking {
+    override suspend fun doWork(): Result {
         val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val uriStrings = prefs.getStringSet(PREF_DIRECTORY_URIS, emptySet()) ?: emptySet()
-        if (uriStrings.isEmpty()) return@runBlocking Result.success()
+        if (uriStrings.isEmpty()) return Result.success()
 
         val db = ActivityTraceDatabase.getInstance(applicationContext)
         val dao = db.captureDao()
@@ -32,7 +31,7 @@ class FileIndexingWorker(
         }
 
         prefs.edit().putLong(PREF_LAST_RUN, System.currentTimeMillis()).apply()
-        Result.success()
+        return Result.success()
     }
 
     companion object {

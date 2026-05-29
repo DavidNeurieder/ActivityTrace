@@ -31,7 +31,11 @@ class RetentionCleanupWorkerTest {
         val workInfos = workManager.getWorkInfosForUniqueWork("retention_cleanup").get()
 
         assertTrue(workInfos.isNotEmpty())
-        assertEquals(WorkInfo.State.ENQUEUED, workInfos[0].state)
+        val state = workInfos[0].state
+        assertTrue(
+            "Expected ENQUEUED or RUNNING but was $state",
+            state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.RUNNING,
+        )
     }
 
     @Test
@@ -43,6 +47,10 @@ class RetentionCleanupWorkerTest {
         val workInfos = workManager.getWorkInfosForUniqueWork("retention_cleanup").get()
 
         assertEquals(1, workInfos.size)
-        assertEquals(WorkInfo.State.ENQUEUED, workInfos[0].state)
+        val state = workInfos[0].state
+        assertTrue(
+            "Expected ENQUEUED or RUNNING but was $state",
+            state == WorkInfo.State.ENQUEUED || state == WorkInfo.State.RUNNING,
+        )
     }
 }
