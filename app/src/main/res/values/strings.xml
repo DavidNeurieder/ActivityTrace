@@ -47,4 +47,7 @@
     <string name="schedule_daily">Daily</string>
     <string name="last_scan">Last scan: %s</string>
     <string name="scanning">Scanning…</string>
+    <string name="channel_clipboard_monitor">Clipboard Monitor</string>
+    <string name="channel_clipboard_monitor_desc">Notification for clipboard monitoring service</string>
+    <string name="clipboard_monitor_text">Monitoring clipboard</string>
 </resources>

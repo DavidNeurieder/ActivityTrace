@@ -1,7 +1,9 @@
 package com.activitytrace
 
 import android.app.Application
+import android.content.Intent
 import com.activitytrace.capture.CaptureIngestor
+import com.activitytrace.capture.ClipboardCaptureService
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.RetentionCleanupWorker
@@ -20,6 +22,7 @@ class ActivityTraceApplication : Application() {
             val db = ActivityTraceDatabase.getInstance(this)
             captureDao = db.captureDao()
             searchEngine = SearchEngine(captureDao)
+            startForegroundService(Intent(this, ClipboardCaptureService::class.java))
         } catch (_: Exception) {
             // DB or keystore unavailable; search will be unavailable until app restart
         }
