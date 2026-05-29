@@ -19,11 +19,13 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
             ?.toString()
         if (text == null && title == null) return
         val fullText = listOfNotNull(title, text).joinToString(" — ")
+        val serialized = sbn.notification.contentIntent?.serializeIntentSender()
         scope.launch {
             CaptureIngestor.ingest(
                 text = fullText,
                 appPackage = sbn.packageName,
                 contentType = "notification",
+                metadata = serialized,
             )
         }
     }

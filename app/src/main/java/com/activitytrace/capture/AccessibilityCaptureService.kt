@@ -23,11 +23,13 @@ class AccessibilityCaptureService : AccessibilityService() {
                     val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
                     val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
                     if (title.isBlank() && text.isBlank()) return
+                    val serialized = notification.contentIntent?.serializeIntentSender()
                     scope.launch {
                         CaptureIngestor.ingest(
                             text = if (title.isNotEmpty()) "$title — $text" else text,
                             appPackage = pkg,
                             contentType = "notification",
+                            metadata = serialized,
                         )
                     }
                 } else {

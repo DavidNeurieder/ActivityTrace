@@ -35,6 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Context
+import android.content.Intent
+import android.content.IntentSender
+import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.model.CapturedItem
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -110,19 +114,13 @@ fun SearchScreen(
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .clickable {
-                                    val intent = context.packageManager
-                                        .getLaunchIntentForPackage(app)
-                                    if (intent != null) context.startActivity(intent)
-                                },
+                                .clickable { openItem(context, app) },
                         )
                     }
                     appItems.forEach { captured ->
                         item(key = captured.id) {
                             ResultCard(captured) {
-                                val intent = context.packageManager
-                                    .getLaunchIntentForPackage(captured.appPackage)
-                                if (intent != null) context.startActivity(intent)
+                                openItem(context, captured.appPackage, captured.metadata)
                             }
                         }
                     }
@@ -206,6 +204,21 @@ private fun ResultCard(item: CapturedItem, onClick: () -> Unit) {
             supportingContent = { Text(formatTimestamp(item.timestamp)) },
         )
     }
+}
+
+private fun openItem(context: Context, appPackage: String, metadata: String? = null) {
+    if (metadata != null) {
+        val sender = metadata.deserializeToIntentSender()
+        if (sender != null) {
+            try {
+                context.startIntentSender(sender, null, 0, 0, Intent.FLAG_ACTIVITY_NEW_TASK)
+                return
+            } catch (_: IntentSender.SendIntentException) {
+            }
+        }
+    }
+    val intent = context.packageManager.getLaunchIntentForPackage(appPackage)
+    if (intent != null) context.startActivity(intent)
 }
 
 private fun formatTimestamp(millis: Long): String {

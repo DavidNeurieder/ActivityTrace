@@ -44,7 +44,44 @@ class OnboardingScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Grant Notification Access").assertExists()
+        composeTestRule.onNodeWithText("Notification Access (recommended)").assertExists()
+    }
+
+    @Test
+    fun showsAccessibilityServiceButton() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Accessibility Service (Android 14+)").assertExists()
+    }
+
+    @Test
+    fun showsRestrictedSettingsNote() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), use the Accessibility Service path instead on Android 14+."
+        ).assertExists()
+    }
+
+    @Test
+    fun showsManualEntryHint() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "You can also add items manually via the + button on the search screen."
+        ).assertExists()
     }
 
     @Test
