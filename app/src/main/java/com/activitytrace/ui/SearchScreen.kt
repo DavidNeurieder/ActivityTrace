@@ -206,8 +206,8 @@ private fun FilterChipsRow(
         null to "All",
         "notification" to "Notifications",
         "clipboard" to "Clipboard",
-        "screen" to "Screen",
-        "page" to "Pages",
+        "page" to "Folders",
+        "screen" to "Accessibility",
     )
 
     LazyRow(
