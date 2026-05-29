@@ -35,10 +35,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
-import com.activitytrace.capture.deserializeToIntentSender
+import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -208,12 +208,12 @@ private fun ResultCard(item: CapturedItem, onClick: () -> Unit) {
 
 private fun openItem(context: Context, appPackage: String, metadata: String? = null) {
     if (metadata != null) {
-        val sender = metadata.deserializeToIntentSender()
-        if (sender != null) {
+        val pi = metadata.deserializeToPendingIntent()
+        if (pi != null) {
             try {
-                context.startIntentSender(sender, null, 0, 0, Intent.FLAG_ACTIVITY_NEW_TASK)
+                pi.send(context, 0, null)
                 return
-            } catch (_: IntentSender.SendIntentException) {
+            } catch (_: PendingIntent.CanceledException) {
             }
         }
     }
