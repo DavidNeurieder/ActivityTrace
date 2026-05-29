@@ -1,6 +1,7 @@
 package com.activitytrace.store
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -15,8 +16,17 @@ interface CaptureDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: CapturedItem)
 
+    @Delete
+    suspend fun delete(item: CapturedItem)
+
+    @Query("DELETE FROM captured_items WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("SELECT * FROM captured_items ORDER BY timestamp DESC LIMIT 100")
     fun recentItems(): Flow<List<CapturedItem>>
+
+    @Query("SELECT * FROM captured_items WHERE :contentType IS NULL OR content_type = :contentType ORDER BY timestamp DESC LIMIT 100")
+    fun recentItemsFiltered(contentType: String?): Flow<List<CapturedItem>>
 
     @Query("SELECT * FROM captured_items WHERE timestamp > :since ORDER BY timestamp DESC")
     fun itemsSince(since: Long): Flow<List<CapturedItem>>
@@ -30,7 +40,15 @@ interface CaptureDao {
     fun search(
         query: String,
         timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
     ): Flow<List<CapturedItem>> {
+        val typeClause = if (contentType != null) "AND captured_items.content_type = ?" else ""
+        val params = mutableListOf<Any>(query)
+        if (timeRange != null) {
+            params.add(timeRange.first)
+            params.add(timeRange.second)
+        }
+        if (contentType != null) params.add(contentType)
         val sql = if (timeRange != null) {
             SimpleSQLiteQuery(
                 """
@@ -38,9 +56,10 @@ interface CaptureDao {
                 JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
                 WHERE captured_items_fts MATCH ?
                 AND captured_items.timestamp BETWEEN ? AND ?
+                $typeClause
                 ORDER BY captured_items.timestamp DESC LIMIT 100
                 """.trimIndent(),
-                arrayOf(query, timeRange.first, timeRange.second)
+                params.toTypedArray(),
             )
         } else {
             SimpleSQLiteQuery(
@@ -48,9 +67,10 @@ interface CaptureDao {
                 SELECT captured_items.* FROM captured_items
                 JOIN captured_items_fts ON captured_items.rowid = captured_items_fts.rowid
                 WHERE captured_items_fts MATCH ?
+                $typeClause
                 ORDER BY captured_items.timestamp DESC LIMIT 100
                 """.trimIndent(),
-                arrayOf(query)
+                params.toTypedArray(),
             )
         }
         return searchFts(sql)
@@ -59,32 +79,39 @@ interface CaptureDao {
     fun searchLike(
         patterns: List<String>,
         timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
     ): Flow<List<CapturedItem>> {
         val conditions = patterns.joinToString(" AND ") { "text LIKE ?" }
-        val params: Array<Any?> = patterns.toTypedArray()
-        val args: Array<Any?> = if (timeRange != null) {
-            params + timeRange.first + timeRange.second
-        } else {
-            params
+        val params = mutableListOf<Any>()
+        params.addAll(patterns)
+        if (timeRange != null) {
+            params.add(timeRange.first)
+            params.add(timeRange.second)
         }
+        val typeClause = if (contentType != null) {
+            params.add(contentType)
+            "AND content_type = ?"
+        } else ""
         val sql = if (timeRange != null) {
             SimpleSQLiteQuery(
                 """
                 SELECT * FROM captured_items
                 WHERE $conditions
                 AND timestamp BETWEEN ? AND ?
+                $typeClause
                 ORDER BY timestamp DESC LIMIT 100
                 """.trimIndent(),
-                args,
+                params.toTypedArray(),
             )
         } else {
             SimpleSQLiteQuery(
                 """
                 SELECT * FROM captured_items
                 WHERE $conditions
+                $typeClause
                 ORDER BY timestamp DESC LIMIT 100
                 """.trimIndent(),
-                args,
+                params.toTypedArray(),
             )
         }
         return searchFts(sql)

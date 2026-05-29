@@ -1,13 +1,14 @@
 package com.activitytrace.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.store.CaptureDao
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -21,14 +22,18 @@ class SearchScreenTest {
     val composeTestRule = createComposeRule()
 
     private val searchEngine: SearchEngine = mockk()
-    private val viewModel: SearchViewModel = run {
-        every { searchEngine.recentItems() } returns flowOf(emptyList())
+    private val captureDao: CaptureDao = mockk()
+
+    private fun createViewModel(items: List<CapturedItem> = emptyList()): SearchViewModel {
+        every { searchEngine.recentItems(any()) } returns flowOf(items)
         every { searchEngine.search(any()) } returns flowOf(emptyList())
-        SearchViewModel(searchEngine)
+        every { searchEngine.search(any(), any()) } returns flowOf(emptyList())
+        return SearchViewModel(searchEngine, captureDao)
     }
 
     @Test
     fun displaysResults() {
+        val viewModel = createViewModel()
         val items = listOf(
             CapturedItem(
                 text = "Test message",
@@ -52,24 +57,25 @@ class SearchScreenTest {
     }
 
     @Test
-    fun showsAppGroupHeader() {
+    fun showsDateGrouping() {
+        val now = System.currentTimeMillis()
         val items = listOf(
             CapturedItem(
                 id = 1L,
-                text = "msg1",
+                text = "today item",
                 appPackage = "com.example",
                 contentType = "notification",
-                timestamp = 1000L,
+                timestamp = now,
             ),
             CapturedItem(
                 id = 2L,
-                text = "msg2",
+                text = "older item",
                 appPackage = "com.example",
                 contentType = "notification",
-                timestamp = 2000L,
+                timestamp = now - 3 * 24 * 60 * 60 * 1000L,
             ),
         )
-        every { searchEngine.search("test") } returns flowOf(items)
+        val viewModel = createViewModel(items)
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -77,16 +83,15 @@ class SearchScreenTest {
             }
         }
 
-        viewModel.onSearch("test")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("com.example").assertExists()
-        composeTestRule.onNodeWithText("msg1").assertExists()
-        composeTestRule.onNodeWithText("msg2").assertExists()
+        composeTestRule.onNodeWithText("today item").assertExists()
+        composeTestRule.onNodeWithText("older item").assertExists()
     }
 
     @Test
     fun showsNoResultsText() {
+        val viewModel = createViewModel()
         every { searchEngine.search("xyz") } returns flowOf(emptyList())
 
         composeTestRule.setContent {
@@ -104,6 +109,8 @@ class SearchScreenTest {
 
     @Test
     fun searchBarShowsQuery() {
+        val viewModel = createViewModel()
+
         composeTestRule.setContent {
             MaterialTheme {
                 SearchScreen(viewModel, onNavigateToSettings = {})
@@ -118,6 +125,8 @@ class SearchScreenTest {
 
     @Test
     fun settingsButtonExists() {
+        val viewModel = createViewModel()
+
         composeTestRule.setContent {
             MaterialTheme {
                 SearchScreen(viewModel, onNavigateToSettings = {})
@@ -129,6 +138,7 @@ class SearchScreenTest {
 
     @Test
     fun settingsButtonTriggersCallback() {
+        val viewModel = createViewModel()
         var navigated = false
 
         composeTestRule.setContent {
@@ -139,5 +149,53 @@ class SearchScreenTest {
 
         composeTestRule.onNodeWithContentDescription("Settings").performClick()
         assert(navigated)
+    }
+
+    @Test
+    fun showsFilterChips() {
+        val viewModel = createViewModel()
+
+        composeTestRule.setContent {
+            MaterialTheme {
+                SearchScreen(viewModel, onNavigateToSettings = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("All").assertExists()
+        composeTestRule.onNodeWithText("Notifications").assertExists()
+        composeTestRule.onNodeWithText("Clipboard").assertExists()
+        composeTestRule.onNodeWithText("Manual").assertExists()
+        composeTestRule.onNodeWithText("Pages").assertExists()
+    }
+
+    @Test
+    fun showsResultCount() {
+        val items = listOf(
+            CapturedItem(
+                id = 1L,
+                text = "item one",
+                appPackage = "com.test",
+                contentType = "notification",
+                timestamp = System.currentTimeMillis(),
+            ),
+            CapturedItem(
+                id = 2L,
+                text = "item two",
+                appPackage = "com.test",
+                contentType = "notification",
+                timestamp = System.currentTimeMillis(),
+            ),
+        )
+        val viewModel = createViewModel(items)
+
+        composeTestRule.setContent {
+            MaterialTheme {
+                SearchScreen(viewModel, onNavigateToSettings = {})
+            }
+        }
+
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("2 results").assertExists()
     }
 }

@@ -25,4 +25,18 @@
     <string name="license">GPL-3.0-only</string>
     <string name="source_link">github.com/DavidNeurieder/ActivityTrace</string>
     <string name="search">Search</string>
+    <string name="filter_all">All</string>
+    <string name="filter_notifications">Notifications</string>
+    <string name="filter_clipboard">Clipboard</string>
+    <string name="filter_manual">Manual</string>
+    <string name="filter_pages">Pages</string>
+    <string name="result_count">%d results</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="this_week">This Week</string>
+    <string name="older">Older</string>
+    <string name="nothing_captured">Nothing captured yet</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="item_deleted">Item deleted</string>
+    <string name="try_different_search">Try a different search term or clear filters</string>
 </resources>

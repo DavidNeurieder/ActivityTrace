@@ -6,15 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.activitytrace.capture.CaptureIngestor
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
     private val searchEngine: SearchEngine,
+    private val captureDao: CaptureDao,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -25,14 +28,18 @@ class SearchViewModel(
 
     private val searchQuery = MutableStateFlow("")
 
+    private val _contentTypeFilter = MutableStateFlow<String?>(null)
+    val contentTypeFilter = _contentTypeFilter.asStateFlow()
+
     init {
         viewModelScope.launch {
-            searchQuery.flatMapLatest { q ->
-                if (q.isBlank()) searchEngine.recentItems()
-                else searchEngine.search(q)
-            }.collect { items ->
-                _results.value = items
-            }
+            combine(searchQuery, _contentTypeFilter) { q, filter -> q to filter }
+                .flatMapLatest { (q, filter) ->
+                    if (q.isBlank()) searchEngine.recentItems(filter)
+                    else searchEngine.search(q, filter)
+                }.collect { items ->
+                    _results.value = items
+                }
         }
     }
 
@@ -45,16 +52,29 @@ class SearchViewModel(
         onQueryChange(query)
     }
 
-    fun addItem(text: String, appPackage: String) {
+    fun setContentTypeFilter(type: String?) {
+        _contentTypeFilter.value = type
+    }
+
+    fun deleteItem(item: CapturedItem) {
         viewModelScope.launch {
-            CaptureIngestor.ingest(text, appPackage, "manual")
+            captureDao.delete(item)
         }
     }
 
-    class Factory(private val searchEngine: SearchEngine) : ViewModelProvider.Factory {
+    fun addItem(text: String, appPackage: String, contentType: String = "manual") {
+        viewModelScope.launch {
+            CaptureIngestor.ingest(text, appPackage, contentType)
+        }
+    }
+
+    class Factory(
+        private val searchEngine: SearchEngine,
+        private val captureDao: CaptureDao,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SearchViewModel(searchEngine) as T
+            return SearchViewModel(searchEngine, captureDao) as T
         }
     }
 }

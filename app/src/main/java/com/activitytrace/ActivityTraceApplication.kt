@@ -9,6 +9,8 @@ import com.activitytrace.store.RetentionCleanupWorker
 class ActivityTraceApplication : Application() {
     lateinit var searchEngine: SearchEngine
         private set
+    lateinit var captureDao: com.activitytrace.store.CaptureDao
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -16,7 +18,8 @@ class ActivityTraceApplication : Application() {
             CaptureIngestor.init(this)
             RetentionCleanupWorker.scheduleDaily(this)
             val db = ActivityTraceDatabase.getInstance(this)
-            searchEngine = SearchEngine(db.captureDao())
+            captureDao = db.captureDao()
+            searchEngine = SearchEngine(captureDao)
         } catch (_: Exception) {
             // DB or keystore unavailable; search will be unavailable until app restart
         }

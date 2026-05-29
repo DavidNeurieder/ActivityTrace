@@ -7,9 +7,12 @@ import kotlinx.coroutines.flow.flowOf
 
 class SearchEngine(private val captureDao: CaptureDao) {
 
-    fun recentItems(): Flow<List<CapturedItem>> = captureDao.recentItems()
+    fun recentItems(contentType: String? = null): Flow<List<CapturedItem>> {
+        return if (contentType != null) captureDao.recentItemsFiltered(contentType)
+        else captureDao.recentItems()
+    }
 
-    fun search(rawQuery: String): Flow<List<CapturedItem>> {
+    fun search(rawQuery: String, contentType: String? = null): Flow<List<CapturedItem>> {
         val parsed = QueryParser.parse(rawQuery)
         val keywords = parsed.keywords
 
@@ -17,10 +20,10 @@ class SearchEngine(private val captureDao: CaptureDao) {
 
         return if (keywords.any { it.contains("*") }) {
             val patterns = keywords.map { it.replace("*", "%") }
-            captureDao.searchLike(patterns, parsed.timeRange)
+            captureDao.searchLike(patterns, parsed.timeRange, contentType)
         } else {
             val ftsQuery = keywords.joinToString(" AND ") { "$it*" }
-            captureDao.search(ftsQuery, parsed.timeRange)
+            captureDao.search(ftsQuery, parsed.timeRange, contentType)
         }
     }
 }

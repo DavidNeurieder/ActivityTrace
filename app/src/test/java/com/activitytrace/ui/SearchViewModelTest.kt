@@ -2,6 +2,7 @@ package com.activitytrace.ui
 
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.store.CaptureDao
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,7 @@ import org.junit.Test
 class SearchViewModelTest {
 
     private val searchEngine: SearchEngine = mockk()
+    private val captureDao: CaptureDao = mockk()
     private lateinit var dispatcher: TestDispatcher
     private lateinit var viewModel: SearchViewModel
 
@@ -27,7 +29,7 @@ class SearchViewModelTest {
         dispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(dispatcher)
         every { searchEngine.recentItems() } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchEngine)
+        viewModel = SearchViewModel(searchEngine, captureDao)
     }
 
     @After
