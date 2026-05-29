@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -15,11 +16,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +46,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -50,10 +59,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.capture.AccessibilityCaptureService
+import com.activitytrace.capture.FileIndexingWorker
 import com.activitytrace.store.RetentionCleanupWorker
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -101,6 +115,8 @@ fun SettingsScreen(
                     RetentionCleanupWorker.setRetentionDays(context, days)
                 },
             )
+            Spacer(Modifier.height(24.dp))
+            FileIndexingSection(context, scope)
             Spacer(Modifier.height(24.dp))
             DataSection(context, scope, exportMessage, onExportMessage = { exportMessage = it })
             Spacer(Modifier.height(24.dp))
@@ -233,6 +249,184 @@ private fun RetentionSection(
             }
         }
     }
+}
+
+@Composable
+private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
+    val prefs = context.getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
+    var directoryUris by remember {
+        mutableStateOf(prefs.getStringSet(FileIndexingWorker.PREF_DIRECTORY_URIS, emptySet()) ?: emptySet())
+    }
+    var schedule by remember {
+        mutableStateOf(prefs.getString(FileIndexingWorker.PREF_SCHEDULE, "never") ?: "never")
+    }
+    var lastRun by remember { mutableStateOf(prefs.getLong(FileIndexingWorker.PREF_LAST_RUN, 0L)) }
+    var scanning by remember { mutableStateOf(false) }
+
+    val directoryPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+            val uriString = it.toString()
+            if (uriString !in directoryUris) {
+                val updated = directoryUris + uriString
+                prefs.edit().putStringSet(FileIndexingWorker.PREF_DIRECTORY_URIS, updated).apply()
+                directoryUris = updated
+            }
+        }
+    }
+
+    LaunchedEffect(schedule) {
+        when (schedule) {
+            "daily" -> FileIndexingWorker.scheduleDaily(context)
+            "never" -> FileIndexingWorker.cancelDaily(context)
+        }
+    }
+
+    LaunchedEffect(scanning) {
+        if (!scanning) return@LaunchedEffect
+        while (true) {
+            delay(1000)
+            val infos = WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWork("file_indexing_manual").get()
+            if (infos.all { it.state.isFinished }) {
+                scanning = false
+                lastRun = System.currentTimeMillis()
+                prefs.edit().putLong(FileIndexingWorker.PREF_LAST_RUN, lastRun).apply()
+                break
+            }
+        }
+    }
+
+    Text(
+        text = "Index Documents",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Folder list
+            Text("Folders", style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(4.dp))
+            if (directoryUris.isEmpty()) {
+                Text(
+                    text = "No folders selected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
+            } else {
+                directoryUris.forEach { uriString ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = directoryDisplayName(context, uriString) ?: uriString,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = {
+                                val updated = directoryUris - uriString
+                                prefs.edit().putStringSet(
+                                    FileIndexingWorker.PREF_DIRECTORY_URIS, updated
+                                ).apply()
+                                directoryUris = updated
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Remove folder",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { directoryPicker.launch(null) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Add folder")
+            }
+            Spacer(Modifier.height(12.dp))
+            Divider()
+            Spacer(Modifier.height(12.dp))
+
+            // Schedule
+            Text("Schedule", style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(4.dp))
+            val scheduleOptions = listOf("never" to "Never", "daily" to "Daily")
+            scheduleOptions.forEach { (value, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { schedule = value }
+                        .padding(vertical = 4.dp, horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = schedule == value,
+                        onClick = { schedule = value },
+                    )
+                    Spacer(Modifier.padding(start = 4.dp))
+                    Text(label, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Divider()
+            Spacer(Modifier.height(12.dp))
+
+            // Scan now
+            Button(
+                onClick = {
+                    scanning = true
+                    FileIndexingWorker.triggerNow(context)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !scanning && directoryUris.isNotEmpty(),
+            ) {
+                Text(if (scanning) "Scanning\u2026" else "Scan now")
+            }
+
+            if (!scanning && lastRun > 0L) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Last scan: ${formatDate(lastRun)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun directoryDisplayName(context: Context, uriString: String): String? {
+    if (uriString.isBlank()) return null
+    val uri = Uri.parse(uriString)
+    return try {
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+        val name = docId.substringAfter(":")
+        if (name.isBlank()) uri.lastPathSegment else name
+    } catch (_: Exception) {
+        uri.lastPathSegment
+    }
+}
+
+private fun formatDate(millis: Long): String {
+    val sdf = java.text.SimpleDateFormat("MMM d, yyyy HH:mm", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date(millis))
 }
 
 @Composable

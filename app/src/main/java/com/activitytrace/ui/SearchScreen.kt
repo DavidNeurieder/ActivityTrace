@@ -24,26 +24,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -58,10 +51,8 @@ import androidx.compose.material3.rememberDismissState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -92,7 +83,6 @@ fun SearchScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -107,11 +97,6 @@ fun SearchScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add item")
-            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier,
@@ -209,15 +194,6 @@ fun SearchScreen(
         }
     }
 
-    if (showAddDialog) {
-        AddItemDialog(
-            onDismiss = { showAddDialog = false },
-            onSave = { text, pkg, type ->
-                viewModel.addItem(text, pkg, type)
-                showAddDialog = false
-            },
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -230,7 +206,7 @@ private fun FilterChipsRow(
         null to "All",
         "notification" to "Notifications",
         "clipboard" to "Clipboard",
-        "manual" to "Manual",
+        "screen" to "Screen",
         "page" to "Pages",
     )
 
@@ -325,96 +301,6 @@ private fun EmptyState(query: String, filter: String?) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddItemDialog(
-    onDismiss: () -> Unit,
-    onSave: (text: String, appPackage: String, contentType: String) -> Unit,
-) {
-    var text by remember { mutableStateOf("") }
-    var appPackage by remember { mutableStateOf("") }
-    var contentType by remember { mutableStateOf("manual") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-    val clipText = clipboard?.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-    if (text.isBlank() && clipText.isNotBlank()) {
-        text = clipText
-    }
-
-    val contentTypes = listOf("manual" to "Manual", "clipboard" to "Clipboard", "notification" to "Notification")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add entry") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Text content") },
-                    singleLine = false,
-                    maxLines = 4,
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = appPackage,
-                    onValueChange = { appPackage = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Source app (e.g. com.example)") },
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(8.dp))
-                ExposedDropdownMenuBox(
-                    expanded = dropdownExpanded,
-                    onExpandedChange = { dropdownExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = contentTypes.first { it.first == contentType }.second,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        label = { Text("Content type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                        singleLine = true,
-                    )
-                    ExposedDropdownMenu(
-                        expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false },
-                    ) {
-                        contentTypes.forEach { (type, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    contentType = type
-                                    dropdownExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(text, appPackage.ifBlank { "manual" }, contentType) },
-                enabled = text.isNotBlank(),
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
-}
-
 private fun groupByDate(items: List<CapturedItem>): List<Pair<String, List<CapturedItem>>> {
     val calendar = Calendar.getInstance()
     calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -454,8 +340,8 @@ private fun groupByDate(items: List<CapturedItem>): List<Pair<String, List<Captu
 private fun contentTypeIcon(type: String): ImageVector = when (type) {
     "notification" -> Icons.Default.Notifications
     "clipboard" -> Icons.Default.ContentPaste
+    "screen" -> Icons.Default.Visibility
     "page" -> Icons.Default.Description
-    "manual" -> Icons.Default.Edit
     else -> Icons.Default.Description
 }
 

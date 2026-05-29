@@ -72,19 +72,6 @@ class OnboardingScreenTest {
     }
 
     @Test
-    fun showsManualEntryHint() {
-        composeTestRule.setContent {
-            MaterialTheme {
-                OnboardingScreen(onComplete = {})
-            }
-        }
-
-        composeTestRule.onNodeWithText(
-            "You can also add items manually via the + button on the search screen."
-        ).assertExists()
-    }
-
-    @Test
     fun showsContinueButton() {
         composeTestRule.setContent {
             MaterialTheme {

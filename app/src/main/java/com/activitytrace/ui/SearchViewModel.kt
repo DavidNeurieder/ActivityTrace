@@ -3,7 +3,6 @@ package com.activitytrace.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.activitytrace.capture.CaptureIngestor
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.CaptureDao
@@ -59,12 +58,6 @@ class SearchViewModel(
     fun deleteItem(item: CapturedItem) {
         viewModelScope.launch {
             captureDao.delete(item)
-        }
-    }
-
-    fun addItem(text: String, appPackage: String, contentType: String = "manual") {
-        viewModelScope.launch {
-            CaptureIngestor.ingest(text, appPackage, contentType)
         }
     }
 

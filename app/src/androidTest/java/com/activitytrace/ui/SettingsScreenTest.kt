@@ -3,6 +3,7 @@ package com.activitytrace.ui
 import android.content.Context
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -66,7 +67,7 @@ class SettingsScreenTest {
 
     @Test
     fun showsRetentionOptions() {
-        composeTestRule.onNodeWithText("Never").assertExists()
+        composeTestRule.onAllNodesWithText("Never")[0].assertExists()
         composeTestRule.onNodeWithText("3 days").assertExists()
         composeTestRule.onNodeWithText("7 days").assertExists()
         composeTestRule.onNodeWithText("14 days").assertExists()

@@ -39,4 +39,12 @@
     <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="item_deleted">Item deleted</string>
     <string name="try_different_search">Try a different search term or clear filters</string>
+    <string name="index_documents">Index Documents</string>
+    <string name="select_folder">Select folder</string>
+    <string name="folder_not_selected">No folder selected</string>
+    <string name="scan_now">Scan now</string>
+    <string name="schedule_never">Never</string>
+    <string name="schedule_daily">Daily</string>
+    <string name="last_scan">Last scan: %s</string>
+    <string name="scanning">Scanning…</string>
 </resources>

@@ -116,15 +116,6 @@ fun OnboardingScreen(
             textAlign = TextAlign.Center,
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "You can also add items manually via the + button on the search screen.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Divider()

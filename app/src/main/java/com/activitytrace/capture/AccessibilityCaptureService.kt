@@ -51,7 +51,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                     CaptureIngestor.ingest(
                         text = text,
                         appPackage = pkg,
-                        contentType = "page",
+                        contentType = "screen",
                     )
                 }
             }

@@ -87,6 +87,8 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.sqlcipher)
     implementation(libs.sqlite.ktx)
+    implementation(libs.pdfbox.android)
+    implementation(libs.documentfile)
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)
