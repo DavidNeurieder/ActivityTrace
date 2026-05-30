@@ -1,8 +1,10 @@
 package com.activitytrace.ui
 
+import androidx.lifecycle.AbstractSavedStateViewModelFactory
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.savedstate.SavedStateRegistryOwner
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.CaptureDao
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 class SearchViewModel(
     private val searchEngine: SearchEngine,
     private val captureDao: CaptureDao,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -27,7 +30,7 @@ class SearchViewModel(
 
     private val searchQuery = MutableStateFlow("")
 
-    private val _contentTypeFilter = MutableStateFlow<String?>(null)
+    private val _contentTypeFilter = MutableStateFlow<String?>(savedStateHandle["contentTypeFilter"])
     val contentTypeFilter = _contentTypeFilter.asStateFlow()
 
     init {
@@ -53,6 +56,7 @@ class SearchViewModel(
 
     fun setContentTypeFilter(type: String?) {
         _contentTypeFilter.value = type
+        savedStateHandle["contentTypeFilter"] = type
     }
 
     fun deleteItem(item: CapturedItem) {
@@ -64,10 +68,15 @@ class SearchViewModel(
     class Factory(
         private val searchEngine: SearchEngine,
         private val captureDao: CaptureDao,
-    ) : ViewModelProvider.Factory {
+        owner: SavedStateRegistryOwner,
+    ) : AbstractSavedStateViewModelFactory(owner, null) {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SearchViewModel(searchEngine, captureDao) as T
+        override fun <T : ViewModel> create(
+            key: String,
+            modelClass: Class<T>,
+            handle: SavedStateHandle,
+        ): T {
+            return SearchViewModel(searchEngine, captureDao, handle) as T
         }
     }
 }

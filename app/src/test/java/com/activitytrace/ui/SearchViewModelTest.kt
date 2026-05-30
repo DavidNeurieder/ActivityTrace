@@ -1,5 +1,6 @@
 package com.activitytrace.ui
 
+import androidx.lifecycle.SavedStateHandle
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.CaptureDao
@@ -29,7 +30,7 @@ class SearchViewModelTest {
         dispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(dispatcher)
         every { searchEngine.recentItems() } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchEngine, captureDao)
+        viewModel = SearchViewModel(searchEngine, captureDao, SavedStateHandle())
     }
 
     @After

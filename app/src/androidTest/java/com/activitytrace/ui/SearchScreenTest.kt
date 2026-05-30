@@ -1,5 +1,6 @@
 package com.activitytrace.ui
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -28,7 +29,7 @@ class SearchScreenTest {
         every { searchEngine.recentItems(any()) } returns flowOf(items)
         every { searchEngine.search(any()) } returns flowOf(emptyList())
         every { searchEngine.search(any(), any()) } returns flowOf(emptyList())
-        return SearchViewModel(searchEngine, captureDao)
+        return SearchViewModel(searchEngine, captureDao, SavedStateHandle())
     }
 
     @Test

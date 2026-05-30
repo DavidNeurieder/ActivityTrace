@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         val app = application as ActivityTraceApplication
         val viewModel = ViewModelProvider(
             this,
-            SearchViewModel.Factory(app.searchEngine, app.captureDao)
+            SearchViewModel.Factory(app.searchEngine, app.captureDao, this)
         )[SearchViewModel::class.java]
 
         setContent {
