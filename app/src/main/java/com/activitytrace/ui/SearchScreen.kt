@@ -293,14 +293,11 @@ private fun ResultCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (canOpen) {
-                        IconButton(
-                            onClick = onOpenApp,
-                            modifier = Modifier.size(24.dp),
-                        ) {
+                        IconButton(onClick = onOpenApp) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                 contentDescription = "Open app",
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(24.dp),
                             )
                         }
                     }
