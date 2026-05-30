@@ -1,6 +1,7 @@
 package com.activitytrace.ui
 
-import androidx.lifecycle.SavedStateHandle
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -14,6 +15,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -25,11 +27,18 @@ class SearchScreenTest {
     private val searchEngine: SearchEngine = mockk()
     private val captureDao: CaptureDao = mockk()
 
+    @Before
+    fun setUp() {
+        ApplicationProvider.getApplicationContext<Application>()
+            .getSharedPreferences("activity_trace", 0).edit().clear().apply()
+    }
+
     private fun createViewModel(items: List<CapturedItem> = emptyList()): SearchViewModel {
+        val app = ApplicationProvider.getApplicationContext<Application>()
         every { searchEngine.recentItems(any()) } returns flowOf(items)
         every { searchEngine.search(any()) } returns flowOf(emptyList())
         every { searchEngine.search(any(), any()) } returns flowOf(emptyList())
-        return SearchViewModel(searchEngine, captureDao, SavedStateHandle())
+        return SearchViewModel(searchEngine, captureDao, app)
     }
 
     @Test

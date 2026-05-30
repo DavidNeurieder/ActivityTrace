@@ -1,11 +1,14 @@
 package com.activitytrace.ui
 
-import androidx.lifecycle.SavedStateHandle
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.CaptureDao
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -22,6 +25,9 @@ class SearchViewModelTest {
 
     private val searchEngine: SearchEngine = mockk()
     private val captureDao: CaptureDao = mockk()
+    private val app: Application = mockk()
+    private val prefs: SharedPreferences = mockk(relaxed = true)
+    private val editor: SharedPreferences.Editor = mockk(relaxed = true)
     private lateinit var dispatcher: TestDispatcher
     private lateinit var viewModel: SearchViewModel
 
@@ -29,8 +35,12 @@ class SearchViewModelTest {
     fun setUp() {
         dispatcher = UnconfinedTestDispatcher()
         Dispatchers.setMain(dispatcher)
-        every { searchEngine.recentItems() } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchEngine, captureDao, SavedStateHandle())
+        every { app.getSharedPreferences("activity_trace", Context.MODE_PRIVATE) } returns prefs
+        every { prefs.getString("search_query", "") } returns ""
+        every { prefs.getString("content_type_filter", null) } returns null
+        every { prefs.edit() } returns editor
+        every { searchEngine.recentItems(any()) } returns flowOf(emptyList())
+        viewModel = SearchViewModel(searchEngine, captureDao, app)
     }
 
     @After
@@ -45,9 +55,24 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `restores query from SharedPreferences`() {
+        every { prefs.getString("search_query", "") } returns "saved"
+        every { searchEngine.search("saved") } returns flowOf(emptyList())
+        val vm = SearchViewModel(searchEngine, captureDao, app)
+        assert(vm.query.value == "saved")
+    }
+
+    @Test
+    fun `restores contentTypeFilter from SharedPreferences`() {
+        every { prefs.getString("content_type_filter", null) } returns "notification"
+        val vm = SearchViewModel(searchEngine, captureDao, app)
+        assert(vm.contentTypeFilter.value == "notification")
+    }
+
+    @Test
     fun `blank query shows recentItems`() {
         every { searchEngine.search("hello") } returns flowOf(emptyList())
-        every { searchEngine.recentItems() } returns flowOf(
+        every { searchEngine.recentItems(any()) } returns flowOf(
             listOf(CapturedItem(text = "x", appPackage = "com.x", contentType = "text", timestamp = 1L))
         )
         viewModel.onQueryChange("hello")
@@ -61,6 +86,13 @@ class SearchViewModelTest {
     fun `onQueryChange updates query`() {
         viewModel.onQueryChange("hello")
         assert(viewModel.query.value == "hello")
+    }
+
+    @Test
+    fun `onQueryChange persists to SharedPreferences`() {
+        viewModel.onQueryChange("persist-me")
+        verify { editor.putString("search_query", "persist-me") }
+        verify { editor.apply() }
     }
 
     @Test
@@ -84,5 +116,25 @@ class SearchViewModelTest {
     fun `search with whitespace only clears results`() {
         viewModel.onSearch("   ")
         assert(viewModel.results.value.isEmpty())
+    }
+
+    @Test
+    fun `setContentTypeFilter updates filter`() {
+        viewModel.setContentTypeFilter("clipboard")
+        assert(viewModel.contentTypeFilter.value == "clipboard")
+    }
+
+    @Test
+    fun `setContentTypeFilter persists to SharedPreferences`() {
+        viewModel.setContentTypeFilter("notification")
+        verify { editor.putString("content_type_filter", "notification") }
+        verify { editor.apply() }
+    }
+
+    @Test
+    fun `setContentTypeFilter null clears filter`() {
+        viewModel.setContentTypeFilter("notification")
+        viewModel.setContentTypeFilter(null)
+        assert(viewModel.contentTypeFilter.value == null)
     }
 }

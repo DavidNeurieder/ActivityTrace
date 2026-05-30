@@ -1,10 +1,11 @@
 package com.activitytrace.ui
 
-import androidx.lifecycle.AbstractSavedStateViewModelFactory
-import androidx.lifecycle.SavedStateHandle
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.savedstate.SavedStateRegistryOwner
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.CaptureDao
@@ -19,18 +20,20 @@ import kotlinx.coroutines.launch
 class SearchViewModel(
     private val searchEngine: SearchEngine,
     private val captureDao: CaptureDao,
-    private val savedStateHandle: SavedStateHandle,
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
 
-    private val _query = MutableStateFlow("")
+    private val prefs = application.getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
+
+    private val _query = MutableStateFlow(prefs.getString("search_query", "") ?: "")
     val query = _query.asStateFlow()
 
     private val _results = MutableStateFlow<List<CapturedItem>>(emptyList())
     val results = _results.asStateFlow()
 
-    private val searchQuery = MutableStateFlow("")
+    private val searchQuery = MutableStateFlow(prefs.getString("search_query", "") ?: "")
 
-    private val _contentTypeFilter = MutableStateFlow<String?>(savedStateHandle["contentTypeFilter"])
+    private val _contentTypeFilter = MutableStateFlow<String?>(prefs.getString("content_type_filter", null))
     val contentTypeFilter = _contentTypeFilter.asStateFlow()
 
     init {
@@ -48,6 +51,7 @@ class SearchViewModel(
     fun onQueryChange(text: String) {
         _query.value = text
         searchQuery.value = text
+        prefs.edit().putString("search_query", text).apply()
     }
 
     fun onSearch(query: String) {
@@ -56,7 +60,7 @@ class SearchViewModel(
 
     fun setContentTypeFilter(type: String?) {
         _contentTypeFilter.value = type
-        savedStateHandle["contentTypeFilter"] = type
+        prefs.edit().putString("content_type_filter", type).apply()
     }
 
     fun deleteItem(item: CapturedItem) {
@@ -68,15 +72,11 @@ class SearchViewModel(
     class Factory(
         private val searchEngine: SearchEngine,
         private val captureDao: CaptureDao,
-        owner: SavedStateRegistryOwner,
-    ) : AbstractSavedStateViewModelFactory(owner, null) {
+        private val application: Application,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(
-            key: String,
-            modelClass: Class<T>,
-            handle: SavedStateHandle,
-        ): T {
-            return SearchViewModel(searchEngine, captureDao, handle) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return SearchViewModel(searchEngine, captureDao, application) as T
         }
     }
 }
