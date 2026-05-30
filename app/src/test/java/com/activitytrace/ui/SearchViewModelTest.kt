@@ -27,7 +27,9 @@ class SearchViewModelTest {
     private val captureDao: CaptureDao = mockk()
     private val app: Application = mockk()
     private val prefs: SharedPreferences = mockk(relaxed = true)
-    private val editor: SharedPreferences.Editor = mockk(relaxed = true)
+    private val editor = mockk<SharedPreferences.Editor>(relaxed = true).also {
+        every { it.putString(any(), any()) } returns it
+    }
     private lateinit var dispatcher: TestDispatcher
     private lateinit var viewModel: SearchViewModel
 
