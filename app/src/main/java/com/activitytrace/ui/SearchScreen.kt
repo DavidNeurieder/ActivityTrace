@@ -50,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.DismissValue
 import androidx.compose.material3.SwipeToDismiss
@@ -297,12 +298,20 @@ private fun ResultCard(
                         modifier = Modifier.size(40.dp).clip(CircleShape),
                     )
                 } else {
-                    Icon(
-                        imageVector = contentTypeIcon(item.contentType),
-                        contentDescription = item.contentType,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = contentTypeIcon(item.contentType),
+                                contentDescription = item.contentType,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
                 }
             },
             headlineContent = {
