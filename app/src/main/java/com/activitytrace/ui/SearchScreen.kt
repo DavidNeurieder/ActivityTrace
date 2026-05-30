@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
@@ -51,8 +52,10 @@ import androidx.compose.material3.rememberDismissState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -173,7 +176,7 @@ fun SearchScreen(
                                         ResultCard(
                                             item = captured,
                                             appName = resolveAppName(context, captured.appPackage, captured.appName),
-                                            onClick = {
+                                            onOpenApp = {
                                                 openItem(context, captured.appPackage, captured.metadata)
                                             },
                                             onLongClick = {
@@ -231,15 +234,17 @@ private fun FilterChipsRow(
 private fun ResultCard(
     item: CapturedItem,
     appName: String,
-    onClick: () -> Unit,
+    onOpenApp: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .combinedClickable(
-                onClick = onClick,
+                onClick = { expanded = !expanded },
                 onLongClick = onLongClick,
             ),
         colors = CardDefaults.cardColors(),
@@ -254,18 +259,44 @@ private fun ResultCard(
                 )
             },
             headlineContent = {
-                Text(
-                    text = item.text,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Column {
+                    Text(
+                        text = item.text,
+                        maxLines = if (expanded) Int.MAX_VALUE else 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (expanded) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Show less",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             },
             supportingContent = {
-                Text(
-                    text = "$appName • ${formatTimestampShort(item.timestamp)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "$appName • ${formatTimestampShort(item.timestamp)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        onClick = onOpenApp,
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = "Open app",
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
             },
         )
     }
