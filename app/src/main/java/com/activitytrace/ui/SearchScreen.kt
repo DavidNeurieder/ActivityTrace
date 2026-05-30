@@ -173,9 +173,14 @@ fun SearchScreen(
                                         }
                                     },
                                     dismissContent = {
+                                        val hasLaunchIntent = remember(captured.appPackage) {
+                                            context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
+                                        }
+                                        val canOpen = captured.metadata != null || hasLaunchIntent
                                         ResultCard(
                                             item = captured,
                                             appName = resolveAppName(context, captured.appPackage, captured.appName),
+                                            canOpen = canOpen,
                                             onOpenApp = {
                                                 openItem(context, captured.appPackage, captured.metadata)
                                             },
@@ -234,6 +239,7 @@ private fun FilterChipsRow(
 private fun ResultCard(
     item: CapturedItem,
     appName: String,
+    canOpen: Boolean,
     onOpenApp: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -286,15 +292,17 @@ private fun ResultCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(
-                        onClick = onOpenApp,
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = "Open app",
-                            modifier = Modifier.size(16.dp),
-                        )
+                    if (canOpen) {
+                        IconButton(
+                            onClick = onOpenApp,
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = "Open app",
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                     }
                 }
             },
