@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -65,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,6 +75,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
 import kotlinx.coroutines.launch
@@ -276,12 +279,14 @@ private fun ResultCard(
     ) {
         val context = LocalContext.current
         val appIcon = if (item.appPackage != "clipboard" && item.appPackage != "local") {
-            remember(item.appPackage) {
-                try {
-                    val drawable = context.packageManager.getApplicationIcon(item.appPackage)
-                    drawable.toBitmap().asImageBitmap()
+            var cachedIcon by remember(item.appPackage) { mutableStateOf<ImageBitmap?>(null) }
+            if (cachedIcon == null) {
+                cachedIcon = try {
+                    context.packageManager.getApplicationIcon(item.appPackage)
+                        .toBitmap().asImageBitmap()
                 } catch (_: Exception) { null }
             }
+            cachedIcon
         } else null
 
         ListItem(
@@ -458,6 +463,14 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
                 pi.send(context, 0, null)
                 return true
             } catch (_: PendingIntent.CanceledException) {
+            }
+        }
+        val intentSender = metadata.deserializeToIntentSender()
+        if (intentSender != null) {
+            try {
+                context.startIntentSender(intentSender, null, 0, 0, 0)
+                return true
+            } catch (_: Exception) {
             }
         }
     }
