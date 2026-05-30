@@ -122,8 +122,8 @@ class SearchViewModelTest {
 
     @Test
     fun `setContentTypeFilter updates filter`() {
-        viewModel.setContentTypeFilter("clipboard")
-        assert(viewModel.contentTypeFilter.value == "clipboard")
+        viewModel.setContentTypeFilter("page")
+        assert(viewModel.contentTypeFilter.value == "page")
     }
 
     @Test

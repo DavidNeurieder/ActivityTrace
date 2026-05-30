@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
@@ -235,7 +234,6 @@ private fun FilterChipsRow(
     val filters = listOf(
         null to "All",
         "notification" to "Notifications",
-        "clipboard" to "Clipboard",
         "page" to "Folders",
         "screen" to "Accessibility",
     )
@@ -278,7 +276,7 @@ private fun ResultCard(
         colors = CardDefaults.cardColors(),
     ) {
         val context = LocalContext.current
-        val appIcon = if (item.appPackage != "clipboard" && item.appPackage != "local") {
+        val appIcon = if (item.appPackage != "local") {
             var cachedIcon by remember(item.appPackage) { mutableStateOf<ImageBitmap?>(null) }
             if (cachedIcon == null) {
                 cachedIcon = try {
@@ -429,7 +427,6 @@ private fun Drawable.toBitmap(defaultSize: Int = 256): Bitmap {
 
 private fun contentTypeIcon(type: String): ImageVector = when (type) {
     "notification" -> Icons.Default.Notifications
-    "clipboard" -> Icons.Default.ContentPaste
     "screen" -> Icons.Default.Visibility
     "page" -> Icons.Default.Description
     else -> Icons.Default.Description

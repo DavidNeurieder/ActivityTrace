@@ -32,7 +32,7 @@ class OnboardingScreenTest {
         }
 
         composeTestRule.onNodeWithText(
-            "Search across your notifications, clipboard, and more.\nEverything stays on your device, encrypted."
+            "Search across your notifications and more.\nEverything stays on your device, encrypted."
         ).assertExists()
     }
 

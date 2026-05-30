@@ -68,7 +68,7 @@ fun OnboardingScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Search across your notifications, clipboard, and more.\nEverything stays on your device, encrypted.",
+            text = "Search across your notifications and more.\nEverything stays on your device, encrypted.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )

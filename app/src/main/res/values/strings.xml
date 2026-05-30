@@ -27,7 +27,6 @@
     <string name="search">Search</string>
     <string name="filter_all">All</string>
     <string name="filter_notifications">Notifications</string>
-    <string name="filter_clipboard">Clipboard</string>
     <string name="filter_manual">Manual</string>
     <string name="filter_pages">Pages</string>
     <string name="result_count">%d results</string>
@@ -47,7 +46,4 @@
     <string name="schedule_daily">Daily</string>
     <string name="last_scan">Last scan: %s</string>
     <string name="scanning">Scanning…</string>
-    <string name="channel_clipboard_monitor">Clipboard Monitor</string>
-    <string name="channel_clipboard_monitor_desc">Notification for clipboard monitoring service</string>
-    <string name="clipboard_monitor_text">Monitoring clipboard</string>
 </resources>

@@ -173,7 +173,6 @@ class SearchScreenTest {
 
         composeTestRule.onNodeWithText("All").assertExists()
         composeTestRule.onNodeWithText("Notifications").assertExists()
-        composeTestRule.onNodeWithText("Clipboard").assertExists()
         composeTestRule.onNodeWithText("Folders").assertExists()
         composeTestRule.onNodeWithText("Accessibility").assertExists()
     }
