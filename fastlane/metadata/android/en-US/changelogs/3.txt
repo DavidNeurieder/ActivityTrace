@@ -1,0 +1,27 @@
+New features:
+- App icons in search results (40dp circle, loaded via PackageManager)
+- Expandable result cards — tap to show full text, long-press to copy
+- Filter and search query persisted across app restarts
+- App name shown in results (resolved at capture time)
+- Settings page with file indexing (SAF multi-folder, PDF support)
+- Schedule file indexing (Daily/Never) with manual scan button
+- Deep link fallback chain: PendingIntent → IntentSender → launch intent
+- Swipe-to-delete with undo snackbar
+
+Improvements:
+- Full screen text capture via AccessibilityService tree traversal
+- Dedicated OpenInNew button for result deep links
+- Empty states with contextual messages
+- Room migrations for app_name and category columns
+- FTS5 triggers include app_name and category
+
+Fixes:
+- PackageManager visibility on API 30+ (<queries> manifest block)
+- Backwards-compatible IntentSender deserialization for old deep links
+- App icon retry on transient failures (no longer permanently hidden)
+- Accessibility node lifecycle compliance on Android 14+
+- AdaptiveIconDrawable rendering (intrinsic size -1 handled)
+
+Removed:
+- Clipboard capture service (passive clipboard monitoring)
+- Dead code: ScreenshotCaptureService, ContactMatcher, HistoryScreen
