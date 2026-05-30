@@ -173,16 +173,27 @@ fun SearchScreen(
                                         }
                                     },
                                     dismissContent = {
-                                        val hasLaunchIntent = remember(captured.appPackage) {
-                                            context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
+                                        val canOpen = remember(captured.appPackage) {
+                                            if (captured.metadata != null) true
+                                            else {
+                                                // check both standard launch intent and ACTION_MAIN fallback
+                                                context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
+                                                || context.packageManager.resolveActivity(
+                                                    Intent(Intent.ACTION_MAIN).apply { setPackage(captured.appPackage) },
+                                                    0,
+                                                ) != null
+                                            }
                                         }
-                                        val canOpen = captured.metadata != null || hasLaunchIntent
                                         ResultCard(
                                             item = captured,
                                             appName = resolveAppName(context, captured.appPackage, captured.appName),
                                             canOpen = canOpen,
                                             onOpenApp = {
-                                                openItem(context, captured.appPackage, captured.metadata)
+                                                if (!openItem(context, captured.appPackage, captured.metadata)) {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Could not open app")
+                                                    }
+                                                }
                                             },
                                             onLongClick = {
                                                 copyToClipboard(context, captured.text)
@@ -401,19 +412,32 @@ private fun copyToClipboard(context: Context, text: String) {
     clipboard.setPrimaryClip(ClipData.newPlainText("activity_trace", text))
 }
 
-private fun openItem(context: Context, appPackage: String, metadata: String? = null) {
+private fun openItem(context: Context, appPackage: String, metadata: String? = null): Boolean {
     if (metadata != null) {
         val pi = metadata.deserializeToPendingIntent()
         if (pi != null) {
             try {
                 pi.send(context, 0, null)
-                return
+                return true
             } catch (_: PendingIntent.CanceledException) {
             }
         }
     }
-    val intent = context.packageManager.getLaunchIntentForPackage(appPackage)
-    if (intent != null) context.startActivity(intent)
+    var intent = context.packageManager.getLaunchIntentForPackage(appPackage)
+    if (intent != null) {
+        context.startActivity(intent)
+        return true
+    }
+    intent = Intent(Intent.ACTION_MAIN).apply {
+        setPackage(appPackage)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val ri = context.packageManager.resolveActivity(intent, 0)
+    if (ri != null) {
+        context.startActivity(intent)
+        return true
+    }
+    return false
 }
 
 private fun formatTimestampShort(millis: Long): String {
