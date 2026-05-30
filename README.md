@@ -2,11 +2,11 @@
 
 On-device cross-app memory search for Android. No AI, no cloud, no internet permission.
 
-Search across notifications, clipboard history, screenshots, and files with natural language — all encrypted at rest with **SQLCipher AES-256-CBC** + Android Keystore.
+Search across notifications, accessibility screen captures, and indexed files with natural language — all encrypted at rest with **SQLCipher AES-256-CBC** + Android Keystore.
 
 ## Features
 
-- **Search anything** — notifications, clipboard copies, screenshot text, downloaded files
+- **Search anything** — notifications, screen captures, indexed files
 - **Natural language queries** — `yesterday`, `last week`, `in:signal`, `type:notification`
 - **Prefix & wildcard search** — `test` matches `testing`/`tested`, `*error` matches `fatal error`
 - **Full encryption** — SQLCipher + Android Keystore (StrongBox on capable hardware)
@@ -21,7 +21,7 @@ Search across notifications, clipboard history, screenshots, and files with natu
 | Architecture | Single-Activity, ViewModel, reactive Flows |
 | Storage | Room + SQLCipher (AES-256-CBC) |
 | Search | SQLite FTS5 with prefix matching + LIKE wildcard fallback |
-| Capture | NotificationListener, AccessibilityService, Clipboard monitoring |
+| Capture | NotificationListener, AccessibilityService |
 | Retention | WorkManager (configurable periodic cleanup) |
 
 **Min SDK:** 26 (Android 8.0) · **Target SDK:** 34
@@ -40,9 +40,9 @@ Search across notifications, clipboard history, screenshots, and files with natu
 ```
 
 ```bash
-./gradlew test               # 36 unit tests
+./gradlew test               # unit tests
 ./gradlew lint               # static analysis
-./gradlew connectedDebugAndroidTest  # 13 instrumentation tests
+./gradlew connectedDebugAndroidTest  # instrumentation tests
 ```
 
 ### Prerequisites
@@ -77,6 +77,11 @@ See [`gradle/libs.versions.toml`](gradle/libs.versions.toml) for the full catalo
 | [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | FTS5 MATCH + LIKE queries |
 | [`RetentionCleanupWorker.kt`](app/src/main/java/com/activitytrace/store/RetentionCleanupWorker.kt) | Configurable auto-delete via WorkManager |
 | [`ActivityTraceNotificationListener.kt`](app/src/main/java/com/activitytrace/capture/ActivityTraceNotificationListener.kt) | Notification capture service |
+| [`AccessibilityCaptureService.kt`](app/src/main/java/com/activitytrace/capture/AccessibilityCaptureService.kt) | Screen capture via AccessibilityService |
+| [`CaptureIngestor.kt`](app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt) | Unified capture pipeline (write to Room + FTS5) |
+| [`PendingIntentSerializer.kt`](app/src/main/java/com/activitytrace/capture/PendingIntentSerializer.kt) | Notification deep link serialization (Parcel ↔ Base64) |
+| [`FileIndexer.kt`](app/src/main/java/com/activitytrace/capture/FileIndexer.kt) | SAF directory walk + PDF text extraction |
+| [`FileIndexingWorker.kt`](app/src/main/java/com/activitytrace/capture/FileIndexingWorker.kt) | Background file indexing (daily / manual) |
 
 ## Privacy
 
