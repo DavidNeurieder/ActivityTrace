@@ -18,14 +18,19 @@ object CaptureIngestor {
         appPackage: String,
         contentType: String,
         metadata: String? = null,
+        appName: String? = null,
+        category: String? = null,
+        timestamp: Long? = null,
     ) {
         try {
             db?.captureDao()?.insert(
                 CapturedItem(
                     text = text,
                     appPackage = appPackage,
+                    appName = appName,
                     contentType = contentType,
-                    timestamp = System.currentTimeMillis(),
+                    category = category,
+                    timestamp = timestamp ?: System.currentTimeMillis(),
                     metadata = metadata,
                 )
             )

@@ -172,7 +172,7 @@ fun SearchScreen(
                                     dismissContent = {
                                         ResultCard(
                                             item = captured,
-                                            appName = resolveAppName(context, captured.appPackage),
+                                            appName = resolveAppName(context, captured.appPackage, captured.appName),
                                             onClick = {
                                                 openItem(context, captured.appPackage, captured.metadata)
                                             },
@@ -346,7 +346,8 @@ private fun contentTypeIcon(type: String): ImageVector = when (type) {
 }
 
 @Suppress("DEPRECATION")
-private fun resolveAppName(context: Context, pkg: String): String {
+private fun resolveAppName(context: Context, pkg: String, storedName: String? = null): String {
+    if (storedName != null) return storedName
     return try {
         val ai = if (Build.VERSION.SDK_INT >= 33) {
             context.packageManager.getApplicationInfo(pkg, PackageManager.ApplicationInfoFlags.of(0))

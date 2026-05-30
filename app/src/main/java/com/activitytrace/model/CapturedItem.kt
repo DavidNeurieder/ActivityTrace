@@ -11,8 +11,11 @@ data class CapturedItem(
     val text: String,
     @ColumnInfo(name = "app_package")
     val appPackage: String,
+    @ColumnInfo(name = "app_name")
+    val appName: String? = null,
     @ColumnInfo(name = "content_type")
     val contentType: String,
+    val category: String? = null,
     val timestamp: Long,
     val metadata: String? = null,
 )

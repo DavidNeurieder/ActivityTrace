@@ -2,6 +2,7 @@ package com.activitytrace.capture
 
 import android.accessibilityservice.AccessibilityService
 import android.app.Notification
+import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +11,20 @@ import kotlinx.coroutines.launch
 
 class AccessibilityCaptureService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Suppress("DEPRECATION")
+    private fun resolveAppName(pkg: String): String? {
+        return try {
+            val ai = if (Build.VERSION.SDK_INT >= 33) {
+                packageManager.getApplicationInfo(pkg, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                packageManager.getApplicationInfo(pkg, 0)
+            }
+            packageManager.getApplicationLabel(ai).toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val pkg = event?.packageName?.toString() ?: "unknown"
@@ -22,14 +37,20 @@ class AccessibilityCaptureService : AccessibilityService() {
                     val extras = notification.extras ?: return
                     val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
                     val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-                    if (title.isBlank() && text.isBlank()) return
+                    val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+                    val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+                    val summaryText = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
+                    if (title.isBlank() && text.isBlank() && bigText == null && subText == null && summaryText == null) return
+                    val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
                     val serialized = notification.contentIntent?.serialize()
                     scope.launch {
                         CaptureIngestor.ingest(
-                            text = if (title.isNotEmpty()) "$title — $text" else text,
+                            text = fullText,
                             appPackage = pkg,
+                            appName = resolveAppName(pkg),
                             contentType = "notification",
                             metadata = serialized,
+                            category = notification.category,
                         )
                     }
                 } else {
@@ -39,6 +60,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                         CaptureIngestor.ingest(
                             text = text,
                             appPackage = pkg,
+                            appName = resolveAppName(pkg),
                             contentType = "notification",
                         )
                     }
@@ -51,6 +73,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                     CaptureIngestor.ingest(
                         text = text,
                         appPackage = pkg,
+                        appName = resolveAppName(pkg),
                         contentType = "screen",
                     )
                 }
