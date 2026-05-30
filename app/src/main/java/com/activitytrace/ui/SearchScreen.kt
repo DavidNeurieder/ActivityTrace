@@ -6,9 +6,14 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +63,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -266,14 +274,33 @@ private fun ResultCard(
             ),
         colors = CardDefaults.cardColors(),
     ) {
+        val context = LocalContext.current
+        val appIcon = if (item.appPackage != "clipboard" && item.appPackage != "local") {
+            remember(item.appPackage) {
+                try {
+                    val drawable = context.packageManager.getApplicationIcon(item.appPackage)
+                    drawable.toBitmap().asImageBitmap()
+                } catch (_: Exception) { null }
+            }
+        } else null
+
         ListItem(
             leadingContent = {
-                Icon(
-                    imageVector = contentTypeIcon(item.contentType),
-                    contentDescription = item.contentType,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
-                )
+                if (appIcon != null) {
+                    Icon(
+                        painter = BitmapPainter(appIcon),
+                        contentDescription = item.contentType,
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(40.dp).clip(CircleShape),
+                    )
+                } else {
+                    Icon(
+                        imageVector = contentTypeIcon(item.contentType),
+                        contentDescription = item.contentType,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             },
             headlineContent = {
                 Column {
@@ -382,6 +409,17 @@ private fun groupByDate(items: List<CapturedItem>): List<Pair<String, List<Captu
     if (weekItems.isNotEmpty()) groups.add("This Week" to weekItems)
     if (olderItems.isNotEmpty()) groups.add("Older" to olderItems)
     return groups
+}
+
+private fun Drawable.toBitmap(defaultSize: Int = 256): Bitmap {
+    if (this is BitmapDrawable) return bitmap
+    val w = if (intrinsicWidth > 0) intrinsicWidth else defaultSize
+    val h = if (intrinsicHeight > 0) intrinsicHeight else defaultSize
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    setBounds(0, 0, canvas.width, canvas.height)
+    draw(canvas)
+    return bmp
 }
 
 private fun contentTypeIcon(type: String): ImageVector = when (type) {
