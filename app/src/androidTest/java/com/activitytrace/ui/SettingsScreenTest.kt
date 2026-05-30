@@ -96,7 +96,12 @@ class SettingsScreenTest {
 
     @Test
     fun showsVersion() {
-        composeTestRule.onNodeWithText("Version 0.1.0").assertExists()
+        val versionName = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        } catch (_: Exception) {
+            "?"
+        }
+        composeTestRule.onNodeWithText("Version $versionName").assertExists()
     }
 
     @Test
