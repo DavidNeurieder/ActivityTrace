@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.activitytrace"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.activitytrace"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 3
-        versionName = "0.3.0"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "0.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
