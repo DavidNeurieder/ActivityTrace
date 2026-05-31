@@ -51,6 +51,14 @@ def unit_tests():
         return 1
     return 0
 
+def lint_tests():
+    step("Running lint tests...")
+    code = run(["./gradlew", "lint"], timeout=300)
+    if code != 0:
+        print("  LINT TESTS FAILED")
+        return 1
+    return 0
+
 
 def boot_emulator_if_needed():
     result = subprocess.run(
@@ -106,6 +114,10 @@ def main():
     b = build()
     if b:
         failures.append(f"build ({b} variant(s) failed)")
+
+    l = lint_tests()
+    if l:
+        failures.append("lint tests")
 
     u = unit_tests()
     if u:
