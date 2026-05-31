@@ -283,6 +283,7 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
     }
 
     LaunchedEffect(schedule) {
+        prefs.edit().putString(FileIndexingWorker.PREF_SCHEDULE, schedule).apply()
         when (schedule) {
             "daily" -> FileIndexingWorker.scheduleDaily(context)
             "never" -> FileIndexingWorker.cancelDaily(context)

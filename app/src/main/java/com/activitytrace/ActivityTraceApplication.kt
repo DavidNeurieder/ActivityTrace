@@ -17,11 +17,21 @@ class ActivityTraceApplication : Application() {
         try {
             CaptureIngestor.init(this)
             RetentionCleanupWorker.scheduleDaily(this)
+            restoreFileIndexingSchedule()
             val db = ActivityTraceDatabase.getInstance(this)
             captureDao = db.captureDao()
             searchEngine = SearchEngine(captureDao)
         } catch (_: Exception) {
             // DB or keystore unavailable; search will be unavailable until app restart
+        }
+    }
+
+    private fun restoreFileIndexingSchedule() {
+        val prefs = getSharedPreferences("activity_trace", MODE_PRIVATE)
+        val schedule = prefs.getString("file_index_schedule", "never") ?: "never"
+        when (schedule) {
+            "daily" -> com.activitytrace.capture.FileIndexingWorker.scheduleDaily(this)
+            "never" -> com.activitytrace.capture.FileIndexingWorker.cancelDaily(this)
         }
     }
 }

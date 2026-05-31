@@ -49,6 +49,13 @@ object FileIndexer {
         "ts" to "text/plain",
         "tsx" to "text/plain",
         "jsx" to "text/plain",
+        "png" to "image/png",
+        "jpg" to "image/jpeg",
+        "jpeg" to "image/jpeg",
+        "gif" to "image/gif",
+        "webp" to "image/webp",
+        "bmp" to "image/bmp",
+        "svg" to "image/svg+xml",
     )
 
     suspend fun indexDirectory(context: Context, treeUri: Uri, dao: CaptureDao): Int {
@@ -86,8 +93,8 @@ object FileIndexer {
             Log.d(TAG, "Skipping (no text extracted): $fileName")
             return 0
         }
-        if (text.isBlank() || text.length < 20) {
-            Log.d(TAG, "Skipping (too short): $fileName (${text.length} chars)")
+        if (text.isBlank()) {
+            Log.d(TAG, "Skipping (blank): $fileName")
             return 0
         }
 
@@ -106,7 +113,7 @@ object FileIndexer {
     private fun resolveMimeType(file: DocumentFile): String? {
         val providerType = file.type
         if (providerType != null && providerType != "application/octet-stream") {
-            if (providerType.startsWith("text/") || providerType == "application/pdf") {
+            if (providerType.startsWith("text/") || providerType == "application/pdf" || providerType.startsWith("image/")) {
                 return providerType
             }
         }
@@ -119,6 +126,7 @@ object FileIndexer {
         when {
             mimeType.startsWith("text/") -> extractPlainText(context, file.uri)
             mimeType == "application/pdf" -> extractPdfText(context, file.uri)
+            mimeType.startsWith("image/") -> file.name
             else -> null
         }
     } catch (_: Exception) {
