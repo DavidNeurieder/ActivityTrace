@@ -1,6 +1,7 @@
 package com.activitytrace.ui
 
 import android.app.PendingIntent
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -11,6 +12,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -201,9 +203,9 @@ fun SearchScreen(
                                             appName = resolveAppName(context, captured.appPackage, captured.appName),
                                             canOpen = canOpen,
                                             onOpenApp = {
-                                                if (!openItem(context, captured.appPackage, captured.metadata)) {
+                                                if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
                                                     scope.launch {
-                                                        snackbarHostState.showSnackbar("Could not open app")
+                                                        snackbarHostState.showSnackbar("Could not open")
                                                     }
                                                 }
                                             },
@@ -462,7 +464,20 @@ private fun copyToClipboard(context: Context, text: String) {
     clipboard.setPrimaryClip(ClipData.newPlainText("activity_trace", text))
 }
 
-private fun openItem(context: Context, appPackage: String, metadata: String? = null): Boolean {
+private fun openItem(context: Context, appPackage: String, metadata: String? = null, mimeType: String? = null): Boolean {
+    if (appPackage == "local" && metadata != null) {
+        return try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse(metadata)
+                type = mimeType
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
     if (metadata != null) {
         val pi = metadata.deserializeToPendingIntent()
         if (pi != null) {
