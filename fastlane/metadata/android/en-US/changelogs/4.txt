@@ -1,0 +1,17 @@
+New features:
+- Indexed files (images, text, PDFs) now open in their default viewer
+- File names and extensions searchable — PNGs, JPEGs, and images in results
+- Makefile with build, test, full-test targets
+- build_and_test.py script for automated build + test + emulator workflow
+- File indexing schedule (Never/Daily) now persisted and restored on startup
+
+Improvements:
+- Compact 40dp uniform circular icons for all result types
+- Edge-to-edge rendering with proper day/night system bar colors
+- Minimum text length requirement removed — short filenames now indexed
+- Release APK reduced from 21 MB to 12 MB (arm64-only native libs)
+
+Fixes:
+- File indexing schedule not persisting across app restarts
+- PNG/image files not being indexed (extension + MIME type detection)
+- Open button now works for indexed files (images, text, PDFs)

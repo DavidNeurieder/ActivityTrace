@@ -1,6 +1,37 @@
 # Changelog
 
-## v0.3.0 — 2026-05-30
+## v0.4.0 — 2026-05-31
+
+### New features
+- Indexed files (images, text, PDFs) open in their default viewer via `ACTION_VIEW`
+- File names and extensions searchable — PNGs, JPEGs, and other images now appear in results
+- `Makefile` with `build`, `test`, `full-test` targets
+- `build_and_test.py` script — builds debug+release, runs unit tests, boots emulator, runs instrumented tests
+- File indexing schedule persisted and restored on app startup (Never/Daily)
+
+### Improvements
+- Compact 40dp uniform circular icons for all search result types
+- Edge-to-edge rendering with `enableEdgeToEdge()` — proper system bar colors for day/night
+- `.systemBarsPadding()` and `.navigationBarsPadding()` added across all screens
+- Minimum text length requirement removed from file indexing (short filenames now accepted)
+- File indexing schedule setting now properly saved to `SharedPreferences`
+
+### Size
+- Release APK reduced from **21 MB → 12 MB** (43% reduction)
+- Arm64-only native libs (`abiFilters`) — dropped x86/x86_64/armeabi-v7a
+- No new dependencies added
+
+### Fixes
+- File indexing schedule not persisted (selection reset on process death)
+- `PendingIntent` / `IntentSender` / `getLaunchIntentForPackage` fallback chain in `openItem()`
+- PNG/image files skipped by `resolveMimeType()` — now accepted via extension map and SAF provider type
+
+### Technical
+- `compileSdk` / `targetSdk` bumped to 36 (Android 16)
+- `AGENTS.md` maintained with full project context
+- App icon replaced
+
+---
 
 ### New features
 - App icons in search results (40dp circle, loaded via `PackageManager`)

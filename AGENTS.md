@@ -8,13 +8,18 @@
 - **Database:** Room + SQLCipher (AES-256-CBC via Android Keystore/StrongBox)
 - **Search:** SQLite FTS5 with porter tokenizer (no AI/ML)
 - **Min SDK:** 26 (Android 8.0)
-- **Target SDK:** 34
+- **Target SDK:** 36
 - **Package:** com.activitytrace
 
 ## Build
 ```bash
-./gradlew assembleDebug   # debug build
-./gradlew assembleRelease  # release build (minified)
+./gradlew assembleDebug     # debug build
+./gradlew assembleRelease   # release build (minified, arm64-only)
+make build                  # same as assembleDebug
+make test                   # unit tests
+make full-test              # builds both + unit tests + boots emulator + instrumented tests
+make run                    # install debug APK on connected device
+python3 build_and_test.py   # automate full CI workflow
 ```
 
 ## Dependencies (version catalog: gradle/libs.versions.toml)
@@ -29,12 +34,14 @@
 ## Key files
 - **Config:** `app/build.gradle.kts`, `gradle/libs.versions.toml`
 - **Entry point:** `MainActivity.kt` → `SearchScreen.kt`
-- **Capture:** `ActivityTraceNotificationListener.kt`, `ClipboardCaptureService.kt`, `AccessibilityCaptureService.kt`, `ScreenshotCaptureService.kt`
+- **Capture:** `ActivityTraceNotificationListener.kt`, `AccessibilityCaptureService.kt`
 - **Store:** `ActivityTraceDatabase.kt` (Room + SQLCipher), `CaptureDao.kt`, `EncryptionManager.kt`, `RetentionCleanupWorker.kt`
-- **Search:** `QueryParser.kt`, `SearchEngine.kt`, `ContactMatcher.kt`
+- **Search:** `QueryParser.kt`, `SearchEngine.kt`
+- **File indexing:** `FileIndexer.kt`, `FileIndexingWorker.kt`
 - **Model:** `CapturedItem.kt`
 - **Theme:** `ui/theme/Theme.kt` (dynamic color API 31+, fallback green seed)
 - **F-Droid metadata:** `fastlane/metadata/android/`
+- **Build tooling:** `Makefile`, `build_and_test.py`, `AGENTS.md`
 
 ## F-Droid release checklist ✓
 - LICENSE (GPL-3.0) in repo root ✓

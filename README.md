@@ -19,12 +19,12 @@ Search across notifications, accessibility screen captures, and indexed files wi
 |-------|-----------|
 | UI | Jetpack Compose + Material 3 (dynamic color) |
 | Architecture | Single-Activity, ViewModel, reactive Flows |
-| Storage | Room + SQLCipher (AES-256-CBC) |
-| Search | SQLite FTS5 with prefix matching + LIKE wildcard fallback |
-| Capture | NotificationListener, AccessibilityService |
+| Storage | Room + SQLCipher (AES-256-CBC, arm64-v8a only) |
+| Search | SQLite FTS5 with prefix matching |
+| Capture | NotificationListener, AccessibilityService, File indexing (SAF) |
 | Retention | WorkManager (configurable periodic cleanup) |
 
-**Min SDK:** 26 (Android 8.0) · **Target SDK:** 34
+**Min SDK:** 26 (Android 8.0) · **Target SDK:** 36
 
 ## Screenshots
 
@@ -49,7 +49,7 @@ Search across notifications, accessibility screen captures, and indexed files wi
 
 - Android Studio Hedgehog (2023.1.1) or later
 - JDK 17
-- Android SDK 34
+- Android SDK 36
 
 ## Dependencies
 
