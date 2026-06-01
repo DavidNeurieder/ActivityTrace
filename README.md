@@ -28,9 +28,7 @@ Search across notifications, accessibility screen captures, and indexed files wi
 
 ## Screenshots
 
-| Search | Settings | Onboarding |
-|--------|----------|------------|
-| _(coming soon)_ | _(coming soon)_ | _(coming soon)_ |
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Screenshot 1"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="Screenshot 2"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Screenshot 3"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="Screenshot 4"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="180" alt="Screenshot 5"> 
 
 ## Build
 
