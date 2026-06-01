@@ -1,9 +1,8 @@
 Activity Trace lets you search across your notifications using natural language. Everything stays encrypted on-device with SQLCipher + Android Keystore. No AI, no cloud, no account.
 
 • Search notifications from any app with prefix and wildcard matching
-• Natural language date parsing ("yesterday", "last week", "today")
 • Full encryption at rest with Android Keystore + SQLCipher AES-256-CBC
 • No internet permission — zero data leaves your device
+• Screenshot, and file search are in development.
 • Open source (GPL-3.0)
 
-Clipboard, screenshot, and file search are in development.
