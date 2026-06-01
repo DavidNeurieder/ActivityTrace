@@ -8,13 +8,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -27,6 +33,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
     onComplete: () -> Unit,
@@ -54,81 +61,87 @@ fun OnboardingScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .systemBarsPadding()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "Activity Trace",
-            style = MaterialTheme.typography.headlineLarge,
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Search across your notifications and more.\nEverything stays on your device, encrypted.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Grant permissions for automatic capture:",
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Button(
-            onClick = {
-                context.startActivity(
-                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Activity Trace") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+        modifier = modifier,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Notification Access (recommended)")
-        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Search across your notifications and more.\nEverything stays on your device, encrypted.",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+            )
 
-        OutlinedButton(
-            onClick = {
-                context.startActivity(
-                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Accessibility Service (Android 14+)")
-        }
+            Spacer(modifier = Modifier.height(32.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Grant permissions for automatic capture:",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
 
-        Text(
-            text = "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), use the Accessibility Service path instead on Android 14+.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Notification Access (recommended)")
+                    }
 
-        Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Accessibility Service (Android 14+)")
+                    }
 
-        OutlinedButton(
-            onClick = onComplete,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Continue")
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), run `adb install --enable-all-features` or go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedButton(
+                onClick = onComplete,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Continue")
+            }
         }
     }
 }

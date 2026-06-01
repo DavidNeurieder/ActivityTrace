@@ -56,7 +56,9 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText(
             "Notification Access captures notifications in real time. " +
             "If blocked by Restricted Settings (common on F-Droid/sideloaded apps), " +
-            "enable the Accessibility Service instead (Android 14+)."
+            "run `adb install --enable-all-features` or go to " +
+            "Settings → Apps → Activity Trace → Allow restricted settings. " +
+            "Alternatively, enable the Accessibility Service below (Android 14+)."
         ).assertExists()
     }
 

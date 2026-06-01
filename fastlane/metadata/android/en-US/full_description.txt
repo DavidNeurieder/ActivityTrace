@@ -5,4 +5,4 @@ Activity Trace lets you search across your notifications using natural language.
 • No internet permission — zero data leaves your device
 • Screenshot, and file search are in development.
 • Open source (GPL-3.0)
-
+• Restricted Settings workaround: If notification access or accessibility service is blocked after sideloading, either run `adb install --enable-all-features` or go to Settings → Apps → Activity Trace → Allow restricted settings (three-dot menu on Android 13+).

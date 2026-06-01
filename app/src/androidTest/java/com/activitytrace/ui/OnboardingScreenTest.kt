@@ -67,7 +67,7 @@ class OnboardingScreenTest {
         }
 
         composeTestRule.onNodeWithText(
-            "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), use the Accessibility Service path instead on Android 14+."
+            "Note: If Notification Access is blocked by Restricted Settings (common on F-Droid/sideloaded apps), run `adb install --enable-all-features` or go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+."
         ).assertExists()
     }
 
