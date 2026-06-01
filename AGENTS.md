@@ -46,6 +46,7 @@ python3 build_and_test.py   # automate full CI workflow
 ## F-Droid release checklist ✓
 - LICENSE (GPL-3.0) in repo root ✓
 - README.md with build instructions ✓
+- Screenshots in `fastlane/metadata/android/en-US/images/phoneScreenshots/` ✓
 - `fastlane/metadata/android/` with descriptions and changelogs ✓
 - All deps verified FOSS (SQLCipher BSD-3, PDFBox Apache-2.0, no Play Services) ✓
 - Gradle reproducible builds: `android.r8.minification-repository-mode=true` in `gradle.properties` ✓

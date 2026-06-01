@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.5.0 — 2026-05-31
+
+### New features
+- Screenshots added to README and F-Droid listing (5 screenshots: search, settings, onboarding)
+
+### Improvements
+- App icon updated with adjusted background color
+- F-Droid metadata updated (full description, short description)
+- Fastlane images restructured (old screenshots replaced)
+
+### Technical
+- Launcher background color changed (`ic_launcher_background.xml`)
+
+---
+
 ## v0.4.0 — 2026-05-31
 
 ### New features
@@ -32,6 +47,8 @@
 - App icon replaced
 
 ---
+
+## v0.3.0 — 2026-05-30
 
 ### New features
 - App icons in search results (40dp circle, loaded via `PackageManager`)

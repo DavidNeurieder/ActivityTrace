@@ -1,0 +1,6 @@
+New features:
+- Screenshots added to F-Droid listing (search, settings, onboarding)
+
+Improvements:
+- App icon updated with adjusted background color
+- Updated full description and short description
