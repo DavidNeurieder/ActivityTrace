@@ -202,8 +202,8 @@ private fun FilterChipsRow(
     val filters = listOf(
         null to "All",
         "notification" to "Notifications",
-        "page" to "Folders",
         "screen" to "Accessibility",
+        "page" to "Folders",
     )
 
     LazyRow(
