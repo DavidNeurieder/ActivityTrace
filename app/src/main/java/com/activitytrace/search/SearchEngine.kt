@@ -21,22 +21,7 @@ class SearchEngine(private val captureDao: CaptureDao) {
         val effectiveType = contentType ?: parsed.typeFilter
         val appPackage = parsed.appFilter
 
-        return if (keywords.any { it.contains("*") }) {
-            val patterns = keywords.map { it.replace("*", "%") }
-            captureDao.searchLike(patterns, parsed.timeRange, effectiveType, appPackage)
-        } else {
-            val ftsQuery = buildFtsQuery(keywords)
-            captureDao.search(ftsQuery, parsed.timeRange, effectiveType, appPackage)
-        }
-    }
-
-    private fun buildFtsQuery(keywords: List<String>): String {
-        return keywords.joinToString(" AND ") { keyword ->
-            if (keyword.matches(Regex("^[\\w]+$"))) {
-                "$keyword*"
-            } else {
-                "\"${keyword.replace("\"", "\"\"")}\""
-            }
-        }
+        val patterns = keywords.map { "%${it.replace("*", "%")}%" }
+        return captureDao.searchLike(patterns, parsed.timeRange, effectiveType, appPackage)
     }
 }

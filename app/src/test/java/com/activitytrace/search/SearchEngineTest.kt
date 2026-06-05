@@ -20,52 +20,52 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search with no wildcard uses fts with auto prefix`() = runTest {
+    fun `search wraps keyword in percent signs for substring match`() = runTest {
         searchEngine.search("hello world").collect { }
 
-        verify { captureDao.search("hello* AND world*", null) }
+        verify { captureDao.searchLike(listOf("%hello%", "%world%"), null) }
     }
 
     @Test
-    fun `search with single keyword uses fts with auto prefix`() = runTest {
+    fun `search with single keyword wraps in percent signs`() = runTest {
         searchEngine.search("hello").collect { }
-
-        verify { captureDao.search("hello*", null) }
-    }
-
-    @Test
-    fun `search with wildcard uses like fallback`() = runTest {
-        searchEngine.search("hello*").collect { }
-
-        verify { captureDao.searchLike(listOf("hello%"), null) }
-    }
-
-    @Test
-    fun `search with leading wildcard uses like fallback`() = runTest {
-        searchEngine.search("*hello").collect { }
-
-        verify { captureDao.searchLike(listOf("%hello"), null) }
-    }
-
-    @Test
-    fun `search with surrounding wildcard uses like fallback`() = runTest {
-        searchEngine.search("*hello*").collect { }
 
         verify { captureDao.searchLike(listOf("%hello%"), null) }
     }
 
     @Test
-    fun `search with time range passes it to fts dao`() = runTest {
-        searchEngine.search("hello today").collect { }
+    fun `search with wildcard converts star to percent and wraps`() = runTest {
+        searchEngine.search("hello*").collect { }
 
-        verify { captureDao.search("hello*", any()) }
+        verify { captureDao.searchLike(listOf("%hello%%"), null) }
     }
 
     @Test
-    fun `search with wildcard passes time range to like dao`() = runTest {
+    fun `search with leading wildcard converts and wraps`() = runTest {
+        searchEngine.search("*hello").collect { }
+
+        verify { captureDao.searchLike(listOf("%%hello%"), null) }
+    }
+
+    @Test
+    fun `search with surrounding wildcard converts and wraps`() = runTest {
+        searchEngine.search("*hello*").collect { }
+
+        verify { captureDao.searchLike(listOf("%%hello%%"), null) }
+    }
+
+    @Test
+    fun `search with time range passes it to like dao`() = runTest {
+        searchEngine.search("hello today").collect { }
+
+        verify { captureDao.searchLike(listOf("%hello%"), any()) }
+    }
+
+    @Test
+    fun `search with wildcard passes time range`() = runTest {
         searchEngine.search("*hello today").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello"), any()) }
+        verify { captureDao.searchLike(listOf("%%hello%"), any()) }
     }
 
     @Test
@@ -77,9 +77,9 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search strips time keywords from fts query`() = runTest {
+    fun `search strips time keywords from pattern`() = runTest {
         searchEngine.search("today tomorrow").collect { }
 
-        verify { captureDao.search("tomorrow*", any()) }
+        verify { captureDao.searchLike(listOf("%tomorrow%"), any()) }
     }
 }
