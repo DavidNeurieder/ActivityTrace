@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
-import com.activitytrace.store.CaptureDao
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -24,7 +23,6 @@ import org.junit.Test
 class SearchViewModelTest {
 
     private val searchEngine: SearchEngine = mockk()
-    private val captureDao: CaptureDao = mockk()
     private val app: Application = mockk()
     private val prefs: SharedPreferences = mockk(relaxed = true)
     private val editor = mockk<SharedPreferences.Editor>(relaxed = true).also {
@@ -42,7 +40,7 @@ class SearchViewModelTest {
         every { prefs.getString("content_type_filter", null) } returns null
         every { prefs.edit() } returns editor
         every { searchEngine.recentItems(any()) } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchEngine, captureDao, app)
+        viewModel = SearchViewModel(searchEngine, app)
     }
 
     @After
@@ -60,14 +58,14 @@ class SearchViewModelTest {
     fun `restores query from SharedPreferences`() {
         every { prefs.getString("search_query", "") } returns "saved"
         every { searchEngine.search("saved") } returns flowOf(emptyList())
-        val vm = SearchViewModel(searchEngine, captureDao, app)
+        val vm = SearchViewModel(searchEngine, app)
         assert(vm.query.value == "saved")
     }
 
     @Test
     fun `restores contentTypeFilter from SharedPreferences`() {
         every { prefs.getString("content_type_filter", null) } returns "notification"
-        val vm = SearchViewModel(searchEngine, captureDao, app)
+        val vm = SearchViewModel(searchEngine, app)
         assert(vm.contentTypeFilter.value == "notification")
     }
 

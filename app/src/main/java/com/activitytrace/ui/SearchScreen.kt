@@ -33,7 +33,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -55,9 +54,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.DismissValue
-import androidx.compose.material3.SwipeToDismiss
-import androidx.compose.material3.rememberDismissState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,7 +83,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel,
@@ -159,65 +155,33 @@ fun SearchScreen(
                         }
                         items.forEach { captured ->
                             item(key = captured.id) {
-                                val dismissState = rememberDismissState(
-                                    confirmValueChange = {
-                                        if (it == DismissValue.DismissedToStart || it == DismissValue.DismissedToEnd) {
-                                            viewModel.deleteItem(captured)
+                                val canOpen = remember(captured.appPackage) {
+                                    if (captured.metadata != null) true
+                                    else {
+                                        context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
+                                        || context.packageManager.resolveActivity(
+                                            Intent(Intent.ACTION_MAIN).apply { setPackage(captured.appPackage) },
+                                            0,
+                                        ) != null
+                                    }
+                                }
+                                ResultCard(
+                                    item = captured,
+                                    appName = resolveAppName(context, captured.appPackage, captured.appName),
+                                    canOpen = canOpen,
+                                    onOpenApp = {
+                                        if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("Item deleted")
-                                            }
-                                            true
-                                        } else false
-                                    },
-                                )
-                                SwipeToDismiss(
-                                    state = dismissState,
-                                    background = {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                                            contentAlignment = Alignment.CenterEnd,
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = "Delete",
-                                                tint = MaterialTheme.colorScheme.error,
-                                            )
-                                        }
-                                    },
-                                    dismissContent = {
-                                        val canOpen = remember(captured.appPackage) {
-                                            if (captured.metadata != null) true
-                                            else {
-                                                // check both standard launch intent and ACTION_MAIN fallback
-                                                context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
-                                                || context.packageManager.resolveActivity(
-                                                    Intent(Intent.ACTION_MAIN).apply { setPackage(captured.appPackage) },
-                                                    0,
-                                                ) != null
+                                                snackbarHostState.showSnackbar("Could not open")
                                             }
                                         }
-                                        ResultCard(
-                                            item = captured,
-                                            appName = resolveAppName(context, captured.appPackage, captured.appName),
-                                            canOpen = canOpen,
-                                            onOpenApp = {
-                                                if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar("Could not open")
-                                                    }
-                                                }
-                                            },
-                                            onLongClick = {
-                                                copyToClipboard(context, captured.text)
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("Copied to clipboard")
-                                                }
-                                            },
-                                        )
                                     },
-                                    modifier = Modifier,
+                                    onLongClick = {
+                                        copyToClipboard(context, captured.text)
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Copied to clipboard")
+                                        }
+                                    },
                                 )
                             }
                         }

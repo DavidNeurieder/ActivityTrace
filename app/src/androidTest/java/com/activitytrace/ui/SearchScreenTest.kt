@@ -10,7 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
-import com.activitytrace.store.CaptureDao
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -25,7 +24,6 @@ class SearchScreenTest {
     val composeTestRule = createComposeRule()
 
     private val searchEngine: SearchEngine = mockk()
-    private val captureDao: CaptureDao = mockk()
 
     @Before
     fun setUp() {
@@ -38,7 +36,7 @@ class SearchScreenTest {
         every { searchEngine.recentItems(any()) } returns flowOf(items)
         every { searchEngine.search(any()) } returns flowOf(emptyList())
         every { searchEngine.search(any(), any()) } returns flowOf(emptyList())
-        return SearchViewModel(searchEngine, captureDao, app)
+        return SearchViewModel(searchEngine, app)
     }
 
     @Test

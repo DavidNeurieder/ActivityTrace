@@ -8,7 +8,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
-import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +18,6 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
     private val searchEngine: SearchEngine,
-    private val captureDao: CaptureDao,
     application: Application,
 ) : AndroidViewModel(application) {
 
@@ -63,20 +61,13 @@ class SearchViewModel(
         prefs.edit().putString("content_type_filter", type).apply()
     }
 
-    fun deleteItem(item: CapturedItem) {
-        viewModelScope.launch {
-            captureDao.delete(item)
-        }
-    }
-
     class Factory(
         private val searchEngine: SearchEngine,
-        private val captureDao: CaptureDao,
         private val application: Application,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SearchViewModel(searchEngine, captureDao, application) as T
+            return SearchViewModel(searchEngine, application) as T
         }
     }
 }
