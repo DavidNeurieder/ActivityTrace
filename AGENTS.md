@@ -29,7 +29,7 @@ python3 build_and_test.py   # automate full CI workflow
 - WorkManager 2.9.0 (scheduled retention cleanup)
 - SQLCipher 4.5.4 (net.zetetic:android-database-sqlcipher)
 - FTS5 table created via Room callback (not Room annotation, due to KSP resolution order)
-- Search currently uses LIKE (FTS5 table exists, will be switched when query builder is refined)
+- Search uses SQL LIKE `%keyword%` (substring match, no FTS5); FTS5 table retained for content sync triggers
 
 ## Key files
 - **Config:** `app/build.gradle.kts`, `gradle/libs.versions.toml`

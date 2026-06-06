@@ -8,6 +8,11 @@ android {
     namespace = "com.activitytrace"
     compileSdk = 36
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     defaultConfig {
         applicationId = "com.activitytrace"
         minSdk = 26
@@ -37,7 +42,7 @@ android {
                 "proguard-rules.pro"
             )
             ndk {
-                abiFilters += listOf("arm64-v8a")
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             }
         }
         debug {
@@ -67,6 +72,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/LICENSE*"
             excludes += "/META-INF/NOTICE*"
+            excludes += "/assets/dexopt/*"
         }
     }
 }
