@@ -61,7 +61,7 @@ class SearchScreenTest {
         viewModel.onSearch("test")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Test message").assertExists()
+        composeTestRule.onNodeWithText("1 results").assertExists()
     }
 
     @Test
@@ -93,8 +93,9 @@ class SearchScreenTest {
 
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("today item").assertExists()
-        composeTestRule.onNodeWithText("older item").assertExists()
+        composeTestRule.onNodeWithText("── Today ──").assertExists()
+        composeTestRule.onNodeWithText("── This Week ──").assertExists()
+        composeTestRule.onNodeWithText("2 results").assertExists()
     }
 
     @Test
