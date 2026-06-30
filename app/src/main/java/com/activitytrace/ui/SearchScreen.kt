@@ -160,10 +160,10 @@ fun SearchScreen(
                                     if (captured.metadata != null) true
                                     else {
                                         context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
-                                        || context.packageManager.resolveActivity(
+                                        ||                                         context.packageManager.queryIntentActivities(
                                             Intent(Intent.ACTION_MAIN).apply { setPackage(captured.appPackage) },
                                             0,
-                                        ) != null
+                                        ).any { it.activityInfo.packageName == captured.appPackage }
                                     }
                                 }
                                 ResultCard(
@@ -471,8 +471,10 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
         setPackage(appPackage)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    val ri = context.packageManager.resolveActivity(intent, 0)
+    val ris = context.packageManager.queryIntentActivities(intent, 0)
+    val ri = ris.firstOrNull { it.activityInfo.packageName == appPackage }
     if (ri != null) {
+        intent.setClassName(ri.activityInfo.packageName, ri.activityInfo.name)
         context.startActivity(intent)
         return true
     }
