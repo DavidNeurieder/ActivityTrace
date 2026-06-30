@@ -206,8 +206,7 @@ private fun PermissionsSection(context: Context) {
     Spacer(Modifier.height(8.dp))
     Text(
         text = "Notification Access captures notifications in real time. " +
-               "If blocked by Restricted Settings (common on F-Droid/sideloaded apps), " +
-               "run `adb install --enable-all-features` or go to " +
+               "If blocked by Restricted Settings, go to " +
                "Settings → Apps → Activity Trace → Allow restricted settings. " +
                "Alternatively, enable the Accessibility Service below (Android 14+).",
         style = MaterialTheme.typography.bodySmall,
