@@ -46,30 +46,36 @@ interface CaptureDao {
         contentType: String? = null,
         appPackage: String? = null,
     ): Flow<List<CapturedItem>> {
-        val conditions = patterns.joinToString(" AND ") { "text LIKE ?" }
+        val conditions = mutableListOf<String>()
         val params = mutableListOf<Any>()
-        params.addAll(patterns)
 
-        val clauses = mutableListOf<String>()
+        if (patterns.isNotEmpty()) {
+            val textConditions = patterns.joinToString(" AND ") { "(text LIKE ? OR app_name LIKE ?)" }
+            conditions.add("($textConditions)")
+            patterns.forEach { p ->
+                params.add(p)
+                params.add(p)
+            }
+        }
+
         if (timeRange != null) {
-            clauses.add("timestamp BETWEEN ? AND ?")
+            conditions.add("timestamp BETWEEN ? AND ?")
             params.add(timeRange.first)
             params.add(timeRange.second)
         }
         if (contentType != null) {
-            clauses.add("content_type = ?")
+            conditions.add("content_type = ?")
             params.add(contentType)
         }
         if (appPackage != null) {
-            clauses.add("app_package = ?")
+            conditions.add("app_package = ?")
             params.add(appPackage)
         }
 
-        val whereExtra = if (clauses.isNotEmpty()) " AND ${clauses.joinToString(" AND ")}" else ""
+        val whereClause = if (conditions.isNotEmpty()) " WHERE ${conditions.joinToString(" AND ")}" else ""
 
         val sql = """
-            SELECT * FROM captured_items
-            WHERE $conditions$whereExtra
+            SELECT * FROM captured_items$whereClause
             ORDER BY timestamp DESC LIMIT 100
         """.trimIndent()
 

@@ -61,8 +61,27 @@ object QueryParser {
                     skipIndices.add(i + 1)
                 }
                 months.containsKey(word) -> {
-                    val year = Calendar.getInstance().get(Calendar.YEAR)
-                    timeRange = monthRange(year, months[word]!!)
+                    var year = Calendar.getInstance().get(Calendar.YEAR)
+                    var day: Int? = null
+
+                    if (i + 1 < words.size) {
+                        val candidate = words[i + 1].removeSuffix(",")
+                        val d = candidate.toIntOrNull()
+                        if (d != null && d in 1..31) {
+                            day = d
+                            skipIndices.add(i + 1)
+                            if (i + 2 < words.size) {
+                                val y = words[i + 2].toIntOrNull()
+                                if (y != null && y in 2000..2100) {
+                                    year = y
+                                    skipIndices.add(i + 2)
+                                }
+                            }
+                        }
+                    }
+
+                    timeRange = if (day != null) singleDayRange(year, months[word]!!, day)
+                                else monthRange(year, months[word]!!)
                 }
                 else -> keywords.add(word)
             }
@@ -109,6 +128,16 @@ object QueryParser {
         cal.set(Calendar.MILLISECOND, 0)
         val start = cal.timeInMillis
         cal.add(Calendar.MONTH, 1)
+        val end = cal.timeInMillis
+        return start to end
+    }
+
+    private fun singleDayRange(year: Int, month: Int, day: Int): Pair<Long, Long> {
+        val cal = Calendar.getInstance()
+        cal.set(year, month, day, 0, 0, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        cal.add(Calendar.DAY_OF_YEAR, 1)
         val end = cal.timeInMillis
         return start to end
     }

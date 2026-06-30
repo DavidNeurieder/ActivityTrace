@@ -16,10 +16,12 @@ class SearchEngine(private val captureDao: CaptureDao) {
         val parsed = QueryParser.parse(rawQuery)
         val keywords = parsed.keywords
 
-        if (keywords.isEmpty()) return flowOf(emptyList())
-
         val effectiveType = contentType ?: parsed.typeFilter
         val appPackage = parsed.appFilter
+
+        if (keywords.isEmpty() && parsed.timeRange == null && effectiveType == null && appPackage == null) {
+            return flowOf(emptyList())
+        }
 
         val patterns = keywords.map {
             val p = it.replace("*", "%")

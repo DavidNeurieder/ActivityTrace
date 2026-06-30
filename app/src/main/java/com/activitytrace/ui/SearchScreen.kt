@@ -130,7 +130,7 @@ fun SearchScreen(
                 value = query,
                 onValueChange = { viewModel.onQueryChange(it) },
                 modifier = Modifier.fillMaxWidth().padding(8.dp),
-                placeholder = { Text("Search...") },
+                placeholder = { Text("Search text, app, or date...") },
                 singleLine = true,
             )
 
