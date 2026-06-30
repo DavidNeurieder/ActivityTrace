@@ -79,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.activitytrace.capture.deserializeToIntent
 import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
@@ -449,6 +450,17 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
         }
     }
     if (metadata != null) {
+        val intent = metadata.deserializeToIntent()
+        if (intent != null) {
+            try {
+                context.startActivity(intent.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+                return true
+            } catch (_: ActivityNotFoundException) {
+            } catch (_: SecurityException) {
+            }
+        }
         val pi = metadata.deserializeToPendingIntent()
         if (pi != null) {
             try {
