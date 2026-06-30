@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import android.util.Log
 import com.activitytrace.store.ActivityTraceDatabase
 import java.util.concurrent.TimeUnit
 
@@ -26,8 +27,12 @@ class FileIndexingWorker(
         val dao = db.captureDao()
 
         uriStrings.forEach { uriString ->
-            val uri = Uri.parse(uriString)
-            FileIndexer.indexDirectory(applicationContext, uri, dao)
+            try {
+                val uri = Uri.parse(uriString)
+                FileIndexer.indexDirectory(applicationContext, uri, dao)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to index $uriString", e)
+            }
         }
 
         prefs.edit().putLong(PREF_LAST_RUN, System.currentTimeMillis()).apply()
@@ -35,6 +40,7 @@ class FileIndexingWorker(
     }
 
     companion object {
+        private const val TAG = "FileIndexingWorker"
         private const val PREFS_NAME = "activity_trace"
         const val PREF_DIRECTORY_URIS = "file_index_directory_uris"
         const val PREF_LAST_RUN = "file_index_last_run"

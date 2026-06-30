@@ -58,7 +58,7 @@ class SearchScreenTest {
             }
         }
 
-        viewModel.onSearch("test")
+        viewModel.onQueryChange("test")
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("1 results").assertExists()
@@ -110,7 +110,6 @@ class SearchScreenTest {
         }
 
         viewModel.onQueryChange("xyz")
-        viewModel.onSearch("xyz")
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("No results for \"xyz\"").assertExists()

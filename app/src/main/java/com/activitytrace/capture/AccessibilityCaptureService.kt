@@ -2,30 +2,16 @@ package com.activitytrace.capture
 
 import android.accessibilityservice.AccessibilityService
 import android.app.Notification
-import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class AccessibilityCaptureService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    @Suppress("DEPRECATION")
-    private fun resolveAppName(pkg: String): String? {
-        return try {
-            val ai = if (Build.VERSION.SDK_INT >= 33) {
-                packageManager.getApplicationInfo(pkg, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
-            } else {
-                packageManager.getApplicationInfo(pkg, 0)
-            }
-            packageManager.getApplicationLabel(ai).toString()
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     private fun collectText(node: AccessibilityNodeInfo?): String {
         if (node == null) return ""
@@ -77,7 +63,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                         CaptureIngestor.ingest(
                             text = fullText,
                             appPackage = pkg,
-                            appName = resolveAppName(pkg),
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
                             contentType = "notification",
                             metadata = serialized,
                             category = notification.category,
@@ -90,7 +76,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                         CaptureIngestor.ingest(
                             text = collected,
                             appPackage = pkg,
-                            appName = resolveAppName(pkg),
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
                             contentType = "notification",
                         )
                     }
@@ -103,7 +89,7 @@ class AccessibilityCaptureService : AccessibilityService() {
                     CaptureIngestor.ingest(
                         text = collected,
                         appPackage = pkg,
-                        appName = resolveAppName(pkg),
+                        appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
                         contentType = "screen",
                     )
                 }
@@ -112,4 +98,9 @@ class AccessibilityCaptureService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
 }

@@ -35,32 +35,34 @@ object QueryParser {
         var appFilter: String? = null
         var typeFilter: String? = null
         var timeRange: Pair<Long, Long>? = null
-        var skipNext = false
+        val skipIndices = mutableSetOf<Int>()
 
         for (i in words.indices) {
-            if (skipNext) { skipNext = false; continue }
+            if (i in skipIndices) continue
             val word = words[i]
 
             when {
-                word.startsWith("in:") -> appFilter = word.removePrefix("in:")
-                word.startsWith("type:") -> typeFilter = word.removePrefix("type:")
+                word.startsWith("in:") -> {
+                    val value = word.removePrefix("in:")
+                    if (value.isNotBlank()) appFilter = value
+                }
+                word.startsWith("type:") -> {
+                    val value = word.removePrefix("type:")
+                    if (value.isNotBlank()) typeFilter = value
+                }
                 word == "today" -> timeRange = dayRange(0)
                 word == "yesterday" -> timeRange = dayRange(1)
-                word == "week" && i > 0 && words[i - 1] == "last" -> {
+                word == "last" && i + 1 < words.size && words[i + 1] == "week" -> {
                     timeRange = weekRange(1)
-                    keywords.remove(words[i - 1])
+                    skipIndices.add(i + 1)
                 }
-                word == "week" && i > 0 && words[i - 1] == "this" -> {
+                word == "this" && i + 1 < words.size && words[i + 1] == "week" -> {
                     timeRange = weekRange(0)
-                    keywords.remove(words[i - 1])
+                    skipIndices.add(i + 1)
                 }
                 months.containsKey(word) -> {
                     val year = Calendar.getInstance().get(Calendar.YEAR)
                     timeRange = monthRange(year, months[word]!!)
-                }
-                word == "last" || word == "this" -> {
-                    // part of a phrase, keep as keyword unless consumed above
-                    keywords.add(word)
                 }
                 else -> keywords.add(word)
             }

@@ -97,7 +97,7 @@ class SearchViewModelTest {
 
     @Test
     fun `onSearch with blank query clears results`() {
-        viewModel.onSearch("")
+        viewModel.onQueryChange("")
         assert(viewModel.results.value.isEmpty())
     }
 
@@ -108,13 +108,13 @@ class SearchViewModelTest {
         )
         every { searchEngine.search("test") } returns flowOf(items)
 
-        viewModel.onSearch("test")
+        viewModel.onQueryChange("test")
         assert(viewModel.results.value == items)
     }
 
     @Test
     fun `search with whitespace only clears results`() {
-        viewModel.onSearch("   ")
+        viewModel.onQueryChange("   ")
         assert(viewModel.results.value.isEmpty())
     }
 

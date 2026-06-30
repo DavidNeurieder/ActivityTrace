@@ -102,6 +102,7 @@ fun SearchScreen(
     val keywords = remember(query) {
         if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
     }
+    val canOpenPackages by viewModel.canOpenPackages.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -146,13 +147,13 @@ fun SearchScreen(
                 )
             }
 
+            val grouped = remember(results) { groupByDate(results) }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (results.isEmpty()) {
                     item {
                         EmptyState(query = query, filter = contentTypeFilter)
                     }
                 } else {
-                    val grouped = groupByDate(results)
                     grouped.forEach { (dateLabel, items) ->
                         item(key = dateLabel) {
                             Text(
@@ -164,16 +165,7 @@ fun SearchScreen(
                         }
                         items.forEach { captured ->
                             item(key = captured.id) {
-                                val canOpen = remember(captured.appPackage) {
-                                    if (captured.metadata != null) true
-                                    else {
-                                        context.packageManager.getLaunchIntentForPackage(captured.appPackage) != null
-                                        ||                                         context.packageManager.queryIntentActivities(
-                                            Intent(Intent.ACTION_MAIN).apply { setPackage(captured.appPackage) },
-                                            0,
-                                        ).any { it.activityInfo.packageName == captured.appPackage }
-                                    }
-                                }
+                                val canOpen = captured.metadata != null || canOpenPackages[captured.appPackage] == true
                                 ResultCard(
                                     item = captured,
                                     appName = resolveAppName(context, captured.appPackage, captured.appName),

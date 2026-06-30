@@ -1,29 +1,15 @@
 package com.activitytrace.capture
 
-import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class ActivityTraceNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    @Suppress("DEPRECATION")
-    private fun resolveAppName(pkg: String): String? {
-        return try {
-            val ai = if (Build.VERSION.SDK_INT >= 33) {
-                packageManager.getApplicationInfo(pkg, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
-            } else {
-                packageManager.getApplicationInfo(pkg, 0)
-            }
-            packageManager.getApplicationLabel(ai).toString()
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val extras = sbn.notification.extras ?: return
@@ -39,7 +25,7 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
             CaptureIngestor.ingest(
                 text = fullText,
                 appPackage = sbn.packageName,
-                appName = resolveAppName(sbn.packageName),
+                appName = CaptureIngestor.resolveAppName(this@ActivityTraceNotificationListener, sbn.packageName),
                 contentType = "notification",
                 metadata = serialized,
                 category = sbn.notification.category,
@@ -49,4 +35,9 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {}
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
 }
