@@ -1,6 +1,27 @@
 New features:
+- Search term highlighting — matched keywords highlighted in results
 - Screenshots added to F-Droid listing (search, settings, onboarding)
 
 Improvements:
 - App icon updated with adjusted background color
 - Updated full description and short description
+- Performance: search highlighting uses single-pass scanning with 30-match cap, collapsed cards scan only first 250 chars
+- Performance: groupByDate and keyword parsing memoized (no redundant recomputation)
+- Performance: PackageManager calls (canOpen) moved off main thread to ViewModel
+- onDestroy handlers added to capture services (prevents coroutine leaks)
+- Unified resolveAppName in CaptureIngestor (removed duplication across services)
+- java.time replaces legacy SimpleDateFormat/Date (minSdk 26)
+- Release APK reduced further (removed unused navigation-compose dependency)
+- Queries: double-%% patterns eliminated, empty in:/type: filters ignored
+- Error handling in search pipeline, notification ingestion, and retention cleanup
+
+Fixes:
+- Crash on Android 16+ when launching apps (StorageScopesActivity permission denial)
+- Off-by-one in search highlighting (last character now correctly highlighted)
+- NullAccessibilityEvent accessed before null check in AccessibilityCaptureService
+- Fragile keyword list modification during QueryParser iteration (last/this week parsing)
+- ProGuard isLoggable assumenosideeffects could break conditional logging
+- Release ABI filters aligned with docs (arm64-v8a only, was including armeabi-v7a)
+
+Removed:
+- adb install --enable-all-features references from Settings and Onboarding (F-Droid only)
