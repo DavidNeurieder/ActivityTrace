@@ -38,7 +38,7 @@ interface CaptureDao {
     suspend fun deleteOlderThan(cutoff: Long)
 
     @RawQuery(observedEntities = [CapturedItem::class])
-    fun searchFts(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
+    fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 
     fun searchLike(
         patterns: List<String>,
@@ -73,6 +73,6 @@ interface CaptureDao {
             ORDER BY timestamp DESC LIMIT 100
         """.trimIndent()
 
-        return searchFts(SimpleSQLiteQuery(sql, params.toTypedArray()))
+        return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
 }

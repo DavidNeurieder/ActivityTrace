@@ -3,6 +3,7 @@ package com.activitytrace.store
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -16,12 +17,17 @@ class RetentionCleanupWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val retentionDays = getRetentionDays(applicationContext)
-        if (retentionDays <= 0) return Result.success()
-        val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
-        val db = ActivityTraceDatabase.getInstance(applicationContext)
-        db.captureDao().deleteOlderThan(cutoff)
-        return Result.success()
+        return try {
+            val retentionDays = getRetentionDays(applicationContext)
+            if (retentionDays <= 0) return Result.success()
+            val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
+            val db = ActivityTraceDatabase.getInstance(applicationContext)
+            db.captureDao().deleteOlderThan(cutoff)
+            Result.success()
+        } catch (e: Exception) {
+            Log.e(TAG, "Retention cleanup failed", e)
+            Result.failure()
+        }
     }
 
     class BootReceiver : BroadcastReceiver() {
@@ -33,6 +39,7 @@ class RetentionCleanupWorker(
     }
 
     companion object {
+        private const val TAG = "RetentionCleanup"
         private const val PREFS_NAME = "activity_trace"
         private const val PREF_RETENTION_DAYS = "retention_days"
         private const val DEFAULT_RETENTION_DAYS = 7

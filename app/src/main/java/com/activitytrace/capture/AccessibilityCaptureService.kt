@@ -42,8 +42,8 @@ class AccessibilityCaptureService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val pkg = event?.packageName?.toString() ?: "unknown"
         if (event == null) return
+        val pkg = event.packageName?.toString() ?: "unknown"
         if (pkg == packageName) return
 
         when (event.eventType) {

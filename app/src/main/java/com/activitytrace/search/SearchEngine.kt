@@ -21,7 +21,14 @@ class SearchEngine(private val captureDao: CaptureDao) {
         val effectiveType = contentType ?: parsed.typeFilter
         val appPackage = parsed.appFilter
 
-        val patterns = keywords.map { "%${it.replace("*", "%")}%" }
+        val patterns = keywords.map {
+            val p = it.replace("*", "%")
+            buildString {
+                if (!p.startsWith("%")) append("%")
+                append(p)
+                if (!p.endsWith("%")) append("%")
+            }
+        }
         return captureDao.searchLike(patterns, parsed.timeRange, effectiveType, appPackage)
     }
 }

@@ -84,9 +84,9 @@ import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.QueryParser
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -518,6 +518,8 @@ private fun highlightText(text: String, keywords: List<String>): AnnotatedString
 }
 
 private fun formatTimestampShort(millis: Long): String {
-    val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
-    return sdf.format(Date(millis))
+    val time = java.time.Instant.ofEpochMilli(millis)
+        .atZone(ZoneId.systemDefault())
+        .toLocalTime()
+    return DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()).format(time)
 }

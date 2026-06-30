@@ -37,21 +37,21 @@ class SearchEngineTest {
     fun `search with wildcard converts star to percent and wraps`() = runTest {
         searchEngine.search("hello*").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%%"), null) }
+        verify { captureDao.searchLike(listOf("%hello%"), null) }
     }
 
     @Test
     fun `search with leading wildcard converts and wraps`() = runTest {
         searchEngine.search("*hello").collect { }
 
-        verify { captureDao.searchLike(listOf("%%hello%"), null) }
+        verify { captureDao.searchLike(listOf("%hello%"), null) }
     }
 
     @Test
     fun `search with surrounding wildcard converts and wraps`() = runTest {
         searchEngine.search("*hello*").collect { }
 
-        verify { captureDao.searchLike(listOf("%%hello%%"), null) }
+        verify { captureDao.searchLike(listOf("%hello%"), null) }
     }
 
     @Test
@@ -65,7 +65,7 @@ class SearchEngineTest {
     fun `search with wildcard passes time range`() = runTest {
         searchEngine.search("*hello today").collect { }
 
-        verify { captureDao.searchLike(listOf("%%hello%"), any()) }
+        verify { captureDao.searchLike(listOf("%hello%"), any()) }
     }
 
     @Test

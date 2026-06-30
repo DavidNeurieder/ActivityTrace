@@ -2,6 +2,7 @@ package com.activitytrace.capture
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,6 +11,10 @@ import kotlinx.coroutines.launch
 
 class ActivityTraceNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    companion object {
+        private const val TAG = "ActivityTraceNL"
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val extras = sbn.notification.extras ?: return
@@ -22,15 +27,19 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
         val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
         val serialized = sbn.notification.contentIntent?.serialize()
         scope.launch {
-            CaptureIngestor.ingest(
-                text = fullText,
-                appPackage = sbn.packageName,
-                appName = CaptureIngestor.resolveAppName(this@ActivityTraceNotificationListener, sbn.packageName),
-                contentType = "notification",
-                metadata = serialized,
-                category = sbn.notification.category,
-                timestamp = sbn.postTime,
-            )
+            try {
+                CaptureIngestor.ingest(
+                    text = fullText,
+                    appPackage = sbn.packageName,
+                    appName = CaptureIngestor.resolveAppName(this@ActivityTraceNotificationListener, sbn.packageName),
+                    contentType = "notification",
+                    metadata = serialized,
+                    category = sbn.notification.category,
+                    timestamp = sbn.postTime,
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to ingest notification", e)
+            }
         }
     }
 

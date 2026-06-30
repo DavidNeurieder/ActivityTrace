@@ -72,6 +72,7 @@ import androidx.work.WorkManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -430,8 +431,9 @@ private fun directoryDisplayName(context: Context, uriString: String): String? {
 }
 
 private fun formatDate(millis: Long): String {
-    val sdf = java.text.SimpleDateFormat("MMM d, yyyy HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(millis))
+    val zdt = java.time.Instant.ofEpochMilli(millis)
+        .atZone(java.time.ZoneId.systemDefault())
+    return java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm", Locale.getDefault()).format(zdt)
 }
 
 @Composable
