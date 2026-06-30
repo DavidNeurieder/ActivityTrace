@@ -99,6 +99,9 @@ fun SearchScreen(
     val query by viewModel.query.collectAsState()
     val results by viewModel.results.collectAsState()
     val contentTypeFilter by viewModel.contentTypeFilter.collectAsState()
+    val keywords = remember(query) {
+        if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -188,7 +191,7 @@ fun SearchScreen(
                                             snackbarHostState.showSnackbar("Copied to clipboard")
                                         }
                                     },
-                                    query = query,
+                                    keywords = keywords,
                                 )
                             }
                         }
@@ -237,7 +240,7 @@ private fun ResultCard(
     canOpen: Boolean,
     onOpenApp: () -> Unit,
     onLongClick: () -> Unit,
-    query: String,
+    keywords: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -292,10 +295,8 @@ private fun ResultCard(
             },
             headlineContent = {
                 Column {
-                    val keywords = remember(query) {
-                        if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
-                    }
-                    val annotated = remember(item.text, keywords) { highlightText(item.text, keywords) }
+                    val scanText = if (expanded) item.text else item.text.take(250)
+                    val annotated = remember(scanText, keywords) { highlightText(scanText, keywords) }
                     Text(
                         text = annotated,
                         maxLines = if (expanded) Int.MAX_VALUE else 2,
@@ -495,27 +496,30 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
 private fun highlightText(text: String, keywords: List<String>): AnnotatedString {
     if (keywords.isEmpty()) return AnnotatedString(text)
     val lower = text.lowercase()
+    val sorted = keywords.sortedByDescending { it.length }
+    val lowerKeywords = sorted.map { it.lowercase() }
     val matches = mutableListOf<IntRange>()
-    for (kw in keywords) {
-        val lowerKw = kw.lowercase()
-        var start = 0
-        while (true) {
-            val i = lower.indexOf(lowerKw, start)
-            if (i < 0) break
-            matches.add(i..<(i + kw.length))
-            start = i + 1
+    var i = 0
+    while (i < lower.length && matches.size < 30) {
+        for (k in lowerKeywords.indices) {
+            val kw = lowerKeywords[k]
+            if (i + kw.length <= lower.length && lower.regionMatches(i, kw, 0, kw.length)) {
+                matches.add(i..<i + kw.length)
+                i += kw.length - 1
+                break
+            }
         }
+        i++
     }
-    matches.sortBy { it.first }
     return buildAnnotatedString {
         var pos = 0
         for (m in matches) {
             if (m.first < pos) continue
             if (pos < m.first) append(text.substring(pos, m.first))
             withStyle(SpanStyle(background = Color(0x55FFD600))) {
-                append(text.substring(m.first, m.last))
+                append(text.substring(m.first, m.last + 1))
             }
-            pos = m.last
+            pos = m.last + 1
         }
         if (pos < text.length) append(text.substring(pos))
     }
