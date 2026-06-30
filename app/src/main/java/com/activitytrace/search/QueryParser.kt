@@ -61,14 +61,11 @@ object QueryParser {
                     skipIndices.add(i + 1)
                 }
                 months.containsKey(word) -> {
-                    var year = Calendar.getInstance().get(Calendar.YEAR)
-                    var day: Int? = null
-
                     if (i + 1 < words.size) {
                         val candidate = words[i + 1].removeSuffix(",")
                         val d = candidate.toIntOrNull()
                         if (d != null && d in 1..31) {
-                            day = d
+                            var year = Calendar.getInstance().get(Calendar.YEAR)
                             skipIndices.add(i + 1)
                             if (i + 2 < words.size) {
                                 val y = words[i + 2].toIntOrNull()
@@ -77,11 +74,13 @@ object QueryParser {
                                     skipIndices.add(i + 2)
                                 }
                             }
+                            timeRange = singleDayRange(year, months[word]!!, d)
+                        } else {
+                            keywords.add(word)
                         }
+                    } else {
+                        keywords.add(word)
                     }
-
-                    timeRange = if (day != null) singleDayRange(year, months[word]!!, day)
-                                else monthRange(year, months[word]!!)
                 }
                 else -> keywords.add(word)
             }
@@ -118,16 +117,6 @@ object QueryParser {
         cal.add(Calendar.WEEK_OF_YEAR, -weeksAgo)
         val start = cal.timeInMillis
         cal.add(Calendar.WEEK_OF_YEAR, 1)
-        val end = cal.timeInMillis
-        return start to end
-    }
-
-    private fun monthRange(year: Int, month: Int): Pair<Long, Long> {
-        val cal = Calendar.getInstance()
-        cal.set(year, month, 1, 0, 0, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val start = cal.timeInMillis
-        cal.add(Calendar.MONTH, 1)
         val end = cal.timeInMillis
         return start to end
     }

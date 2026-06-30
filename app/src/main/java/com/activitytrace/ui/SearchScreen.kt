@@ -310,8 +310,11 @@ private fun ResultCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
+                    val supportText = remember(item.timestamp, appName, keywords) {
+                        highlightText("$appName • ${formatTimestampShort(item.timestamp)}", keywords)
+                    }
                     Text(
-                        text = "$appName • ${formatTimestampShort(item.timestamp)}",
+                        text = supportText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),

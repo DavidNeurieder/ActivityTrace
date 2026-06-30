@@ -66,8 +66,22 @@ class QueryParserTest {
     }
 
     @Test
-    fun `month name sets timeRange`() {
+    fun `bare month name is keyword not timeRange`() {
         val result = QueryParser.parse("january")
+        assertEquals(listOf("january"), result.keywords)
+        assertNull(result.timeRange)
+    }
+
+    @Test
+    fun `bare month abbreviation is keyword not timeRange`() {
+        val result = QueryParser.parse("jan")
+        assertEquals(listOf("jan"), result.keywords)
+        assertNull(result.timeRange)
+    }
+
+    @Test
+    fun `month name with day sets timeRange`() {
+        val result = QueryParser.parse("january 15")
         assertTrue(result.keywords.isEmpty())
         assertNotNull(result.timeRange)
         val (start, end) = result.timeRange!!
@@ -75,29 +89,33 @@ class QueryParserTest {
     }
 
     @Test
-    fun `month abbreviation sets timeRange`() {
-        val result = QueryParser.parse("jan")
+    fun `month name with day and year sets timeRange`() {
+        val result = QueryParser.parse("january 15, 2025")
         assertTrue(result.keywords.isEmpty())
         assertNotNull(result.timeRange)
+        val (start, end) = result.timeRange!!
+        assertTrue(start < end)
     }
 
     @Test
-    fun `all month names are recognized`() {
+    fun `all month names are keywords`() {
         val months = listOf("january", "february", "march", "april", "may", "june",
             "july", "august", "september", "october", "november", "december")
         for (month in months) {
             val result = QueryParser.parse(month)
-            assertNotNull("$month should set timeRange", result.timeRange)
+            assertEquals("$month should be a keyword", listOf(month), result.keywords)
+            assertNull("$month should not set timeRange", result.timeRange)
         }
     }
 
     @Test
-    fun `all month abbreviations are recognized`() {
+    fun `all month abbreviations are keywords`() {
         val abbrs = listOf("jan", "feb", "mar", "apr", "jun", "jul",
             "aug", "sep", "sept", "oct", "nov", "dec")
         for (abbr in abbrs) {
             val result = QueryParser.parse(abbr)
-            assertNotNull("$abbr should set timeRange", result.timeRange)
+            assertEquals("$abbr should be a keyword", listOf(abbr), result.keywords)
+            assertNull("$abbr should not set timeRange", result.timeRange)
         }
     }
 
