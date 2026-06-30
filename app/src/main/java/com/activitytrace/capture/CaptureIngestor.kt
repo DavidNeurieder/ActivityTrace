@@ -10,6 +10,13 @@ import com.activitytrace.store.ActivityTraceDatabase
 object CaptureIngestor {
     private var db: ActivityTraceDatabase? = null
     private const val TAG = "CaptureIngestor"
+    private const val DEDUP_COOLDOWN_MS = 2000L
+
+    private val recentHashes = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
+            return size > 128
+        }
+    }
 
     @Suppress("DEPRECATION")
     fun resolveAppName(context: Context, pkg: String): String? {
@@ -40,6 +47,12 @@ object CaptureIngestor {
         category: String? = null,
         timestamp: Long? = null,
     ) {
+        val key = "$appPackage|$contentType|$text"
+        val now = System.currentTimeMillis()
+        val lastSeen = synchronized(recentHashes) { recentHashes[key] }
+        if (lastSeen != null && now - lastSeen < DEDUP_COOLDOWN_MS) return
+        synchronized(recentHashes) { recentHashes[key] = now }
+
         try {
             db?.captureDao()?.insert(
                 CapturedItem(

@@ -17,6 +17,7 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (sbn.isOngoing) return
         val extras = sbn.notification.extras ?: return
         val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()
         val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()
