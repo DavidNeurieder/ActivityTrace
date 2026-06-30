@@ -69,6 +69,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.QueryParser
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -183,6 +188,7 @@ fun SearchScreen(
                                             snackbarHostState.showSnackbar("Copied to clipboard")
                                         }
                                     },
+                                    query = query,
                                 )
                             }
                         }
@@ -231,6 +237,7 @@ private fun ResultCard(
     canOpen: Boolean,
     onOpenApp: () -> Unit,
     onLongClick: () -> Unit,
+    query: String,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -285,8 +292,12 @@ private fun ResultCard(
             },
             headlineContent = {
                 Column {
+                    val keywords = remember(query) {
+                        if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
+                    }
+                    val annotated = remember(item.text, keywords) { highlightText(item.text, keywords) }
                     Text(
-                        text = item.text,
+                        text = annotated,
                         maxLines = if (expanded) Int.MAX_VALUE else 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -479,6 +490,35 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
         return true
     }
     return false
+}
+
+private fun highlightText(text: String, keywords: List<String>): AnnotatedString {
+    if (keywords.isEmpty()) return AnnotatedString(text)
+    val lower = text.lowercase()
+    val matches = mutableListOf<IntRange>()
+    for (kw in keywords) {
+        val lowerKw = kw.lowercase()
+        var start = 0
+        while (true) {
+            val i = lower.indexOf(lowerKw, start)
+            if (i < 0) break
+            matches.add(i..<(i + kw.length))
+            start = i + 1
+        }
+    }
+    matches.sortBy { it.first }
+    return buildAnnotatedString {
+        var pos = 0
+        for (m in matches) {
+            if (m.first < pos) continue
+            if (pos < m.first) append(text.substring(pos, m.first))
+            withStyle(SpanStyle(background = Color(0x55FFD600))) {
+                append(text.substring(m.first, m.last))
+            }
+            pos = m.last
+        }
+        if (pos < text.length) append(text.substring(pos))
+    }
 }
 
 private fun formatTimestampShort(millis: Long): String {
