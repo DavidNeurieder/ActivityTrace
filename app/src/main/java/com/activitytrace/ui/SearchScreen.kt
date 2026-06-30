@@ -530,8 +530,7 @@ private fun highlightText(text: String, keywords: List<String>): AnnotatedString
 }
 
 private fun formatTimestampShort(millis: Long): String {
-    val time = java.time.Instant.ofEpochMilli(millis)
+    val zdt = java.time.Instant.ofEpochMilli(millis)
         .atZone(ZoneId.systemDefault())
-        .toLocalTime()
-    return DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()).format(time)
+    return DateTimeFormatter.ofPattern("MMM d, h:mm a", Locale.getDefault()).format(zdt)
 }
