@@ -11,6 +11,16 @@ data class ParsedQuery(
 )
 
 object QueryParser {
+    private val contentTypeSynonyms = mapOf(
+        "notification" to "notification", "notif" to "notification",
+        "notifications" to "notification",
+        "screen" to "screen", "screens" to "screen",
+        "accessibility" to "screen", "access" to "screen",
+        "page" to "page", "pages" to "page",
+        "folder" to "page", "folders" to "page",
+        "document" to "page", "documents" to "page", "file" to "page", "files" to "page",
+    )
+
     private val months = mapOf(
         "january" to 0, "jan" to 0,
         "february" to 1, "feb" to 1,
@@ -47,8 +57,11 @@ object QueryParser {
                     if (value.isNotBlank()) appFilter = value
                 }
                 word.startsWith("type:") -> {
-                    val value = word.removePrefix("type:")
-                    if (value.isNotBlank()) typeFilter = value
+                    var value = word.removePrefix("type:")
+                    if (value.isNotBlank()) {
+                        value = contentTypeSynonyms[value] ?: value
+                        typeFilter = value
+                    }
                 }
                 word == "today" -> timeRange = dayRange(0)
                 word == "yesterday" -> timeRange = dayRange(1)

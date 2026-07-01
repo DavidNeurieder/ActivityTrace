@@ -82,4 +82,46 @@ class SearchEngineTest {
 
         verify { captureDao.searchLike(listOf("%tomorrow%"), any()) }
     }
+
+    @Test
+    fun `search with type filter passes contentType to dao`() = runTest {
+        searchEngine.search("type:notification").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
+    }
+
+    @Test
+    fun `search with type synonym maps to canonical value`() = runTest {
+        searchEngine.search("type:accessibility").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, "screen", null) }
+    }
+
+    @Test
+    fun `search with type synonym notif maps to notification`() = runTest {
+        searchEngine.search("type:notif").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
+    }
+
+    @Test
+    fun `search with in filter passes appPackage to dao`() = runTest {
+        searchEngine.search("in:signal").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, null, "signal") }
+    }
+
+    @Test
+    fun `search with combined type and in filters`() = runTest {
+        searchEngine.search("in:com.example type:screen").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, "screen", "com.example") }
+    }
+
+    @Test
+    fun `search with type filter and keyword`() = runTest {
+        searchEngine.search("type:notification hello").collect { }
+
+        verify { captureDao.searchLike(listOf("%hello%"), null, "notification", null) }
+    }
 }

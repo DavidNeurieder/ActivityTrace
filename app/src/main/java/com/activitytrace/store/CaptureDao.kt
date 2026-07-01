@@ -64,12 +64,13 @@ interface CaptureDao {
             params.add(timeRange.second)
         }
         if (contentType != null) {
-            conditions.add("content_type = ?")
-            params.add(contentType)
+            conditions.add("content_type LIKE ?")
+            params.add("%$contentType%")
         }
         if (appPackage != null) {
-            conditions.add("app_package = ?")
-            params.add(appPackage)
+            conditions.add("(app_package LIKE ? OR app_name LIKE ?)")
+            params.add("%$appPackage%")
+            params.add("%$appPackage%")
         }
 
         val whereClause = if (conditions.isNotEmpty()) " WHERE ${conditions.joinToString(" AND ")}" else ""
