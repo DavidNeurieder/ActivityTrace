@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.6.0 — 2026-07-01
+
+### New features
+- Search by app name — `app:signal`, `app:telegram` filter to a specific app's notifications
+- Date shown in notification results alongside the timestamp
+
+### Improvements
+- Deep link handling rewritten with robust `PendingIntent` serialization — fewer fallback hops
+- QueryParser cleaned up, tests expanded for app-name and date-range queries
+- Deduplication at ingestion — identical consecutive notifications discarded before storage
+
+### Fixes
+- Search results missing when query matched app name but not notification text
+- Duplicate notifications appearing when both accessibility and listener captured the same event
+- Deep links failing after process death (`PendingIntent` serialization edge cases)
+
+---
+
 ## v0.5.0 — 2026-05-31
 
 ### New features

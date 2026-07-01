@@ -1,6 +1,7 @@
 package com.activitytrace.capture
 
 import android.accessibilityservice.AccessibilityService
+import android.app.Notification
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +47,41 @@ class AccessibilityCaptureService : AccessibilityService() {
         if (pkg == packageName) return
 
         when (event.eventType) {
+            AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
+                val notification = event.parcelableData as? Notification
+                if (notification != null) {
+                    val extras = notification.extras ?: return
+                    val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+                    val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+                    val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+                    val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+                    val summaryText = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
+                    if (title.isBlank() && text.isBlank() && bigText == null && subText == null && summaryText == null) return
+                    val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
+                    val serialized = notification.contentIntent?.extractIntent()?.serialize()
+                    scope.launch {
+                        CaptureIngestor.ingest(
+                            text = fullText,
+                            appPackage = pkg,
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
+                            contentType = "notification",
+                            metadata = serialized,
+                            category = notification.category,
+                        )
+                    }
+                } else {
+                    val collected = collectEventText(event)
+                    if (collected.isBlank()) return
+                    scope.launch {
+                        CaptureIngestor.ingest(
+                            text = collected,
+                            appPackage = pkg,
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
+                            contentType = "notification",
+                        )
+                    }
+                }
+            }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 val collected = collectEventText(event)
                 if (collected.isBlank()) return

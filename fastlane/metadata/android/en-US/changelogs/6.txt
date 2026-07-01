@@ -1,0 +1,13 @@
+New features:
+- Search by app name — app:signal, app:telegram filter results
+- Dates now shown in notification results
+
+Improvements:
+- Deep link handling rewritten for reliability
+- Deduplication prevents duplicate notification capture
+- QueryParser tests expanded for app name and date-range queries
+
+Fixes:
+- Search missing results when app name matched but notification text didn't
+- Duplicate notifications from both accessibility and listener capture
+- Deep links failing after process death
