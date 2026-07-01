@@ -1,8 +1,10 @@
-Activity Trace lets you search across your notifications using natural language. Everything stays encrypted on-device with SQLCipher + Android Keystore. No AI, no cloud, no account.
+<p>Search across notifications, accessibility and indexed files. Everything stays encrypted on-device with SQLCipher AES-256-CBC + Android Keystore. No AI, no cloud, no account, no internet permission.</p>
 
-• Search notifications from any app with prefix and wildcard matching
-• Full encryption at rest with Android Keystore + SQLCipher AES-256-CBC
-• No internet permission — zero data leaves your device
-• Screenshot, and file search are in development.
-• Open source (GPL-3.0)
-• Restricted Settings workaround: If notification access or accessibility service is blocked after sideloading, either run `adb install --enable-all-features` or go to Settings → Apps → Activity Trace → Allow restricted settings (three-dot menu on Android 13+).
+<ul>
+<li>Search notifications, accessibility and files</li>
+<li>Prefix and wildcard matching</li>
+<li>Search term highlighting in results</li>
+<li>Full encryption at rest (SQLCipher + Android Keystore)</li>
+<li>Zero network — no internet permission, no telemetry</li>
+<li>Open source (GPL-3.0-only)</li>
+</ul>
