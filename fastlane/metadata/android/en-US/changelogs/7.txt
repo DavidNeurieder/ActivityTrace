@@ -1,0 +1,8 @@
+Improvements:
+- Search filters now use substring matching — type:accessibility, in:signal work
+- Type synonyms added: notif, access, folder, document, file and more
+
+Fixes:
+- in:signal returning no results (now searches display name too)
+- type:accessibility returning no results (synonym maps to screen captures)
+- Exact-match requirement relaxed on content type and app package filters

@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.6.1 — 2026-07-01
+
+### Improvements
+- `type:` and `in:` search filters now use substring matching instead of exact match — `in:signal` matches Signal's display name, `type:accessibility` maps to screen captures
+- Type synonyms added: `notif`, `access`, `folder`, `document`, `file` and more resolve to their canonical content types
+
+### Fixes
+- `in:signal` returning no results — now searches both `app_package` and `app_name` with LIKE
+- `type:accessibility` returning no results — synonym maps to stored `screen` type
+- Exact-match requirement on `content_type` and `app_package` filters relaxed to substring match
+
+---
+
 ## v0.6.0 — 2026-07-01
 
 ### New features
