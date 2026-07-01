@@ -1,0 +1,2 @@
+Fixes:
+- Unnecessary ACCESS_NETWORK_STATE permission removed
