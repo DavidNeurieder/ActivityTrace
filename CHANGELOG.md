@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.2 — 2026-07-01
+
+### Fixes
+- `ACCESS_NETWORK_STATE` permission removed from merged manifest (was pulled in by WorkManager, not needed by the app)
+
+---
+
 ## v0.6.1 — 2026-07-01
 
 ### Improvements
