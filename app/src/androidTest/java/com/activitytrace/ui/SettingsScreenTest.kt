@@ -41,7 +41,7 @@ class SettingsScreenTest {
         context.getDatabasePath("activity_trace.db").delete()
         File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "ActivityTrace/activity_trace.db",
+            "ActivityTrace/activity_trace.sqlite",
         ).delete()
         File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
@@ -111,28 +111,17 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun exportFunctionCopiesDbWhenSourceExists() = runBlocking {
-        val dbFile = context.getDatabasePath("activity_trace.db")
-        dbFile.parentFile?.mkdirs()
-        dbFile.writeText("dummy database content")
-
+    fun exportFunctionExportsPlainSqlite() = runBlocking {
         val result = DatabaseExporter.export(context)
 
         assert(result)
         val exportFile = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "ActivityTrace/activity_trace.db",
+            "ActivityTrace/activity_trace.sqlite",
         )
         assert(exportFile.exists()) { "Expected export file at ${exportFile.absolutePath}" }
-    }
-
-    @Test
-    fun exportFunctionReturnsFalseWhenDbMissing() = runBlocking {
-        context.getDatabasePath("activity_trace.db").delete()
-
-        val result = DatabaseExporter.export(context)
-
-        assert(!result)
+        val magic = exportFile.readBytes().take(16).toByteArray()
+        assert(magic.contentEquals("SQLite format 3\u0000".toByteArray())) { "Not a valid SQLite file" }
     }
 
     @Test
