@@ -1,5 +1,10 @@
 # Activity Trace
 
+
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+     alt="Get it on F-Droid"
+     height="80">](https://f-droid.org/en/packages/com.activitytrace/)
+
 On-device cross-app memory search for Android. No AI, no cloud, no internet permission.
 
 Search across notifications, accessibility screen captures, and indexed files with natural language — all encrypted at rest with **SQLCipher AES-256-CBC** + Android Keystore.
