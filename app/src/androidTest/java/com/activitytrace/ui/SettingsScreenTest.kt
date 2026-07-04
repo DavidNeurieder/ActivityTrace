@@ -1,6 +1,7 @@
 package com.activitytrace.ui
 
 import android.content.Context
+import android.os.Environment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -8,11 +9,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
+import com.activitytrace.store.DatabaseExporter
 import com.activitytrace.store.RetentionCleanupWorker
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class SettingsScreenTest {
 
@@ -34,6 +38,15 @@ class SettingsScreenTest {
     @After
     fun tearDown() {
         RetentionCleanupWorker.setRetentionDays(context, 7)
+        context.getDatabasePath("activity_trace.db").delete()
+        File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace/activity_trace.db",
+        ).delete()
+        File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace/activity_trace.json",
+        ).delete()
     }
 
     @Test
@@ -88,6 +101,50 @@ class SettingsScreenTest {
     @Test
     fun showsExportButton() {
         composeTestRule.onNodeWithText("Export database").assertExists()
+    }
+
+    @Test
+    fun clickingExportButtonDoesNotCrash() {
+        composeTestRule.onNodeWithText("Export database").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Export database").assertExists()
+    }
+
+    @Test
+    fun exportFunctionCopiesDbWhenSourceExists() = runBlocking {
+        val dbFile = context.getDatabasePath("activity_trace.db")
+        dbFile.parentFile?.mkdirs()
+        dbFile.writeText("dummy database content")
+
+        val result = DatabaseExporter.export(context)
+
+        assert(result)
+        val exportFile = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace/activity_trace.db",
+        )
+        assert(exportFile.exists()) { "Expected export file at ${exportFile.absolutePath}" }
+    }
+
+    @Test
+    fun exportFunctionReturnsFalseWhenDbMissing() = runBlocking {
+        context.getDatabasePath("activity_trace.db").delete()
+
+        val result = DatabaseExporter.export(context)
+
+        assert(!result)
+    }
+
+    @Test
+    fun showsJsonExportButton() {
+        composeTestRule.onNodeWithText("Export as JSON").assertExists()
+    }
+
+    @Test
+    fun clickingJsonExportButtonDoesNotCrash() {
+        composeTestRule.onNodeWithText("Export as JSON").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Export as JSON").assertExists()
     }
 
     @Test

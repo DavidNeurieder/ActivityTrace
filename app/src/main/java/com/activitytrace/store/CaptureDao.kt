@@ -34,6 +34,9 @@ interface CaptureDao {
     @Query("SELECT * FROM captured_items WHERE timestamp > :since ORDER BY timestamp DESC")
     fun itemsSince(since: Long): Flow<List<CapturedItem>>
 
+    @Query("SELECT * FROM captured_items ORDER BY timestamp DESC")
+    suspend fun getAllItems(): List<CapturedItem>
+
     @Query("DELETE FROM captured_items WHERE timestamp < :cutoff")
     suspend fun deleteOlderThan(cutoff: Long)
 

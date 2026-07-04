@@ -3,8 +3,6 @@ package com.activitytrace.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
@@ -61,17 +59,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.capture.AccessibilityCaptureService
 import com.activitytrace.capture.FileIndexingWorker
+import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.DataExporter
+import com.activitytrace.store.DatabaseExporter
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -452,13 +448,27 @@ private fun DataSection(
         onClick = {
             scope.launch {
                 onExportMessage(null)
-                val result = exportDatabase(context)
+                val result = DatabaseExporter.export(context)
                 onExportMessage(if (result) "Database exported" else "Export failed")
             }
         },
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text("Export database")
+    }
+    Spacer(Modifier.height(8.dp))
+    Button(
+        onClick = {
+            scope.launch {
+                onExportMessage(null)
+                val db = ActivityTraceDatabase.getInstance(context)
+                val result = DataExporter.exportToJson(context, db.captureDao())
+                onExportMessage(if (result) "Exported as JSON" else "Export failed")
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Export as JSON")
     }
     if (exportMessage != null) {
         Spacer(Modifier.height(4.dp))
@@ -514,28 +524,3 @@ private fun AboutSection(context: Context) {
     }
 }
 
-private suspend fun exportDatabase(context: Context): Boolean = withContext(Dispatchers.IO) {
-    try {
-        val dbFile = context.getDatabasePath("activity_trace.db")
-        if (!dbFile.exists()) return@withContext false
-
-        val exportDir = if (Build.VERSION.SDK_INT >= 29) {
-            context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-        } else {
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        } ?: return@withContext false
-
-        val appDir = File(exportDir, "ActivityTrace")
-        appDir.mkdirs()
-
-        val exportFile = File(appDir, "activity_trace.db")
-        FileInputStream(dbFile).use { input ->
-            FileOutputStream(exportFile).use { output ->
-                input.copyTo(output)
-            }
-        }
-        true
-    } catch (_: Exception) {
-        false
-    }
-}
