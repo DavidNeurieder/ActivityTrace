@@ -92,11 +92,9 @@ class SettingsScreenTest {
 
     @Test
     fun showsRetentionOptions() {
-        composeTestRule.onAllNodesWithText("Never")[0].assertExists()
-        composeTestRule.onNodeWithText("3 days").assertExists()
         composeTestRule.onNodeWithText("7 days").assertExists()
-        composeTestRule.onNodeWithText("14 days").assertExists()
         composeTestRule.onNodeWithText("30 days").assertExists()
+        composeTestRule.onNodeWithText("90 days").assertExists()
     }
 
     @Test

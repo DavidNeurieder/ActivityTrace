@@ -217,11 +217,9 @@ private fun RetentionSection(
     onSelect: (Int) -> Unit,
 ) {
     val options = listOf(
-        0 to "Never",
-        3 to "3 days",
         7 to "7 days",
-        14 to "14 days",
         30 to "30 days",
+        90 to "90 days",
     )
 
     Text(
