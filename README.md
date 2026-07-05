@@ -26,7 +26,7 @@ Search across notifications, accessibility screen captures, and indexed files wi
 | UI | Jetpack Compose + Material 3 (dynamic color) |
 | Architecture | Single-Activity, ViewModel, reactive Flows |
 | Storage | Room + SQLCipher (AES-256-CBC, arm64-v8a only) |
-| Search | SQLite FTS5 with prefix matching |
+| Search | SQLite LIKE with substring matching |
 | Capture | NotificationListener, AccessibilityService, File indexing (SAF) |
 | Retention | WorkManager (configurable periodic cleanup) |
 
@@ -74,18 +74,18 @@ See [`gradle/libs.versions.toml`](gradle/libs.versions.toml) for the full catalo
 | [`SearchScreen.kt`](app/src/main/java/com/activitytrace/ui/SearchScreen.kt) | Main search UI with prefix/wildcard matching |
 | [`SearchViewModel.kt`](app/src/main/java/com/activitytrace/ui/SearchViewModel.kt) | Reactive search pipeline (flatMapLatest) |
 | [`SettingsScreen.kt`](app/src/main/java/com/activitytrace/ui/SettingsScreen.kt) | Permissions, retention, backup/restore (SQLite), export (JSON, CSV) |
-| [`SearchEngine.kt`](app/src/main/java/com/activitytrace/search/SearchEngine.kt) | FTS5 + LIKE search routing |
+| [`SearchEngine.kt`](app/src/main/java/com/activitytrace/search/SearchEngine.kt) | LIKE substring search routing |
 | [`QueryParser.kt`](app/src/main/java/com/activitytrace/search/QueryParser.kt) | Natural language date & filter parsing |
 | [`EncryptionManager.kt`](app/src/main/java/com/activitytrace/store/EncryptionManager.kt) | Two-tier key derivation (Keystore → fallback) |
-| [`ActivityTraceDatabase.kt`](app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt) | Room + SQLCipher + FTS5 setup |
-| [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | FTS5 MATCH + LIKE queries, insertAll, getAllItemKeys for import/CSV |
+| [`ActivityTraceDatabase.kt`](app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt) | Room + SQLCipher setup |
+| [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | LIKE substring queries, insertAll, getAllItemKeys for import/CSV |
 | [`RetentionCleanupWorker.kt`](app/src/main/java/com/activitytrace/store/RetentionCleanupWorker.kt) | Configurable auto-delete via WorkManager |
 | [`BackupImporter.kt`](app/src/main/java/com/activitytrace/store/BackupImporter.kt) | SQLite restore from backup (merge with dedup) |
 | [`DataExporter.kt`](app/src/main/java/com/activitytrace/store/DataExporter.kt) | JSON and CSV export |
 | [`DatabaseExporter.kt`](app/src/main/java/com/activitytrace/store/DatabaseExporter.kt) | Plain SQLite backup (unencrypted) |
 | [`ActivityTraceNotificationListener.kt`](app/src/main/java/com/activitytrace/capture/ActivityTraceNotificationListener.kt) | Notification capture service |
 | [`AccessibilityCaptureService.kt`](app/src/main/java/com/activitytrace/capture/AccessibilityCaptureService.kt) | Screen capture via AccessibilityService |
-| [`CaptureIngestor.kt`](app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt) | Unified capture pipeline (write to Room + FTS5) |
+| [`CaptureIngestor.kt`](app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt) | Unified capture pipeline (write to Room) |
 | [`PendingIntentSerializer.kt`](app/src/main/java/com/activitytrace/capture/PendingIntentSerializer.kt) | Notification deep link serialization (Parcel ↔ Base64) |
 | [`FileIndexer.kt`](app/src/main/java/com/activitytrace/capture/FileIndexer.kt) | SAF directory walk + PDF text extraction |
 | [`FileIndexingWorker.kt`](app/src/main/java/com/activitytrace/capture/FileIndexingWorker.kt) | Background file indexing (daily / manual) |

@@ -89,8 +89,10 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `onQueryChange persists to SharedPreferences`() {
+    fun `onQueryChange persists to SharedPreferences after debounce`() {
         viewModel.onQueryChange("persist-me")
+        dispatcher.scheduler.advanceTimeBy(500)
+        dispatcher.scheduler.runCurrent()
         verify { editor.putString("search_query", "persist-me") }
         verify { editor.apply() }
     }

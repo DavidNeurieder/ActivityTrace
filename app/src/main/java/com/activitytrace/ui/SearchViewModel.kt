@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -33,6 +34,7 @@ class SearchViewModel(
 
     private val _query = MutableStateFlow(prefs.getString("search_query", "") ?: "")
     val query = _query.asStateFlow()
+    private val _queryToPersist = MutableStateFlow<String?>(null)
 
     private val _results = MutableStateFlow<List<CapturedItem>>(emptyList())
     val results = _results.asStateFlow()
@@ -44,6 +46,16 @@ class SearchViewModel(
     val canOpenPackages = _canOpenPackages.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            _queryToPersist
+                .debounce(500)
+                .collect { text ->
+                    if (text != null) {
+                        prefs.edit().putString("search_query", text).apply()
+                    }
+                }
+        }
+
         viewModelScope.launch {
             combine(_query, _contentTypeFilter) { q, filter -> q to filter }
                 .flatMapLatest { (q, filter) ->
@@ -86,7 +98,7 @@ class SearchViewModel(
 
     fun onQueryChange(text: String) {
         _query.value = text
-        prefs.edit().putString("search_query", text).apply()
+        _queryToPersist.value = text
     }
 
     fun setContentTypeFilter(type: String?) {

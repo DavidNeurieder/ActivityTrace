@@ -3,6 +3,7 @@ package com.activitytrace
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
@@ -70,9 +71,12 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onNavigateToSettings = { screen = Screen.Settings },
                         )
-                        Screen.Settings -> SettingsScreen(
-                            onBack = { screen = Screen.Search },
-                        )
+                        Screen.Settings -> {
+                            BackHandler { screen = Screen.Search }
+                            SettingsScreen(
+                                onBack = { screen = Screen.Search },
+                            )
+                        }
                     }
                 } else {
                     OnboardingScreen(

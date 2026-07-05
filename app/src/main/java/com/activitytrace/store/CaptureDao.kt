@@ -20,9 +20,6 @@ interface CaptureDao {
     @Delete
     suspend fun delete(item: CapturedItem)
 
-    @Query("DELETE FROM captured_items WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
     @Query("SELECT COUNT(*) FROM captured_items WHERE metadata = :metadata")
     suspend fun countByMetadata(metadata: String): Int
 
@@ -31,9 +28,6 @@ interface CaptureDao {
 
     @Query("SELECT * FROM captured_items WHERE content_type = :contentType ORDER BY timestamp DESC LIMIT 100")
     fun recentItemsFiltered(contentType: String): Flow<List<CapturedItem>>
-
-    @Query("SELECT * FROM captured_items WHERE timestamp > :since ORDER BY timestamp DESC")
-    fun itemsSince(since: Long): Flow<List<CapturedItem>>
 
     @Insert
     suspend fun insertAll(items: List<CapturedItem>)
