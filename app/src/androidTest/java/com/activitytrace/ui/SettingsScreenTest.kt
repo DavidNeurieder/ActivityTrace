@@ -111,14 +111,14 @@ class SettingsScreenTest {
 
     @Test
     fun showsExportButton() {
-        composeTestRule.onNodeWithText("Export database").assertExists()
+        composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
     }
 
     @Test
     fun clickingExportButtonDoesNotCrash() {
-        composeTestRule.onNodeWithText("Export database").performClick()
+        composeTestRule.onNodeWithText("Backup to SQLite").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Export database").assertExists()
+        composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
     }
 
     @Test

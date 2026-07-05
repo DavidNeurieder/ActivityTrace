@@ -462,66 +462,98 @@ private fun DataSection(
         fontWeight = FontWeight.SemiBold,
     )
     Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = {
-            scope.launch {
-                onExportMessage(null)
-                val result = DatabaseExporter.export(context)
-                onExportMessage(if (result) "Database exported" else "Export failed")
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("Export database")
-    }
-    Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = {
-            scope.launch {
-                onExportMessage(null)
-                val db = ActivityTraceDatabase.getInstance(context)
-                val result = DataExporter.exportToJson(context, db.captureDao())
-                onExportMessage(if (result) "Exported as JSON" else "Export failed")
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("Export as JSON")
-    }
-    Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = {
-            scope.launch {
-                onExportMessage(null)
-                val db = ActivityTraceDatabase.getInstance(context)
-                val result = DataExporter.exportToCsv(context, db.captureDao())
-                onExportMessage(if (result) "Exported as CSV" else "Export failed")
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("Export as CSV")
-    }
-    Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = {
-            importLauncher.launch(
-                arrayOf("application/vnd.sqlite3", "application/octet-stream"),
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Backup & Restore",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
             )
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text("Import from backup")
-    }
-    if (exportMessage != null) {
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = exportMessage,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (exportMessage.startsWith("Export failed") || exportMessage == "Import failed" || exportMessage == "No new items to import")
-                MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.primary,
-        )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Full backup of captured items as a plain SQLite database. " +
+                       "Only .sqlite files exported by this app can be restored.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    scope.launch {
+                        onExportMessage(null)
+                        val result = DatabaseExporter.export(context)
+                        onExportMessage(if (result) "Database exported" else "Export failed")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Backup to SQLite")
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    importLauncher.launch(
+                        arrayOf("application/vnd.sqlite3", "application/octet-stream"),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Restore from backup")
+            }
+            Spacer(Modifier.height(8.dp))
+            Divider()
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Export Formats",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Readable extracts of your data for external use. " +
+                       "These cannot be re-imported.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    scope.launch {
+                        onExportMessage(null)
+                        val db = ActivityTraceDatabase.getInstance(context)
+                        val result = DataExporter.exportToJson(context, db.captureDao())
+                        onExportMessage(if (result) "Exported as JSON" else "Export failed")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Export as JSON")
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    scope.launch {
+                        onExportMessage(null)
+                        val db = ActivityTraceDatabase.getInstance(context)
+                        val result = DataExporter.exportToCsv(context, db.captureDao())
+                        onExportMessage(if (result) "Exported as CSV" else "Export failed")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Export as CSV")
+            }
+            if (exportMessage != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = exportMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (exportMessage.startsWith("Export failed") || exportMessage == "Import failed" || exportMessage == "No new items to import")
+                        MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
     }
 }
 
