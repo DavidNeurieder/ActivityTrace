@@ -1,6 +1,8 @@
 package com.activitytrace.ui
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import android.net.Uri
 import android.os.Environment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,6 +11,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
+import com.activitytrace.model.CapturedItem
+import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.BackupImporter
+import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.runBlocking
@@ -47,6 +53,11 @@ class SettingsScreenTest {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "ActivityTrace/activity_trace.json",
         ).delete()
+        File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace/activity_trace.csv",
+        ).delete()
+        File(context.cacheDir, "export_temp").deleteRecursively()
     }
 
     @Test
@@ -111,20 +122,6 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun exportFunctionExportsPlainSqlite() = runBlocking {
-        val result = DatabaseExporter.export(context)
-
-        assert(result)
-        val exportFile = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "ActivityTrace/activity_trace.sqlite",
-        )
-        assert(exportFile.exists()) { "Expected export file at ${exportFile.absolutePath}" }
-        val magic = exportFile.readBytes().take(16).toByteArray()
-        assert(magic.contentEquals("SQLite format 3\u0000".toByteArray())) { "Not a valid SQLite file" }
-    }
-
-    @Test
     fun showsJsonExportButton() {
         composeTestRule.onNodeWithText("Export as JSON").assertExists()
     }
@@ -134,6 +131,85 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Export as JSON").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Export as JSON").assertExists()
+    }
+
+    @Test
+    fun exportCsvAndImportSqliteRoundTrip() {
+        runBlocking {
+        val dao = ActivityTraceDatabase.getInstance(context).captureDao()
+
+        dao.insert(
+            CapturedItem(
+                text = "roundtrip one",
+                appPackage = "com.roundtrip",
+                appName = null,
+                contentType = "text",
+                category = null,
+                timestamp = 10000L,
+                metadata = null,
+            )
+        )
+        dao.insert(
+            CapturedItem(
+                text = "roundtrip two",
+                appPackage = "com.roundtrip",
+                appName = null,
+                contentType = "notification",
+                category = null,
+                timestamp = 20000L,
+                metadata = null,
+            )
+        )
+
+        assert(DataExporter.exportToCsv(context, dao)) { "CSV export should succeed" }
+
+        val dbResult = DatabaseExporter.export(context)
+        assert(dbResult) { "Database export should succeed" }
+        val exportedFile = File(context.cacheDir, "export_temp/activity_trace.sqlite")
+        assert(exportedFile.exists()) { "Exported temp SQLite should exist" }
+
+        val dedupCount = BackupImporter.importFromBackup(context, Uri.fromFile(exportedFile), dao)
+        assert(dedupCount == 0) { "Importing same items should dedup to 0, got $dedupCount" }
+
+        val backupDir = File(context.cacheDir, "import_roundtrip_test")
+        backupDir.mkdirs()
+        val backupFile = File(backupDir, "backup.sqlite").also { it.delete() }
+        SQLiteDatabase.openOrCreateDatabase(backupFile, null).use { db ->
+            db.execSQL(
+                """
+                CREATE TABLE captured_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    text TEXT NOT NULL,
+                    app_package TEXT NOT NULL,
+                    app_name TEXT,
+                    content_type TEXT NOT NULL,
+                    category TEXT,
+                    timestamp INTEGER NOT NULL,
+                    metadata TEXT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                arrayOf("new item a", "com.new", "NewApp", "text", null, 30000L, null),
+            )
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                arrayOf("new item b", "com.new", "NewApp", "notification", null, 40000L, null),
+            )
+        }
+
+        val newCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
+        assert(newCount == 2) { "Should import 2 new items, got $newCount" }
+
+        val rededupCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
+        assert(rededupCount == 0) { "Re-importing should dedup to 0, got $rededupCount" }
+
+        val allKeys = dao.getAllItemKeys()
+        assert(allKeys.size == 4) { "Total items should be 4, got ${allKeys.size}" }
+
+        backupDir.deleteRecursively()
+        }
     }
 
     @Test

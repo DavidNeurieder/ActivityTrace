@@ -60,6 +60,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.capture.AccessibilityCaptureService
 import com.activitytrace.capture.FileIndexingWorker
 import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.BackupImporter
 import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
 import com.activitytrace.store.RetentionCleanupWorker
@@ -438,6 +439,23 @@ private fun DataSection(
     exportMessage: String?,
     onExportMessage: (String?) -> Unit,
 ) {
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? ->
+        if (uri != null) {
+            scope.launch {
+                onExportMessage(null)
+                try {
+                    val db = ActivityTraceDatabase.getInstance(context)
+                    val count = BackupImporter.importFromBackup(context, uri, db.captureDao())
+                    onExportMessage(if (count > 0) "Imported $count items" else "No new items to import")
+                } catch (_: Exception) {
+                    onExportMessage("Import failed")
+                }
+            }
+        }
+    }
+
     Text(
         text = "Data",
         style = MaterialTheme.typography.titleMedium,
@@ -470,12 +488,37 @@ private fun DataSection(
     ) {
         Text("Export as JSON")
     }
+    Spacer(Modifier.height(8.dp))
+    Button(
+        onClick = {
+            scope.launch {
+                onExportMessage(null)
+                val db = ActivityTraceDatabase.getInstance(context)
+                val result = DataExporter.exportToCsv(context, db.captureDao())
+                onExportMessage(if (result) "Exported as CSV" else "Export failed")
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Export as CSV")
+    }
+    Spacer(Modifier.height(8.dp))
+    Button(
+        onClick = {
+            importLauncher.launch(
+                arrayOf("application/vnd.sqlite3", "application/octet-stream"),
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Import from backup")
+    }
     if (exportMessage != null) {
         Spacer(Modifier.height(4.dp))
         Text(
             text = exportMessage,
             style = MaterialTheme.typography.bodySmall,
-            color = if (exportMessage.startsWith("Export failed"))
+            color = if (exportMessage.startsWith("Export failed") || exportMessage == "Import failed" || exportMessage == "No new items to import")
                 MaterialTheme.colorScheme.error
             else MaterialTheme.colorScheme.primary,
         )

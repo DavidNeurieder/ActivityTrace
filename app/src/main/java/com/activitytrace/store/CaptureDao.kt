@@ -1,5 +1,6 @@
 package com.activitytrace.store
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -33,6 +34,18 @@ interface CaptureDao {
 
     @Query("SELECT * FROM captured_items WHERE timestamp > :since ORDER BY timestamp DESC")
     fun itemsSince(since: Long): Flow<List<CapturedItem>>
+
+    @Insert
+    suspend fun insertAll(items: List<CapturedItem>)
+
+    @Query("SELECT text, timestamp, app_package FROM captured_items")
+    suspend fun getAllItemKeys(): List<ItemKey>
+
+    data class ItemKey(
+        val text: String,
+        val timestamp: Long,
+        @ColumnInfo(name = "app_package") val appPackage: String,
+    )
 
     @Query("SELECT * FROM captured_items ORDER BY timestamp DESC")
     suspend fun getAllItems(): List<CapturedItem>

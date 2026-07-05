@@ -31,9 +31,16 @@ class DataExporterTest {
             "ActivityTrace/activity_trace.json",
         )
 
+    private val legacyCsvExportFile: File
+        get() = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace/activity_trace.csv",
+        )
+
     @After
     fun tearDown() {
         legacyExportFile.delete()
+        legacyCsvExportFile.delete()
         legacyExportFile.parentFile?.delete()
     }
 
@@ -159,5 +166,61 @@ class DataExporterTest {
         val result = DataExporter.exportToJson(context, dao)
 
         assertFalse(result)
+    }
+
+    @Test
+    fun `buildCsv produces header and data rows`() {
+        val items = listOf(
+            CapturedItem(id = 1, text = "hello", appPackage = "com.a", appName = "A", contentType = "text", category = null, timestamp = 100L, metadata = null),
+            CapturedItem(id = 2, text = "world", appPackage = "com.b", appName = null, contentType = "image", category = "cat", timestamp = 200L, metadata = "meta"),
+        )
+
+        val csv = DataExporter.buildCsv(items)
+        val lines = csv.lines()
+
+        assertTrue(lines[0].startsWith('\uFEFF' + "id,text,appPackage,appName,contentType,category,timestamp,metadata"))
+        assertEquals(4, lines.size)
+        assertTrue(lines[1].contains("hello"))
+        assertTrue(lines[2].contains("world"))
+    }
+
+    @Test
+    fun `buildCsv escapes commas quotes and newlines`() {
+        val items = listOf(
+            CapturedItem(id = 1, text = "has, comma", appPackage = "has \"quote\"", appName = null, contentType = "plain", category = null, timestamp = 1L, metadata = "line\nbreak"),
+        )
+
+        val csv = DataExporter.buildCsv(items)
+        val lines = csv.lines()
+
+        assertTrue(lines[1].contains("\"has, comma\""))
+        assertTrue(lines[1].contains("\"has \"\"quote\"\"\""))
+        assertTrue(lines[1].startsWith("1,"))
+        assertTrue(lines[2].startsWith("break"))
+    }
+
+    @Test
+    fun `buildCsv returns only header for empty list`() {
+        val csv = DataExporter.buildCsv(emptyList())
+        val lines = csv.lines()
+
+        assertEquals(2, lines.size)
+        assertTrue(lines[0].startsWith('\uFEFF' + "id"))
+    }
+
+    @Test
+    fun `exportToCsv writes file via dao`() = runTest {
+        val dao = mockk<CaptureDao>()
+        coEvery { dao.getAllItems() } returns listOf(
+            CapturedItem(id = 1, text = "csv item", appPackage = "com.csv", appName = "CSV", contentType = "text", category = null, timestamp = 42L, metadata = null),
+        )
+
+        val result = DataExporter.exportToCsv(context, dao)
+
+        assertTrue(result)
+        assertTrue(legacyCsvExportFile.exists())
+        val content = legacyCsvExportFile.readText()
+        assertTrue(content.contains("csv item"))
+        assertTrue(content.contains("com.csv"))
     }
 }

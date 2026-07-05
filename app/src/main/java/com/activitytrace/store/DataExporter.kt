@@ -58,6 +58,55 @@ object DataExporter {
         return root.toString(2)
     }
 
+    suspend fun exportToCsv(
+        context: Context,
+        dao: CaptureDao,
+        onProgress: (String) -> Unit = {},
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            onProgress("Reading items\u2026")
+            val items = dao.getAllItems()
+
+            onProgress("Building CSV\u2026")
+            val csv = buildCsv(items)
+
+            onProgress("Writing file\u2026")
+            writeToDownloads(context, "activity_trace.csv", "text/csv; charset=utf-8", csv)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun buildCsv(items: List<CapturedItem>): String {
+        val sb = StringBuilder()
+
+        sb.append('\uFEFF')
+        sb.appendLine("id,text,appPackage,appName,contentType,category,timestamp,metadata")
+
+        for (item in items) {
+            sb.append(item.id).append(',')
+            sb.append(escapeCsvField(item.text)).append(',')
+            sb.append(escapeCsvField(item.appPackage)).append(',')
+            sb.append(escapeCsvField(item.appName)).append(',')
+            sb.append(escapeCsvField(item.contentType)).append(',')
+            sb.append(escapeCsvField(item.category)).append(',')
+            sb.append(item.timestamp).append(',')
+            sb.appendLine(escapeCsvField(item.metadata))
+        }
+
+        return sb.toString()
+    }
+
+    private fun escapeCsvField(value: String?): String {
+        if (value == null) return ""
+        val needsQuoting = value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r')
+        return if (needsQuoting) {
+            "\"${value.replace("\"", "\"\"")}\""
+        } else {
+            value
+        }
+    }
+
     private fun writeToDownloads(context: Context, fileName: String, mimeType: String, content: String): Boolean {
         return if (Build.VERSION.SDK_INT >= 29) {
             writeViaMediaStore(context, fileName, mimeType, content)
