@@ -73,13 +73,16 @@ See [`gradle/libs.versions.toml`](gradle/libs.versions.toml) for the full catalo
 | [`MainActivity.kt`](app/src/main/java/com/activitytrace/MainActivity.kt) | Entry point, onboarding & settings routing |
 | [`SearchScreen.kt`](app/src/main/java/com/activitytrace/ui/SearchScreen.kt) | Main search UI with prefix/wildcard matching |
 | [`SearchViewModel.kt`](app/src/main/java/com/activitytrace/ui/SearchViewModel.kt) | Reactive search pipeline (flatMapLatest) |
-| [`SettingsScreen.kt`](app/src/main/java/com/activitytrace/ui/SettingsScreen.kt) | Permissions, retention, database export |
+| [`SettingsScreen.kt`](app/src/main/java/com/activitytrace/ui/SettingsScreen.kt) | Permissions, retention, backup/restore (SQLite), export (JSON, CSV) |
 | [`SearchEngine.kt`](app/src/main/java/com/activitytrace/search/SearchEngine.kt) | FTS5 + LIKE search routing |
 | [`QueryParser.kt`](app/src/main/java/com/activitytrace/search/QueryParser.kt) | Natural language date & filter parsing |
 | [`EncryptionManager.kt`](app/src/main/java/com/activitytrace/store/EncryptionManager.kt) | Two-tier key derivation (Keystore → fallback) |
 | [`ActivityTraceDatabase.kt`](app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt) | Room + SQLCipher + FTS5 setup |
-| [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | FTS5 MATCH + LIKE queries |
+| [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | FTS5 MATCH + LIKE queries, insertAll, getAllItemKeys for import/CSV |
 | [`RetentionCleanupWorker.kt`](app/src/main/java/com/activitytrace/store/RetentionCleanupWorker.kt) | Configurable auto-delete via WorkManager |
+| [`BackupImporter.kt`](app/src/main/java/com/activitytrace/store/BackupImporter.kt) | SQLite restore from backup (merge with dedup) |
+| [`DataExporter.kt`](app/src/main/java/com/activitytrace/store/DataExporter.kt) | JSON and CSV export |
+| [`DatabaseExporter.kt`](app/src/main/java/com/activitytrace/store/DatabaseExporter.kt) | Plain SQLite backup (unencrypted) |
 | [`ActivityTraceNotificationListener.kt`](app/src/main/java/com/activitytrace/capture/ActivityTraceNotificationListener.kt) | Notification capture service |
 | [`AccessibilityCaptureService.kt`](app/src/main/java/com/activitytrace/capture/AccessibilityCaptureService.kt) | Screen capture via AccessibilityService |
 | [`CaptureIngestor.kt`](app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt) | Unified capture pipeline (write to Room + FTS5) |
