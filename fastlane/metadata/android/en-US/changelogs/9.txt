@@ -1,0 +1,10 @@
+New features:
+- CSV export — share your data as a CSV file for spreadsheet apps
+- JSON export — export captured items in readable JSON format
+- SQLite backup and restore — full encrypted database backup/restore
+- F-Droid button in README
+
+Improvements:
+- Data section reorganized: Backup & Restore and Export Formats separated
+- Retention options simplified to 7, 30, 90 days
+- Database export changed to unencrypted format for broader compatibility

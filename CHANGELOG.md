@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.7.0 — 2026-07-05
+
+### New features
+- CSV export — share captured data as CSV (UTF-8 BOM, RFC 4180, Excel-compatible)
+- JSON export — export items in readable JSON format
+- SQLite backup and restore — full backup/restore of encrypted database (plain SQLite)
+- SQLite import merges with existing data (deduplicated on text/timestamp/appPackage)
+
+### Improvements
+- Data section in Settings reorganized: "Backup & Restore" and "Export Formats" subsections with descriptive labels
+- Retention options simplified to 7, 30, 90 days ("Never" removed)
+- Onboarding redesigned with live permission status indicators and step-by-step instructions
+- Permission reminder banner on Search screen when no capture service is active
+- Database export changed to unencrypted format for broader compatibility
+
+### Fixes
+- Button labels clarified: "Backup to SQLite", "Restore from backup", "Export as JSON", "Export as CSV"
+
+### Technical
+- `insertAll()` and `getAllItemKeys()` added to CaptureDao for import/CSV support
+- `BackupImporter` and `DataExporter` (CSV) added with full test coverage
+- All 71 unit tests + 35 instrumented tests pass
+
+---
+
 ## v0.6.2 — 2026-07-01
 
 ### Fixes
