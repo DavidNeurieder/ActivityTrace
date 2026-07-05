@@ -141,7 +141,7 @@ fun SearchScreen(
 
             if (results.isNotEmpty()) {
                 Text(
-                    text = "${results.size} results",
+                    text = if (results.size >= 100) "${results.size}+ results" else "${results.size} results",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

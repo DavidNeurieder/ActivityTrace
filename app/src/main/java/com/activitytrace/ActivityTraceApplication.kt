@@ -7,9 +7,9 @@ import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.RetentionCleanupWorker
 
 class ActivityTraceApplication : Application() {
-    lateinit var searchEngine: SearchEngine
+    var searchEngine: SearchEngine? = null
         private set
-    lateinit var captureDao: com.activitytrace.store.CaptureDao
+    var captureDao: com.activitytrace.store.CaptureDao? = null
         private set
 
     override fun onCreate() {
@@ -20,7 +20,7 @@ class ActivityTraceApplication : Application() {
             restoreFileIndexingSchedule()
             val db = ActivityTraceDatabase.getInstance(this)
             captureDao = db.captureDao()
-            searchEngine = SearchEngine(captureDao)
+            searchEngine = SearchEngine(captureDao!!)
         } catch (_: Exception) {
             // DB or keystore unavailable; search will be unavailable until app restart
         }

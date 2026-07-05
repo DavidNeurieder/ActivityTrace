@@ -49,9 +49,11 @@ object CaptureIngestor {
     ) {
         val key = "$appPackage|$contentType|$text"
         val now = System.currentTimeMillis()
-        val lastSeen = synchronized(recentHashes) { recentHashes[key] }
-        if (lastSeen != null && now - lastSeen < DEDUP_COOLDOWN_MS) return
-        synchronized(recentHashes) { recentHashes[key] = now }
+        synchronized(recentHashes) {
+            val lastSeen = recentHashes[key]
+            if (lastSeen != null && now - lastSeen < DEDUP_COOLDOWN_MS) return@ingest
+            recentHashes[key] = now
+        }
 
         try {
             db?.captureDao()?.insert(

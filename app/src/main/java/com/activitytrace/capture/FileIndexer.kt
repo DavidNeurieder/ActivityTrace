@@ -10,6 +10,8 @@ import com.tom_roush.pdfbox.text.PDFTextStripper
 
 object FileIndexer {
     private const val TAG = "FileIndexer"
+    private const val MAX_FILE_SIZE = 10 * 1024 * 1024L
+    private const val MAX_TEXT_CHARS = 1_000_000
 
     private val extensionToMime = mapOf(
         "pdf" to "application/pdf",
@@ -89,6 +91,12 @@ object FileIndexer {
             return 0
         }
 
+        val fileSize = file.length()
+        if (fileSize > 0 && fileSize > MAX_FILE_SIZE) {
+            Log.d(TAG, "Skipping (${fileSize / 1024 / 1024} MB exceeds limit): $fileName")
+            return 0
+        }
+
         val text = extractText(context, file, mimeType) ?: run {
             Log.d(TAG, "Skipping (no text extracted): $fileName")
             return 0
@@ -129,15 +137,26 @@ object FileIndexer {
             mimeType.startsWith("image/") -> file.name
             else -> null
         }
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
         null
     }
 
     private fun extractPlainText(context: Context, uri: Uri): String? = try {
         context.contentResolver.openInputStream(uri)?.use { stream ->
-            stream.bufferedReader().readText()
+            stream.bufferedReader().use { reader ->
+                val sb = StringBuilder(minOf(MAX_TEXT_CHARS, 8192))
+                val buf = CharArray(4096)
+                var total = 0
+                var n: Int
+                while (reader.read(buf).also { n = it } != -1 && total < MAX_TEXT_CHARS) {
+                    val toAppend = minOf(n, MAX_TEXT_CHARS - total)
+                    sb.append(buf, 0, toAppend)
+                    total += toAppend
+                }
+                sb.toString()
+            }
         }
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
         null
     }
 
@@ -147,7 +166,7 @@ object FileIndexer {
                 PDFTextStripper().getText(doc)
             }
         }
-    } catch (_: Exception) {
+    } catch (_: Throwable) {
         null
     }
 }

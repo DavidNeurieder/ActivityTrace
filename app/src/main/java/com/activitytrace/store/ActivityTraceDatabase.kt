@@ -11,7 +11,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [CapturedItem::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class ActivityTraceDatabase : RoomDatabase() {
@@ -37,8 +37,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     "activity_trace.db"
                 )
                     .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                    .addCallback(FtsSetupCallback)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
             } catch (e: Exception) {
                 context.deleteDatabase("activity_trace.db")
@@ -131,51 +130,12 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             }
         }
 
-        private val FtsSetupCallback = object : Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                createFtsTable(db)
-            }
-
-            override fun onOpen(db: SupportSQLiteDatabase) {
-                createFtsTable(db)
-            }
-
-            private fun createFtsTable(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    """
-                    CREATE VIRTUAL TABLE IF NOT EXISTS captured_items_fts
-                    USING fts5(text, app_name, category, app_package UNINDEXED, content_type UNINDEXED, content=captured_items)
-                    """.trimIndent()
-                )
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS captured_items_fts_ai
-                    AFTER INSERT ON captured_items BEGIN
-                        INSERT INTO captured_items_fts(rowid, text, app_name, category, app_package, content_type)
-                        VALUES (new.rowid, new.text, new.app_name, new.category, new.app_package, new.content_type);
-                    END;
-                    """.trimIndent()
-                )
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS captured_items_fts_ad
-                    AFTER DELETE ON captured_items BEGIN
-                        INSERT INTO captured_items_fts(captured_items_fts, rowid, text, app_name, category, app_package, content_type)
-                        VALUES ('delete', old.rowid, old.text, old.app_name, old.category, old.app_package, old.content_type);
-                    END;
-                    """.trimIndent()
-                )
-                db.execSQL(
-                    """
-                    CREATE TRIGGER IF NOT EXISTS captured_items_fts_au
-                    AFTER UPDATE ON captured_items BEGIN
-                        INSERT INTO captured_items_fts(captured_items_fts, rowid, text, app_name, category, app_package, content_type)
-                        VALUES ('delete', old.rowid, old.text, old.app_name, old.category, old.app_package, old.content_type);
-                        INSERT INTO captured_items_fts(rowid, text, app_name, category, app_package, content_type)
-                        VALUES (new.rowid, new.text, new.app_name, new.category, new.app_package, new.content_type);
-                    END;
-                    """.trimIndent()
-                )
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TRIGGER IF EXISTS captured_items_fts_ai")
+                db.execSQL("DROP TRIGGER IF EXISTS captured_items_fts_ad")
+                db.execSQL("DROP TRIGGER IF EXISTS captured_items_fts_au")
+                db.execSQL("DROP TABLE IF EXISTS captured_items_fts")
             }
         }
     }

@@ -6,6 +6,8 @@ import android.content.Intent
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -65,6 +67,15 @@ class RetentionCleanupWorker(
                 .edit()
                 .putInt(PREF_RETENTION_DAYS, days)
                 .apply()
+        }
+
+        fun triggerNow(context: Context) {
+            val request = OneTimeWorkRequestBuilder<RetentionCleanupWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "retention_cleanup_immediate",
+                ExistingWorkPolicy.REPLACE,
+                request,
+            )
         }
     }
 }

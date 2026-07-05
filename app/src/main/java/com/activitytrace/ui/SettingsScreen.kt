@@ -113,6 +113,7 @@ fun SettingsScreen(
                 onSelect = { days ->
                     retentionDays = days
                     RetentionCleanupWorker.setRetentionDays(context, days)
+                    RetentionCleanupWorker.triggerNow(context)
                 },
             )
             Spacer(Modifier.height(24.dp))

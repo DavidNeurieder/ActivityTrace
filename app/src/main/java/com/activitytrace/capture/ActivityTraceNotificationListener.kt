@@ -26,7 +26,7 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
         val summaryText = extras.getCharSequence(android.app.Notification.EXTRA_SUMMARY_TEXT)?.toString()
         if (text == null && title == null && bigText == null && subText == null && summaryText == null) return
         val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
-        val serialized = sbn.notification.contentIntent?.extractIntent()?.serialize()
+        val serialized = sbn.notification.contentIntent?.serialize()
         scope.launch {
             try {
                 CaptureIngestor.ingest(
