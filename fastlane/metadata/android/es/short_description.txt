@@ -1,1 +1,0 @@
-Busca notificaciones, accesibilidad y archivos en el dispositivo.

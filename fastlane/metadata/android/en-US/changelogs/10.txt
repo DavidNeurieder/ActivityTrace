@@ -1,0 +1,8 @@
+New features:
+- Multi-language support: German, French, Spanish, Italian, Portuguese, Russian, Polish
+- Search recognizes month names in your language
+- All app text now properly translatable
+
+Improvements:
+- Proper plural forms for result and import counts
+- More consistent Settings status messages

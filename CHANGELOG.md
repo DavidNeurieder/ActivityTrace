@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.8.0 — 2026-07-13
+
+### New
+- Multi-language support: German, French, Spanish, Italian, Portuguese (BR), Russian, Polish
+- Search now accepts localized month names (e.g. "marzo", "mai", "juin")
+- All hardcoded UI strings extracted to `strings.xml` with `stringResource()` bindings
+
+### Technical
+- `ExportStatus` sealed class replaces raw string color logic in Settings
+- Proper `<plurals>` for result count and import count in all 7 new locales
+- `QueryParser` months map built dynamically from `java.time.Month` per device locale
+- Fastlane metadata and changelogs for all 7 new languages
+
+---
+
 ## v0.7.0 — 2026-07-05
 
 ### New features
