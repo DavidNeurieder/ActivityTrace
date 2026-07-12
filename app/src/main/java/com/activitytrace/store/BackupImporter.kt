@@ -14,16 +14,16 @@ object BackupImporter {
         context: Context,
         backupUri: Uri,
         dao: CaptureDao,
-        onProgress: (String) -> Unit = {},
+        onProgress: (ExportStatus) -> Unit = {},
     ): Int = withContext(Dispatchers.IO) {
-        onProgress("Copying backup\u2026")
+        onProgress(ExportStatus.Progress("Copying backup\u2026"))
         val tempFile = copyToTempFile(context, backupUri)
 
         try {
-            onProgress("Reading backup\u2026")
+            onProgress(ExportStatus.Progress("Reading backup\u2026"))
             val backupItems = readItemsFromSqlite(tempFile)
 
-            onProgress("Merging with existing data\u2026")
+            onProgress(ExportStatus.Progress("Merging with existing data\u2026"))
             val existingKeys = dao.getAllItemKeys().toSet()
             val newItems = backupItems.filter { item ->
                 CaptureDao.ItemKey(item.text, item.timestamp, item.appPackage) !in existingKeys
@@ -31,7 +31,7 @@ object BackupImporter {
 
             if (newItems.isEmpty()) return@withContext 0
 
-            onProgress("Importing ${newItems.size} items\u2026")
+            onProgress(ExportStatus.Progress("Importing ${newItems.size} items\u2026"))
             dao.insertAll(newItems)
             newItems.size
         } finally {

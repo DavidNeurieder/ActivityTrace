@@ -1,0 +1,1 @@
+Durchsuche Benachrichtigungen, Barrierefreiheitsdaten und Dateien auf dem Gerät.

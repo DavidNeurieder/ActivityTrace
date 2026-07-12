@@ -49,6 +49,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
@@ -57,12 +58,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
+import com.activitytrace.R
 import com.activitytrace.capture.AccessibilityCaptureService
 import com.activitytrace.capture.FileIndexingWorker
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.BackupImporter
 import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
+import com.activitytrace.store.ExportStatus
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -80,15 +83,15 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var retentionDays by remember { mutableIntStateOf(RetentionCleanupWorker.getRetentionDays(context)) }
-    var exportMessage by remember { mutableStateOf<String?>(null) }
+    var exportStatus by remember { mutableStateOf<ExportStatus?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -119,7 +122,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
             FileIndexingSection(context, scope)
             Spacer(Modifier.height(24.dp))
-            DataSection(context, scope, exportMessage, onExportMessage = { exportMessage = it })
+            DataSection(context, scope, exportStatus, onExportStatus = { exportStatus = it })
             Spacer(Modifier.height(24.dp))
             AboutSection(context)
         }
@@ -149,7 +152,7 @@ private fun PermissionsSection(context: Context) {
     }
 
     Text(
-        text = "Permissions",
+        text = stringResource(R.string.permissions_title),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
@@ -168,9 +171,10 @@ private fun PermissionsSection(context: Context) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Notification access", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.notification_access), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = if (notificationGranted) "Granted" else "Not granted",
+                        text = if (notificationGranted) stringResource(R.string.permission_granted)
+                               else stringResource(R.string.permission_not_granted),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (notificationGranted) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error,
@@ -190,9 +194,10 @@ private fun PermissionsSection(context: Context) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Accessibility service", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.accessibility_service), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = if (accessibilityGranted) "Granted" else "Not granted",
+                        text = if (accessibilityGranted) stringResource(R.string.permission_granted)
+                               else stringResource(R.string.permission_not_granted),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (accessibilityGranted) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error,
@@ -203,10 +208,7 @@ private fun PermissionsSection(context: Context) {
     }
     Spacer(Modifier.height(8.dp))
     Text(
-        text = "Notification Access captures notifications in real time. " +
-               "If blocked by Restricted Settings, go to " +
-               "Settings → Apps → Activity Trace → Allow restricted settings. " +
-               "Alternatively, enable the Accessibility Service below (Android 14+).",
+        text = stringResource(R.string.restricted_settings_note),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -218,13 +220,13 @@ private fun RetentionSection(
     onSelect: (Int) -> Unit,
 ) {
     val options = listOf(
-        7 to "7 days",
-        30 to "30 days",
-        90 to "90 days",
+        7 to stringResource(R.string.retention_7d),
+        30 to stringResource(R.string.retention_30d),
+        90 to stringResource(R.string.retention_90d),
     )
 
     Text(
-        text = "Retention period",
+        text = stringResource(R.string.retention_title),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
@@ -304,7 +306,7 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
     }
 
     Text(
-        text = "Index Documents",
+        text = stringResource(R.string.index_documents),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
@@ -312,11 +314,11 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Folder list
-            Text("Folders", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.folders_label), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(4.dp))
             if (directoryUris.isEmpty()) {
                 Text(
-                    text = "No folders selected",
+                    text = stringResource(R.string.no_folders_selected),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp),
@@ -345,7 +347,7 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
                         ) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Remove folder",
+                                contentDescription = stringResource(R.string.remove_folder),
                                 modifier = Modifier.size(18.dp),
                             )
                         }
@@ -359,16 +361,16 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Add folder")
+                Text(stringResource(R.string.add_folder))
             }
             Spacer(Modifier.height(12.dp))
             Divider()
             Spacer(Modifier.height(12.dp))
 
             // Schedule
-            Text("Schedule", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.schedule_label), style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(4.dp))
-            val scheduleOptions = listOf("never" to "Never", "daily" to "Daily")
+            val scheduleOptions = listOf("never" to stringResource(R.string.schedule_never), "daily" to stringResource(R.string.schedule_daily))
             scheduleOptions.forEach { (value, label) ->
                 Row(
                     modifier = Modifier
@@ -398,13 +400,13 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !scanning && directoryUris.isNotEmpty(),
             ) {
-                Text(if (scanning) "Scanning\u2026" else "Scan now")
+                Text(if (scanning) stringResource(R.string.scanning) else stringResource(R.string.scan_now))
             }
 
             if (!scanning && lastRun > 0L) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Last scan: ${formatDate(lastRun)}",
+                    text = stringResource(R.string.last_scan, formatDate(lastRun)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -435,28 +437,33 @@ private fun formatDate(millis: Long): String {
 private fun DataSection(
     context: Context,
     scope: kotlinx.coroutines.CoroutineScope,
-    exportMessage: String?,
-    onExportMessage: (String?) -> Unit,
+    exportStatus: ExportStatus?,
+    onExportStatus: (ExportStatus?) -> Unit,
 ) {
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
         if (uri != null) {
             scope.launch {
-                onExportMessage(null)
+                onExportStatus(null)
                 try {
                     val db = ActivityTraceDatabase.getInstance(context)
                     val count = BackupImporter.importFromBackup(context, uri, db.captureDao())
-                    onExportMessage(if (count > 0) "Imported $count items" else "No new items to import")
+                    if (count > 0) {
+                        val msg = context.resources.getQuantityString(R.plurals.imported_count, count, count)
+                        onExportStatus(ExportStatus.Success(msg))
+                    } else {
+                        onExportStatus(ExportStatus.Info(context.getString(R.string.no_new_items)))
+                    }
                 } catch (_: Exception) {
-                    onExportMessage("Import failed")
+                    onExportStatus(ExportStatus.Error(context.getString(R.string.import_failed)))
                 }
             }
         }
     }
 
     Text(
-        text = "Data",
+        text = stringResource(R.string.data_title),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
@@ -464,14 +471,13 @@ private fun DataSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Backup & Restore",
+                text = stringResource(R.string.backup_restore_title),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Full backup of captured items as a plain SQLite database. " +
-                       "Only .sqlite files exported by this app can be restored.",
+                text = stringResource(R.string.backup_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -479,14 +485,17 @@ private fun DataSection(
             Button(
                 onClick = {
                     scope.launch {
-                        onExportMessage(null)
+                        onExportStatus(null)
                         val result = DatabaseExporter.export(context)
-                        onExportMessage(if (result) "Database exported" else "Export failed")
+                        onExportStatus(
+                            if (result) ExportStatus.Success(context.getString(R.string.database_exported))
+                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Backup to SQLite")
+                Text(stringResource(R.string.backup_to_sqlite))
             }
             Spacer(Modifier.height(8.dp))
             Button(
@@ -497,20 +506,19 @@ private fun DataSection(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Restore from backup")
+                Text(stringResource(R.string.restore_from_backup))
             }
             Spacer(Modifier.height(8.dp))
             Divider()
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Export Formats",
+                text = stringResource(R.string.export_formats_title),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Readable extracts of your data for external use. " +
-                       "These cannot be re-imported.",
+                text = stringResource(R.string.export_formats_description),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -518,38 +526,52 @@ private fun DataSection(
             Button(
                 onClick = {
                     scope.launch {
-                        onExportMessage(null)
+                        onExportStatus(null)
                         val db = ActivityTraceDatabase.getInstance(context)
                         val result = DataExporter.exportToJson(context, db.captureDao())
-                        onExportMessage(if (result) "Exported as JSON" else "Export failed")
+                        onExportStatus(
+                            if (result) ExportStatus.Success(context.getString(R.string.exported_as_json))
+                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Export as JSON")
+                Text(stringResource(R.string.export_as_json))
             }
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
                     scope.launch {
-                        onExportMessage(null)
+                        onExportStatus(null)
                         val db = ActivityTraceDatabase.getInstance(context)
                         val result = DataExporter.exportToCsv(context, db.captureDao())
-                        onExportMessage(if (result) "Exported as CSV" else "Export failed")
+                        onExportStatus(
+                            if (result) ExportStatus.Success(context.getString(R.string.exported_as_csv))
+                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                        )
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Export as CSV")
+                Text(stringResource(R.string.export_as_csv))
             }
-            if (exportMessage != null) {
+            if (exportStatus != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = exportMessage,
+                    text = when (exportStatus) {
+                        is ExportStatus.Success -> exportStatus.message
+                        is ExportStatus.Error -> exportStatus.message
+                        is ExportStatus.Info -> exportStatus.message
+                        is ExportStatus.Progress -> exportStatus.message
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (exportMessage.startsWith("Export failed") || exportMessage == "Import failed" || exportMessage == "No new items to import")
-                        MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary,
+                    color = when (exportStatus) {
+                        is ExportStatus.Success -> MaterialTheme.colorScheme.primary
+                        is ExportStatus.Error -> MaterialTheme.colorScheme.error
+                        is ExportStatus.Info -> MaterialTheme.colorScheme.error
+                        is ExportStatus.Progress -> MaterialTheme.colorScheme.primary
+                    },
                 )
             }
         }

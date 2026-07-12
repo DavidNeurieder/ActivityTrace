@@ -21,16 +21,16 @@ object DataExporter {
     suspend fun exportToJson(
         context: Context,
         dao: CaptureDao,
-        onProgress: (String) -> Unit = {},
+        onProgress: (ExportStatus) -> Unit = {},
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            onProgress("Reading items\u2026")
+            onProgress(ExportStatus.Progress("Reading items\u2026"))
             val items = dao.getAllItems()
 
-            onProgress("Building JSON\u2026")
+            onProgress(ExportStatus.Progress("Building JSON\u2026"))
             val json = buildJson(items)
 
-            onProgress("Writing file\u2026")
+            onProgress(ExportStatus.Progress("Writing file\u2026"))
             writeToDownloads(context, "activity_trace.json", "application/json", json)
         } catch (_: Exception) {
             false
@@ -61,16 +61,16 @@ object DataExporter {
     suspend fun exportToCsv(
         context: Context,
         dao: CaptureDao,
-        onProgress: (String) -> Unit = {},
+        onProgress: (ExportStatus) -> Unit = {},
     ): Boolean = withContext(Dispatchers.IO) {
         try {
-            onProgress("Reading items\u2026")
+            onProgress(ExportStatus.Progress("Reading items\u2026"))
             val items = dao.getAllItems()
 
-            onProgress("Building CSV\u2026")
+            onProgress(ExportStatus.Progress("Building CSV\u2026"))
             val csv = buildCsv(items)
 
-            onProgress("Writing file\u2026")
+            onProgress(ExportStatus.Progress("Writing file\u2026"))
             writeToDownloads(context, "activity_trace.csv", "text/csv; charset=utf-8", csv)
         } catch (_: Exception) {
             false

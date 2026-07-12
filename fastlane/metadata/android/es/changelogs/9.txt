@@ -1,0 +1,10 @@
+Nuevas funciones:
+- Exportación CSV — comparte tus datos como archivo CSV para hojas de cálculo
+- Exportación JSON — exporta elementos capturados en JSON legible
+- Copia de seguridad y restauración SQLite
+- Botón de F-Droid en el README
+
+Mejoras:
+- Sección de datos reorganizada: Copia de seguridad & Restauración y Formatos de exportación separados
+- Opciones de retención simplificadas a 7, 30, 90 días
+- Exportación de base de datos en formato no cifrado para mayor compatibilidad

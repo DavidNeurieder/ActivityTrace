@@ -17,8 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.activitytrace.R
 import com.activitytrace.ui.OnboardingScreen
 import com.activitytrace.ui.SearchScreen
 import com.activitytrace.ui.SearchViewModel
@@ -37,24 +39,24 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ActivityTraceTheme {
-                if (searchEngine == null) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = "Database initialization failed",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        Text(
-                            text = "Please restart the app. If the issue persists, reinstall.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
+                    if (searchEngine == null) {
+                        Column(
+                            modifier = Modifier.fillMaxSize().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.db_init_failed),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Text(
+                                text = stringResource(R.string.db_init_restart),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        return@ActivityTraceTheme
                     }
-                    return@ActivityTraceTheme
-                }
 
                 val viewModel = ViewModelProvider(
                     this,

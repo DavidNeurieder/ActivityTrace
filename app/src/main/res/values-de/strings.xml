@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Activity Trace</string>
+
+    <!-- SearchScreen -->
+    <string name="search_hint">Text, App oder Datum suchen…</string>
+    <string name="search_settings">Einstellungen</string>
+    <string name="filter_all">Alle</string>
+    <string name="filter_notifications">Benachrichtigungen</string>
+    <string name="filter_accessibility">Barrierefreiheit</string>
+    <string name="filter_folders">Ordner</string>
+    <string name="date_today">Heute</string>
+    <string name="date_yesterday">Gestern</string>
+    <string name="date_this_week">Diese Woche</string>
+    <string name="date_older">Älter</string>
+    <string name="show_less">Weniger anzeigen</string>
+    <string name="could_not_open">Konnte nicht öffnen</string>
+    <string name="copied_to_clipboard">In Zwischenablage kopiert</string>
+    <string name="open_app">App öffnen</string>
+    <string name="empty_no_results">Keine Ergebnisse für \"%1$s\"</string>
+    <string name="empty_no_filter">Keine %1$s-Elemente erfasst</string>
+    <string name="nothing_captured">Noch nichts erfasst</string>
+    <plurals name="result_count">
+        <item quantity="one">%d Ergebnis</item>
+        <item quantity="other">%d Ergebnisse</item>
+    </plurals>
+    <plurals name="result_count_capped">
+        <item quantity="one">%d+ Ergebnis</item>
+        <item quantity="other">%d+ Ergebnisse</item>
+    </plurals>
+
+    <!-- SettingsScreen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="back_description">Zurück</string>
+    <string name="permissions_title">Berechtigungen</string>
+    <string name="notification_access">Benachrichtigungszugriff</string>
+    <string name="permission_granted">Gewährt</string>
+    <string name="permission_not_granted">Nicht gewährt</string>
+    <string name="accessibility_service">Barrierefreiheitsdienst</string>
+    <string name="restricted_settings_note">Benachrichtigungszugriff erfasst Benachrichtigungen in Echtzeit. Falls durch Eingeschränkte Einstellungen blockiert, gehe zu Einstellungen → Apps → Activity Trace → Eingeschränkte Einstellungen erlauben. Alternativ den Barrierefreiheitsdienst unten aktivieren (Android 14+).</string>
+    <string name="retention_title">Aufbewahrungsdauer</string>
+    <string name="retention_7d">7 Tage</string>
+    <string name="retention_30d">30 Tage</string>
+    <string name="retention_90d">90 Tage</string>
+    <string name="index_documents">Dokumente indizieren</string>
+    <string name="folders_label">Ordner</string>
+    <string name="no_folders_selected">Keine Ordner ausgewählt</string>
+    <string name="remove_folder">Ordner entfernen</string>
+    <string name="add_folder">Ordner hinzufügen</string>
+    <string name="schedule_label">Zeitplan</string>
+    <string name="schedule_never">Nie</string>
+    <string name="schedule_daily">Täglich</string>
+    <string name="scan_now">Jetzt scannen</string>
+    <string name="scanning">Scannen…</string>
+    <string name="last_scan">Letzter Scan: %s</string>
+    <string name="data_title">Daten</string>
+    <string name="backup_restore_title">Backup &amp; Wiederherstellung</string>
+    <string name="backup_description">Vollständiges Backup aller erfassten Elemente als unverschlüsselte SQLite-Datenbank. Nur von dieser App exportierte .sqlite-Dateien können wiederhergestellt werden.</string>
+    <string name="database_exported">Datenbank exportiert</string>
+    <string name="export_failed">Export fehlgeschlagen</string>
+    <string name="backup_to_sqlite">SQLite-Backup</string>
+    <string name="restore_from_backup">Aus Backup wiederherstellen</string>
+    <string name="export_formats_title">Exportformate</string>
+    <string name="export_formats_description">Lesbare Auszüge deiner Daten zur externen Nutzung. Diese können nicht reimportiert werden.</string>
+    <string name="exported_as_json">Als JSON exportiert</string>
+    <string name="export_as_json">Als JSON exportieren</string>
+    <string name="exported_as_csv">Als CSV exportiert</string>
+    <string name="export_as_csv">Als CSV exportieren</string>
+    <plurals name="imported_count">
+        <item quantity="one">%d Element importiert</item>
+        <item quantity="other">%d Elemente importiert</item>
+    </plurals>
+    <string name="no_new_items">Keine neuen Elemente zu importieren</string>
+    <string name="import_failed">Import fehlgeschlagen</string>
+    <string name="about_title">Über</string>
+    <string name="version_format">Version %s</string>
+    <string name="license_text">GPL-3.0-only</string>
+    <string name="source_url">github.com/DavidNeurieder/ActivityTrace</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_description">Durchsuche deine Benachrichtigungen und mehr.\nAlles bleibt auf deinem Gerät, verschlüsselt.</string>
+    <string name="grant_permissions">Berechtigungen für automatische Erfassung erteilen:</string>
+    <string name="notification_access_recommended">Benachrichtigungszugriff (empfohlen)</string>
+    <string name="accessibility_service_button">Barrierefreiheitsdienst (Android 14+)</string>
+    <string name="restricted_settings_warning">Hinweis: Wenn der Benachrichtigungszugriff durch Eingeschränkte Einstellungen blockiert ist, gehe zu Einstellungen → Apps → Activity Trace → Eingeschränkte Einstellungen erlauben. Alternativ den Barrierefreiheitsdienst oben verwenden (Android 14+).</string>
+    <string name="continue_button">Weiter</string>
+
+    <!-- MainActivity -->
+    <string name="db_init_failed">Datenbankinitialisierung fehlgeschlagen</string>
+    <string name="db_init_restart">Bitte starte die App neu. Wenn das Problem weiterhin besteht, installiere sie neu.</string>
+
+    <!-- Export progress messages -->
+    <string name="progress_reading_items">Lese Elemente…</string>
+    <string name="progress_building_json">Erstelle JSON…</string>
+    <string name="progress_building_csv">Erstelle CSV…</string>
+    <string name="progress_writing_file">Schreibe Datei…</string>
+    <string name="progress_copying_backup">Kopiere Backup…</string>
+    <string name="progress_reading_backup">Lese Backup…</string>
+    <string name="progress_merging">Führe mit vorhandenen Daten zusammen…</string>
+    <plurals name="progress_importing">
+        <item quantity="one">Importiere %d Element…</item>
+        <item quantity="other">Importiere %d Elemente…</item>
+    </plurals>
+</resources>

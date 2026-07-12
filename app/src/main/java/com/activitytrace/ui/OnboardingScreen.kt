@@ -27,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.activitytrace.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +66,7 @@ fun OnboardingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Activity Trace") },
+                title = { Text(stringResource(R.string.app_name)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
@@ -84,7 +86,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Search across your notifications and more.\nEverything stays on your device, encrypted.",
+                text = stringResource(R.string.onboarding_description),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
             )
@@ -94,7 +96,7 @@ fun OnboardingScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Grant permissions for automatic capture:",
+                        text = stringResource(R.string.grant_permissions),
                         style = MaterialTheme.typography.titleSmall,
                     )
 
@@ -108,7 +110,7 @@ fun OnboardingScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Notification Access (recommended)")
+                        Text(stringResource(R.string.notification_access_recommended))
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -121,13 +123,13 @@ fun OnboardingScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Accessibility Service (Android 14+)")
+                        Text(stringResource(R.string.accessibility_service_button))
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Note: If Notification Access is blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+.",
+                        text = stringResource(R.string.restricted_settings_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -140,7 +142,7 @@ fun OnboardingScreen(
                 onClick = onComplete,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Continue")
+                Text(stringResource(R.string.continue_button))
             }
         }
     }

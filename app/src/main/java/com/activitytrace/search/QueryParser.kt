@@ -1,5 +1,7 @@
 package com.activitytrace.search
 
+import java.time.Month
+import java.time.format.TextStyle
 import java.util.Calendar
 import java.util.Locale
 
@@ -21,20 +23,19 @@ object QueryParser {
         "document" to "page", "documents" to "page", "file" to "page", "files" to "page",
     )
 
-    private val months = mapOf(
-        "january" to 0, "jan" to 0,
-        "february" to 1, "feb" to 1,
-        "march" to 2, "mar" to 2,
-        "april" to 3, "apr" to 3,
-        "may" to 4,
-        "june" to 5, "jun" to 5,
-        "july" to 6, "jul" to 6,
-        "august" to 7, "aug" to 7,
-        "september" to 8, "sep" to 8, "sept" to 8,
-        "october" to 9, "oct" to 9,
-        "november" to 10, "nov" to 10,
-        "december" to 11, "dec" to 11,
-    )
+    private val months: Map<String, Int> = run {
+        val map = mutableMapOf<String, Int>()
+        val locale = Locale.getDefault()
+        for (m in Month.entries) {
+            map[m.getDisplayName(TextStyle.FULL, locale).lowercase(Locale.ROOT)] = m.value - 1
+            map[m.getDisplayName(TextStyle.SHORT, locale).lowercase(Locale.ROOT)] = m.value - 1
+        }
+        for (m in Month.entries) {
+            map[m.getDisplayName(TextStyle.FULL, Locale.ENGLISH).lowercase(Locale.ROOT)] = m.value - 1
+            map[m.getDisplayName(TextStyle.SHORT, Locale.ENGLISH).lowercase(Locale.ROOT)] = m.value - 1
+        }
+        map.toMap()
+    }
 
     fun parse(input: String): ParsedQuery {
         if (input.isBlank()) return ParsedQuery(keywords = emptyList())

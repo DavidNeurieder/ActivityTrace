@@ -1,0 +1,10 @@
+<p>Durchsuche Benachrichtigungen, Barrierefreiheitsdaten und indizierte Dateien. Alles bleibt mit SQLCipher AES-256-CBC + Android Keystore verschlüsselt auf dem Gerät. Kein KI, keine Cloud, kein Konto, keine Internetberechtigung.</p>
+
+<ul>
+<li>Suche in Benachrichtigungen, Barrierefreiheitsdaten und Dateien</li>
+<li>Präfix- und Platzhaltersuche</li>
+<li>Suchbegriff-Hervorhebung in Ergebnissen</li>
+<li>Vollverschlüsselung im Ruhezustand (SQLCipher + Android Keystore)</li>
+<li>Kein Netzwerk — keine Internetberechtigung, keine Telemetrie</li>
+<li>Open Source (GPL-3.0-only)</li>
+</ul>

@@ -1,0 +1,10 @@
+<p>Busca en notificaciones, accesibilidad y archivos indexados. Todo permanece cifrado en el dispositivo con SQLCipher AES-256-CBC + Android Keystore. Sin IA, sin nube, sin cuenta, sin permiso de internet.</p>
+
+<ul>
+<li>Búsqueda en notificaciones, accesibilidad y archivos</li>
+<li>Búsqueda por prefijo y comodín</li>
+<li>Resaltado de términos de búsqueda en resultados</li>
+<li>Cifrado completo en reposo (SQLCipher + Android Keystore)</li>
+<li>Red cero — sin permiso de internet, sin telemetría</li>
+<li>Código abierto (GPL-3.0-only)</li>
+</ul>

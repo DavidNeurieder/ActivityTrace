@@ -1,49 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Activity Trace</string>
-    <string name="search_hint">Search your activity…</string>
-    <string name="settings_title">Settings</string>
-    <string name="retention_days">Retention period</string>
-    <string name="app_exclusions">Excluded apps</string>
-    <string name="no_results">No results found</string>
-    <string name="grant_notification_access">Grant Notification Access</string>
-    <string name="retention_never">Never</string>
-    <string name="retention_3d">3 days</string>
-    <string name="retention_7d">7 days</string>
-    <string name="retention_14d">14 days</string>
-    <string name="retention_30d">30 days</string>
-    <string name="permissions_title">Permissions</string>
-    <string name="notification_access">Notification access</string>
-    <string name="notification_access_granted">Granted</string>
-    <string name="notification_access_denied">Not granted</string>
-    <string name="data">Data</string>
-    <string name="export_database">Export database</string>
-    <string name="export_success">Database exported to Downloads/ActivityTrace/</string>
-    <string name="export_failed">Export failed</string>
-    <string name="about">About</string>
-    <string name="version">Version %s</string>
-    <string name="license">GPL-3.0-only</string>
-    <string name="source_link">github.com/DavidNeurieder/ActivityTrace</string>
-    <string name="search">Search</string>
+
+    <!-- SearchScreen -->
+    <string name="search_hint">Search text, app, or date…</string>
+    <string name="search_settings">Settings</string>
     <string name="filter_all">All</string>
     <string name="filter_notifications">Notifications</string>
-    <string name="filter_manual">Manual</string>
-    <string name="filter_pages">Pages</string>
-    <string name="result_count">%d results</string>
-    <string name="today">Today</string>
-    <string name="yesterday">Yesterday</string>
-    <string name="this_week">This Week</string>
-    <string name="older">Older</string>
-    <string name="nothing_captured">Nothing captured yet</string>
+    <string name="filter_accessibility">Accessibility</string>
+    <string name="filter_folders">Folders</string>
+    <string name="date_today">Today</string>
+    <string name="date_yesterday">Yesterday</string>
+    <string name="date_this_week">This Week</string>
+    <string name="date_older">Older</string>
+    <string name="show_less">Show less</string>
+    <string name="could_not_open">Could not open</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
-    <string name="item_deleted">Item deleted</string>
-    <string name="try_different_search">Try a different search term or clear filters</string>
+    <string name="open_app">Open app</string>
+    <string name="empty_no_results">No results for "%1$s"</string>
+    <string name="empty_no_filter">No %1$s items captured yet</string>
+    <string name="nothing_captured">No captured items yet</string>
+    <plurals name="result_count">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <plurals name="result_count_capped">
+        <item quantity="one">%d+ result</item>
+        <item quantity="other">%d+ results</item>
+    </plurals>
+
+    <!-- SettingsScreen -->
+    <string name="settings_title">Settings</string>
+    <string name="back_description">Back</string>
+    <string name="permissions_title">Permissions</string>
+    <string name="notification_access">Notification access</string>
+    <string name="permission_granted">Granted</string>
+    <string name="permission_not_granted">Not granted</string>
+    <string name="accessibility_service">Accessibility service</string>
+    <string name="restricted_settings_note">Notification Access captures notifications in real time. If blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, enable the Accessibility Service below (Android 14+).</string>
+    <string name="retention_title">Retention period</string>
+    <string name="retention_7d">7 days</string>
+    <string name="retention_30d">30 days</string>
+    <string name="retention_90d">90 days</string>
     <string name="index_documents">Index Documents</string>
-    <string name="select_folder">Select folder</string>
-    <string name="folder_not_selected">No folder selected</string>
-    <string name="scan_now">Scan now</string>
+    <string name="folders_label">Folders</string>
+    <string name="no_folders_selected">No folders selected</string>
+    <string name="remove_folder">Remove folder</string>
+    <string name="add_folder">Add folder</string>
+    <string name="schedule_label">Schedule</string>
     <string name="schedule_never">Never</string>
     <string name="schedule_daily">Daily</string>
-    <string name="last_scan">Last scan: %s</string>
+    <string name="scan_now">Scan now</string>
     <string name="scanning">Scanning…</string>
+    <string name="last_scan">Last scan: %s</string>
+    <string name="data_title">Data</string>
+    <string name="backup_restore_title">Backup &amp; Restore</string>
+    <string name="backup_description">Full backup of captured items as a plain SQLite database. Only .sqlite files exported by this app can be restored.</string>
+    <string name="database_exported">Database exported</string>
+    <string name="export_failed">Export failed</string>
+    <string name="backup_to_sqlite">Backup to SQLite</string>
+    <string name="restore_from_backup">Restore from backup</string>
+    <string name="export_formats_title">Export Formats</string>
+    <string name="export_formats_description">Readable extracts of your data for external use. These cannot be re-imported.</string>
+    <string name="exported_as_json">Exported as JSON</string>
+    <string name="export_as_json">Export as JSON</string>
+    <string name="exported_as_csv">Exported as CSV</string>
+    <string name="export_as_csv">Export as CSV</string>
+    <plurals name="imported_count">
+        <item quantity="one">Imported %d item</item>
+        <item quantity="other">Imported %d items</item>
+    </plurals>
+    <string name="no_new_items">No new items to import</string>
+    <string name="import_failed">Import failed</string>
+    <string name="about_title">About</string>
+    <string name="version_format">Version %s</string>
+    <string name="license_text">GPL-3.0-only</string>
+    <string name="source_url">github.com/DavidNeurieder/ActivityTrace</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_description">Search across your notifications and more.\nEverything stays on your device, encrypted.</string>
+    <string name="grant_permissions">Grant permissions for automatic capture:</string>
+    <string name="notification_access_recommended">Notification Access (recommended)</string>
+    <string name="accessibility_service_button">Accessibility Service (Android 14+)</string>
+    <string name="restricted_settings_warning">Note: If Notification Access is blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+.</string>
+    <string name="continue_button">Continue</string>
+
+    <!-- MainActivity -->
+    <string name="db_init_failed">Database initialization failed</string>
+    <string name="db_init_restart">Please restart the app. If the issue persists, reinstall.</string>
+
+    <!-- Export progress messages -->
+    <string name="progress_reading_items">Reading items…</string>
+    <string name="progress_building_json">Building JSON…</string>
+    <string name="progress_building_csv">Building CSV…</string>
+    <string name="progress_writing_file">Writing file…</string>
+    <string name="progress_copying_backup">Copying backup…</string>
+    <string name="progress_reading_backup">Reading backup…</string>
+    <string name="progress_merging">Merging with existing data…</string>
+    <plurals name="progress_importing">
+        <item quantity="one">Importing %d item…</item>
+        <item quantity="other">Importing %d items…</item>
+    </plurals>
 </resources>

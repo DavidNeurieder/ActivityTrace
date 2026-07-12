@@ -74,11 +74,13 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.activitytrace.R
 import com.activitytrace.capture.deserializeToIntent
 import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.capture.deserializeToPendingIntent
@@ -111,10 +113,10 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Activity Trace") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.search_settings))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -130,7 +132,7 @@ fun SearchScreen(
                 value = query,
                 onValueChange = { viewModel.onQueryChange(it) },
                 modifier = Modifier.fillMaxWidth().padding(8.dp),
-                placeholder = { Text("Search text, app, or date...") },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
                 singleLine = true,
             )
 
@@ -140,15 +142,26 @@ fun SearchScreen(
             )
 
             if (results.isNotEmpty()) {
+                val resultCountText = if (results.size >= 100) {
+                    context.resources.getQuantityString(R.plurals.result_count_capped, results.size, results.size)
+                } else {
+                    context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
+                }
                 Text(
-                    text = if (results.size >= 100) "${results.size}+ results" else "${results.size} results",
+                    text = resultCountText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
 
-            val grouped = remember(results) { groupByDate(results) }
+            val todayLabel = stringResource(R.string.date_today)
+            val yesterdayLabel = stringResource(R.string.date_yesterday)
+            val thisWeekLabel = stringResource(R.string.date_this_week)
+            val olderLabel = stringResource(R.string.date_older)
+            val grouped = remember(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel) {
+                groupByDate(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel)
+            }
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (results.isEmpty()) {
                     item {
@@ -158,7 +171,7 @@ fun SearchScreen(
                     grouped.forEach { (dateLabel, items) ->
                         item(key = dateLabel) {
                             Text(
-                                text = "── $dateLabel ──",
+                                text = dateLabel,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -174,14 +187,14 @@ fun SearchScreen(
                                     onOpenApp = {
                                         if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("Could not open")
+                                                snackbarHostState.showSnackbar(context.getString(R.string.could_not_open))
                                             }
                                         }
                                     },
                                     onLongClick = {
                                         copyToClipboard(context, captured.text)
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("Copied to clipboard")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.copied_to_clipboard))
                                         }
                                     },
                                     keywords = keywords,
@@ -203,10 +216,10 @@ private fun FilterChipsRow(
     onSelect: (String?) -> Unit,
 ) {
     val filters = listOf(
-        null to "All",
-        "notification" to "Notifications",
-        "screen" to "Accessibility",
-        "page" to "Folders",
+        null to stringResource(R.string.filter_all),
+        "notification" to stringResource(R.string.filter_notifications),
+        "screen" to stringResource(R.string.filter_accessibility),
+        "page" to stringResource(R.string.filter_folders),
     )
 
     LazyRow(
@@ -298,7 +311,7 @@ private fun ResultCard(
                     if (expanded) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Show less",
+                            text = stringResource(R.string.show_less),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -323,7 +336,7 @@ private fun ResultCard(
                         IconButton(onClick = onOpenApp) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = "Open app",
+                                contentDescription = stringResource(R.string.open_app),
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -337,9 +350,9 @@ private fun ResultCard(
 @Composable
 private fun EmptyState(query: String, filter: String?) {
     val subtitle = when {
-        query.isNotEmpty() -> "No results for \"$query\""
-        filter != null -> "No ${filter} items captured yet"
-        else -> "No captured items yet"
+        query.isNotEmpty() -> stringResource(R.string.empty_no_results, query)
+        filter != null -> stringResource(R.string.empty_no_filter, filter)
+        else -> stringResource(R.string.nothing_captured)
     }
     Box(
         modifier = Modifier
@@ -364,7 +377,13 @@ private fun EmptyState(query: String, filter: String?) {
     }
 }
 
-private fun groupByDate(items: List<CapturedItem>): List<Pair<String, List<CapturedItem>>> {
+private fun groupByDate(
+    items: List<CapturedItem>,
+    todayLabel: String,
+    yesterdayLabel: String,
+    thisWeekLabel: String,
+    olderLabel: String,
+): List<Pair<String, List<CapturedItem>>> {
     val calendar = Calendar.getInstance()
     calendar.set(Calendar.HOUR_OF_DAY, 0)
     calendar.set(Calendar.MINUTE, 0)
@@ -393,10 +412,10 @@ private fun groupByDate(items: List<CapturedItem>): List<Pair<String, List<Captu
     }
 
     val groups = mutableListOf<Pair<String, List<CapturedItem>>>()
-    if (todayItems.isNotEmpty()) groups.add("Today" to todayItems)
-    if (yesterdayItems.isNotEmpty()) groups.add("Yesterday" to yesterdayItems)
-    if (weekItems.isNotEmpty()) groups.add("This Week" to weekItems)
-    if (olderItems.isNotEmpty()) groups.add("Older" to olderItems)
+    if (todayItems.isNotEmpty()) groups.add(todayLabel to todayItems)
+    if (yesterdayItems.isNotEmpty()) groups.add(yesterdayLabel to yesterdayItems)
+    if (weekItems.isNotEmpty()) groups.add(thisWeekLabel to weekItems)
+    if (olderItems.isNotEmpty()) groups.add(olderLabel to olderItems)
     return groups
 }
 
