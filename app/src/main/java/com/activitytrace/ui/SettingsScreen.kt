@@ -7,6 +7,7 @@ import android.provider.DocumentsContract
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -28,10 +30,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +60,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -220,10 +227,14 @@ private fun RetentionSection(
     onSelect: (Int) -> Unit,
 ) {
     val options = listOf(
+        0 to stringResource(R.string.retention_always),
         7 to stringResource(R.string.retention_7d),
         30 to stringResource(R.string.retention_30d),
         90 to stringResource(R.string.retention_90d),
     )
+
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.first { it.first == selectedDays }.second
 
     Text(
         text = stringResource(R.string.retention_title),
@@ -233,20 +244,39 @@ private fun RetentionSection(
     Spacer(Modifier.height(8.dp))
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
-            options.forEach { (days, label) ->
-                Row(
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = selectedLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(days) }
-                        .padding(vertical = 4.dp, horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .matchParentSize()
+                        .clickable { expanded = true }
+                        .semantics { testTag = "retention_dropdown" },
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    RadioButton(
-                        selected = selectedDays == days,
-                        onClick = { onSelect(days) },
-                    )
-                    Spacer(Modifier.padding(start = 8.dp))
-                    Text(label, style = MaterialTheme.typography.bodyLarge)
+                    options.forEach { (days, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                onSelect(days)
+                                expanded = false
+                            },
+                        )
+                    }
                 }
             }
         }

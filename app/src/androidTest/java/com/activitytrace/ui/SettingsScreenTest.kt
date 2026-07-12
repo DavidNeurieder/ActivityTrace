@@ -6,8 +6,8 @@ import android.net.Uri
 import android.os.Environment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
@@ -93,6 +93,8 @@ class SettingsScreenTest {
     @Test
     fun showsRetentionOptions() {
         composeTestRule.onNodeWithText("7 days").assertExists()
+        composeTestRule.onNodeWithTag("retention_dropdown").performClick()
+        composeTestRule.onNodeWithText("Always").assertExists()
         composeTestRule.onNodeWithText("30 days").assertExists()
         composeTestRule.onNodeWithText("90 days").assertExists()
     }
