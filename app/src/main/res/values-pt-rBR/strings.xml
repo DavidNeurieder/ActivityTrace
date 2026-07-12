@@ -17,7 +17,7 @@
     <string name="could_not_open">Não foi possível abrir</string>
     <string name="copied_to_clipboard">Copiado para a área de transferência</string>
     <string name="open_app">Abrir app</string>
-    <string name="empty_no_results">Nenhum resultado para \"%1$s\"</string>
+    <string name="empty_no_results">Nenhum resultado para %1$s</string>
     <string name="empty_no_filter">Nenhum item %1$s capturado</string>
     <string name="nothing_captured">Nenhum item capturado ainda</string>
     <plurals name="result_count">

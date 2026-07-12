@@ -17,7 +17,7 @@
     <string name="could_not_open">Impossible d\'ouvrir</string>
     <string name="copied_to_clipboard">Copié dans le presse-papier</string>
     <string name="open_app">Ouvrir l\'app</string>
-    <string name="empty_no_results">Aucun résultat pour \"%1$s\"</string>
+    <string name="empty_no_results">Aucun résultat pour %1$s</string>
     <string name="empty_no_filter">Aucun élément %1$s capturé</string>
     <string name="nothing_captured">Aucun élément capturé</string>
     <plurals name="result_count">

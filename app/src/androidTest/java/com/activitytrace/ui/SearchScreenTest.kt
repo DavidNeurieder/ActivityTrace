@@ -50,7 +50,7 @@ class SearchScreenTest {
                 timestamp = 1000L,
             )
         )
-        every { searchEngine.search("test") } returns flowOf(items)
+        every { searchEngine.search("test", any()) } returns flowOf(items)
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -61,7 +61,7 @@ class SearchScreenTest {
         viewModel.onQueryChange("test")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("1 results").assertExists()
+        composeTestRule.onNodeWithText("1 result").assertExists()
     }
 
     @Test
@@ -93,15 +93,15 @@ class SearchScreenTest {
 
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("── Today ──").assertExists()
-        composeTestRule.onNodeWithText("── This Week ──").assertExists()
+        composeTestRule.onNodeWithText("Today").assertExists()
+        composeTestRule.onNodeWithText("This Week").assertExists()
         composeTestRule.onNodeWithText("2 results").assertExists()
     }
 
     @Test
     fun showsNoResultsText() {
         val viewModel = createViewModel()
-        every { searchEngine.search("xyz") } returns flowOf(emptyList())
+        every { searchEngine.search("xyz", any()) } returns flowOf(emptyList())
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -109,10 +109,15 @@ class SearchScreenTest {
             }
         }
 
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("No captured items yet").assertExists()
+
         viewModel.onQueryChange("xyz")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("No results for \"xyz\"").assertExists()
+        composeTestRule.onNodeWithText("xyz").assertExists()
+        composeTestRule.onNodeWithText("No results for xyz").assertExists()
     }
 
     @Test
