@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Activity Trace</string>
+
+    <!-- SearchScreen -->
+    <string name="search_hint">Поиск текста, приложения или даты…</string>
+    <string name="search_settings">Настройки</string>
+    <string name="filter_all">Все</string>
+    <string name="filter_notifications">Уведомления</string>
+    <string name="filter_accessibility">Спец. возможности</string>
+    <string name="filter_folders">Папки</string>
+    <string name="date_today">Сегодня</string>
+    <string name="date_yesterday">Вчера</string>
+    <string name="date_this_week">На этой неделе</string>
+    <string name="date_older">Ранее</string>
+    <string name="show_less">Показать меньше</string>
+    <string name="could_not_open">Не удалось открыть</string>
+    <string name="copied_to_clipboard">Скопировано в буфер обмена</string>
+    <string name="open_app">Открыть приложение</string>
+    <string name="empty_no_results">Нет результатов для «%1$s»</string>
+    <string name="empty_no_filter">Нет захваченных элементов %1$s</string>
+    <string name="nothing_captured">Пока ничего не захвачено</string>
+    <plurals name="result_count">
+        <item quantity="one">%d результат</item>
+        <item quantity="few">%d результата</item>
+        <item quantity="many">%d результатов</item>
+        <item quantity="other">%d результатов</item>
+    </plurals>
+    <plurals name="result_count_capped">
+        <item quantity="one">%d+ результат</item>
+        <item quantity="few">%d+ результата</item>
+        <item quantity="many">%d+ результатов</item>
+        <item quantity="other">%d+ результатов</item>
+    </plurals>
+
+    <!-- SettingsScreen -->
+    <string name="settings_title">Настройки</string>
+    <string name="back_description">Назад</string>
+    <string name="permissions_title">Разрешения</string>
+    <string name="notification_access">Доступ к уведомлениям</string>
+    <string name="permission_granted">Предоставлено</string>
+    <string name="permission_not_granted">Не предоставлено</string>
+    <string name="accessibility_service">Служба специальных возможностей</string>
+    <string name="restricted_settings_note">Доступ к уведомлениям захватывает уведомления в реальном времени. Если заблокировано ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы включите Службу специальных возможностей ниже (Android 14+).</string>
+    <string name="retention_title">Срок хранения</string>
+    <string name="retention_7d">7 дней</string>
+    <string name="retention_30d">30 дней</string>
+    <string name="retention_90d">90 дней</string>
+    <string name="index_documents">Индексировать документы</string>
+    <string name="folders_label">Папки</string>
+    <string name="no_folders_selected">Папки не выбраны</string>
+    <string name="remove_folder">Удалить папку</string>
+    <string name="add_folder">Добавить папку</string>
+    <string name="schedule_label">Расписание</string>
+    <string name="schedule_never">Никогда</string>
+    <string name="schedule_daily">Ежедневно</string>
+    <string name="scan_now">Сканировать</string>
+    <string name="scanning">Сканирование…</string>
+    <string name="last_scan">Последнее сканирование: %s</string>
+    <string name="data_title">Данные</string>
+    <string name="backup_restore_title">Резервное копирование и восстановление</string>
+    <string name="backup_description">Полная резервная копия захваченных элементов в виде незашифрованной базы данных SQLite. Можно восстановить только файлы .sqlite, экспортированные этим приложением.</string>
+    <string name="database_exported">База данных экспортирована</string>
+    <string name="export_failed">Экспорт не удался</string>
+    <string name="backup_to_sqlite">Резервная копия SQLite</string>
+    <string name="restore_from_backup">Восстановить из копии</string>
+    <string name="export_formats_title">Форматы экспорта</string>
+    <string name="export_formats_description">Читаемые выдержки ваших данных для внешнего использования. Их нельзя повторно импортировать.</string>
+    <string name="exported_as_json">Экспортировано как JSON</string>
+    <string name="export_as_json">Экспорт в JSON</string>
+    <string name="exported_as_csv">Экспортировано как CSV</string>
+    <string name="export_as_csv">Экспорт в CSV</string>
+    <plurals name="imported_count">
+        <item quantity="one">%d элемент импортирован</item>
+        <item quantity="few">%d элемента импортировано</item>
+        <item quantity="many">%d элементов импортировано</item>
+        <item quantity="other">%d элементов импортировано</item>
+    </plurals>
+    <string name="no_new_items">Нет новых элементов для импорта</string>
+    <string name="import_failed">Импорт не удался</string>
+    <string name="about_title">О приложении</string>
+    <string name="version_format">Версия %s</string>
+    <string name="license_text">GPL-3.0-only</string>
+    <string name="source_url">github.com/DavidNeurieder/ActivityTrace</string>
+
+    <!-- OnboardingScreen -->
+    <string name="onboarding_description">Поиск по уведомлениям и не только.\nВсе остаётся на вашем устройстве в зашифрованном виде.</string>
+    <string name="grant_permissions">Предоставьте разрешения для автоматического захвата:</string>
+    <string name="notification_access_recommended">Доступ к уведомлениям (рекомендуется)</string>
+    <string name="accessibility_service_button">Служба специальных возможностей (Android 14+)</string>
+    <string name="restricted_settings_warning">Примечание. Если доступ к уведомлениям заблокирован ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы используйте Службу специальных возможностей выше (Android 14+).</string>
+    <string name="continue_button">Продолжить</string>
+
+    <!-- MainActivity -->
+    <string name="db_init_failed">Ошибка инициализации базы данных</string>
+    <string name="db_init_restart">Пожалуйста, перезапустите приложение. Если проблема не устранена, переустановите его.</string>
+
+    <!-- Export progress messages -->
+    <string name="progress_reading_items">Чтение элементов…</string>
+    <string name="progress_building_json">Построение JSON…</string>
+    <string name="progress_building_csv">Построение CSV…</string>
+    <string name="progress_writing_file">Запись файла…</string>
+    <string name="progress_copying_backup">Копирование резервной копии…</string>
+    <string name="progress_reading_backup">Чтение резервной копии…</string>
+    <string name="progress_merging">Объединение с существующими данными…</string>
+    <plurals name="progress_importing">
+        <item quantity="one">Импорт %d элемента…</item>
+        <item quantity="few">Импорт %d элементов…</item>
+        <item quantity="many">Импорт %d элементов…</item>
+        <item quantity="other">Импорт %d элементов…</item>
+    </plurals>
+</resources>

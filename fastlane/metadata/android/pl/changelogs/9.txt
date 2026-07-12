@@ -1,0 +1,10 @@
+Nowe funkcje:
+- Eksport CSV — udostępniaj dane jako plik CSV dla arkuszy kalkulacyjnych
+- Eksport JSON — eksportuj przechwycone elementy w czytelnym formacie JSON
+- Kopia zapasowa i przywracanie SQLite
+- Przycisk F-Droid w README
+
+Ulepszenia:
+- Sekcja danych zreorganizowana: rozdzielono kopię zapasową i formaty eksportu
+- Opcje przechowywania uproszczone do 7, 30, 90 dni
+- Eksport bazy danych w niezaszyfrowanym formacie dla szerszej zgodności

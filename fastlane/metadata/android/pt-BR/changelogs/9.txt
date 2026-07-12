@@ -1,0 +1,10 @@
+Novos recursos:
+- Exportação CSV — compartilhe seus dados como arquivo CSV para planilhas
+- Exportação JSON — exporte itens capturados em JSON legível
+- Backup e restauração SQLite
+- Botão F-Droid no README
+
+Melhorias:
+- Seção de dados reorganizada: Backup & Restauração e Formatos de exportação separados
+- Opções de retenção simplificadas para 7, 30, 90 dias
+- Exportação do banco de dados em formato não criptografado para maior compatibilidade

@@ -1,0 +1,10 @@
+<p>Pesquise em notificações, acessibilidade e arquivos indexados. Tudo permanece criptografado no dispositivo com SQLCipher AES-256-CBC + Android Keystore. Sem IA, sem nuvem, sem conta, sem permissão de internet.</p>
+
+<ul>
+<li>Pesquisa em notificações, acessibilidade e arquivos</li>
+<li>Pesquisa por prefixo e caractere curinga</li>
+<li>Destaque dos termos pesquisados nos resultados</li>
+<li>Criptografia completa em repouso (SQLCipher + Android Keystore)</li>
+<li>Rede zero — sem permissão de internet, sem telemetria</li>
+<li>Código aberto (GPL-3.0-only)</li>
+</ul>

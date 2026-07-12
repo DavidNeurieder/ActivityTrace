@@ -1,0 +1,10 @@
+<p>Cerca tra notifiche, accessibilità e file indicizzati. Tutto rimane crittografato sul dispositivo con SQLCipher AES-256-CBC + Android Keystore. Nessuna IA, nessun cloud, nessun account, nessun permesso internet.</p>
+
+<ul>
+<li>Ricerca in notifiche, accessibilità e file</li>
+<li>Ricerca con prefisso e caratteri jolly</li>
+<li>Evidenziazione dei termini di ricerca nei risultati</li>
+<li>Crittografia completa a riposo (SQLCipher + Android Keystore)</li>
+<li>Zero rete — nessun permesso internet, nessuna telemetria</li>
+<li>Open source (GPL-3.0-only)</li>
+</ul>

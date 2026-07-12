@@ -1,0 +1,10 @@
+<p>Przeszukuj powiadomienia, dostępność i indeksowane pliki. Wszystko pozostaje zaszyfrowane na urządzeniu dzięki SQLCipher AES-256-CBC + Android Keystore. Bez AI, chmury, konta i uprawnienia do internetu.</p>
+
+<ul>
+<li>Wyszukiwanie w powiadomieniach, dostępności i plikach</li>
+<li>Wyszukiwanie z prefiksami i symbolami wieloznacznymi</li>
+<li>Podświetlanie wyszukiwanych terminów w wynikach</li>
+<li>Pełne szyfrowanie w spoczynku (SQLCipher + Android Keystore)</li>
+<li>Zero sieci — brak uprawnień internetowych, brak telemetrii</li>
+<li>Otwarte źródło (GPL-3.0-only)</li>
+</ul>
