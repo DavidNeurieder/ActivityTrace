@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingTranslation">
     <string name="app_name">Activity Trace</string>
 
     <!-- SearchScreen -->
@@ -9,9 +10,19 @@
     <string name="filter_notifications">Notifications</string>
     <string name="filter_accessibility">Accessibility</string>
     <string name="filter_folders">Folders</string>
+    <string name="filter_toast">Toasts</string>
+    <string name="filter_bookmarked">Bookmarked</string>
+    <string name="add_bookmark">Bookmark</string>
+    <string name="remove_bookmark">Remove bookmark</string>
+    <string name="empty_no_bookmarks">No bookmarked items</string>
+    <string name="saved_searches_title">Saved searches</string>
+    <string name="clear_saved_searches">Clear saved searches</string>
+    <string name="filter_all_apps">All apps</string>
+    <string name="filter_all_time">All time</string>
     <string name="date_today">Today</string>
     <string name="date_yesterday">Yesterday</string>
-    <string name="date_this_week">This Week</string>
+    <string name="date_this_week">This week</string>
+    <string name="date_this_month">This month</string>
     <string name="date_older">Older</string>
     <string name="show_less">Show less</string>
     <string name="could_not_open">Could not open</string>
@@ -77,6 +88,31 @@
     <string name="version_format">Version %s</string>
     <string name="license_text">GPL-3.0-only</string>
     <string name="source_url">github.com/DavidNeurieder/ActivityTrace</string>
+
+    <!-- StatisticsScreen -->
+    <string name="statistics_title">Statistics</string>
+    <string name="statistics_total">Total captured</string>
+    <string name="statistics_today">Today</string>
+    <string name="statistics_this_week">This week</string>
+    <string name="statistics_top_apps">Top apps</string>
+    <string name="statistics_no_data">Not enough data for chart</string>
+    <string name="statistics_7day">7-day activity</string>
+
+    <!-- Blocked apps -->
+    <string name="blocked_apps_title">Blocked apps</string>
+    <string name="blocked_apps_description">Manage apps that are excluded from capture</string>
+    <string name="no_blocked_apps">No apps are blocked</string>
+    <string name="remove_blocked_app">Unblock app</string>
+
+    <!-- Saved searches -->
+    <string name="saved_searches_description">View and remove saved search terms</string>
+    <string name="no_saved_searches">No saved searches</string>
+    <string name="remove_saved_search">Remove saved search</string>
+
+    <!-- Widget -->
+    <string name="widget_title">Activity Trace</string>
+
+
 
     <!-- OnboardingScreen -->
     <string name="onboarding_description">Search across your notifications and more.\nEverything stays on your device, encrypted.</string>

@@ -12,7 +12,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
-import kotlinx.coroutines.Dispatchers
+import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,12 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.Calendar
+
+private const val SAVED_SEARCHES_KEY = "saved_searches"
+private const val SEARCH_ANALYTICS_KEY = "search_analytics"
+private const val MAX_SAVED = 10
+private const val MAX_POPULAR = 5
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
@@ -42,8 +48,32 @@ class SearchViewModel(
     private val _contentTypeFilter = MutableStateFlow<String?>(prefs.getString("content_type_filter", null))
     val contentTypeFilter = _contentTypeFilter.asStateFlow()
 
+    private val _bookmarkedOnly = MutableStateFlow(prefs.getBoolean("bookmarked_filter", false))
+    val bookmarkedOnly = _bookmarkedOnly.asStateFlow()
+
+    private val _appFilter = MutableStateFlow<String?>(null)
+    val appFilter = _appFilter.asStateFlow()
+
+    private val _dateFilter = MutableStateFlow<Pair<Long, Long>?>(null)
+    val dateFilter = _dateFilter.asStateFlow()
+
+    private val _savedSearches = MutableStateFlow(loadSavedSearches())
+    val savedSearches = _savedSearches.asStateFlow()
+
+    private val _popularSearches = MutableStateFlow(loadPopularSearches())
+    val popularSearches = _popularSearches.asStateFlow()
+
     private val _canOpenPackages = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val canOpenPackages = _canOpenPackages.asStateFlow()
+
+    private fun getCaptureDao(): CaptureDao? {
+        return try {
+            ActivityTraceDatabase.getInstance(getApplication()).captureDao()
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to get captureDao", e)
+            null
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -57,14 +87,35 @@ class SearchViewModel(
         }
 
         viewModelScope.launch {
-            combine(_query, _contentTypeFilter) { q, filter -> q to filter }
-                .flatMapLatest { (q, filter) ->
-                    val flow = if (q.isBlank()) searchEngine.recentItems(filter)
-                    else searchEngine.search(q, filter)
-                    flow.catch { e ->
-                        Log.e(TAG, "Search failed", e)
-                        emit(emptyList())
+            combine(
+                _query, _contentTypeFilter, _bookmarkedOnly,
+                _appFilter, _dateFilter,
+            ) { q, type, bookmarked, app, date ->
+                FilterState(q, type, bookmarked, app, date)
+            }
+                .flatMapLatest { state ->
+                    if (state.bookmarked) {
+                        val dao = getCaptureDao()
+                        if (dao != null) dao.bookmarkedItems()
+                        else flowOf(emptyList())
+                    } else if (state.query.isBlank()) {
+                        searchEngine.recentItems(
+                            contentType = state.contentType,
+                            appPackage = state.appPackage,
+                            dateRange = state.dateRange,
+                        )
+                    } else {
+                        searchEngine.search(
+                            rawQuery = state.query,
+                            contentType = state.contentType,
+                            appPackage = state.appPackage,
+                            dateRange = state.dateRange,
+                        )
                     }
+                }
+                .catch { e ->
+                    Log.e(TAG, "Search failed", e)
+                    emit(emptyList())
                 }
                 .collect { items ->
                     _results.value = items
@@ -99,11 +150,152 @@ class SearchViewModel(
     fun onQueryChange(text: String) {
         _query.value = text
         _queryToPersist.value = text
+        if (text.isNotBlank()) {
+            saveSearchTerm(text)
+            logSearchTerm(text)
+        }
     }
 
     fun setContentTypeFilter(type: String?) {
         _contentTypeFilter.value = type
+        if (type != "bookmarked") {
+            _bookmarkedOnly.value = false
+            prefs.edit().putBoolean("bookmarked_filter", false).apply()
+        }
         prefs.edit().putString("content_type_filter", type).apply()
+    }
+
+    fun setBookmarkedFilter(enabled: Boolean) {
+        _bookmarkedOnly.value = enabled
+        _contentTypeFilter.value = null
+        prefs.edit().putBoolean("bookmarked_filter", enabled).apply()
+        prefs.edit().putString("content_type_filter", null).apply()
+    }
+
+    fun toggleBookmark(item: CapturedItem) {
+        viewModelScope.launch {
+            try {
+                getCaptureDao()?.setBookmarked(item.id, !item.isBookmarked)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to toggle bookmark", e)
+            }
+        }
+    }
+
+    fun setAppFilter(appPackage: String?) {
+        _appFilter.value = appPackage
+    }
+
+    fun setDateFilter(dateRange: Pair<Long, Long>?) {
+        _dateFilter.value = dateRange
+    }
+
+    fun quickDateFilterToday() {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        cal.add(Calendar.DAY_OF_YEAR, 1)
+        setDateFilter(start to cal.timeInMillis)
+    }
+
+    fun quickDateFilterThisWeek() {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        cal.add(Calendar.WEEK_OF_YEAR, 1)
+        setDateFilter(start to cal.timeInMillis)
+    }
+
+    fun quickDateFilterThisMonth() {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val start = cal.timeInMillis
+        cal.add(Calendar.MONTH, 1)
+        setDateFilter(start to cal.timeInMillis)
+    }
+
+    fun onSavedSearchClick(term: String) {
+        _query.value = term
+        _queryToPersist.value = term
+        logSearchTerm(term)
+    }
+
+    fun clearSavedSearches() {
+        _savedSearches.value = emptyList()
+        prefs.edit().remove(SAVED_SEARCHES_KEY).apply()
+    }
+
+    fun removeSavedSearch(term: String) {
+        val current = _savedSearches.value.toMutableList()
+        current.remove(term)
+        _savedSearches.value = current
+        prefs.edit().putStringSet(SAVED_SEARCHES_KEY, current.toSet()).apply()
+    }
+
+    private fun saveSearchTerm(term: String) {
+        val trimmed = term.trim().take(100)
+        if (trimmed.length < 2) return
+        val current = _savedSearches.value.toMutableList()
+        current.remove(trimmed)
+        current.add(0, trimmed)
+        val saved = current.take(MAX_SAVED)
+        _savedSearches.value = saved
+        prefs.edit().putStringSet(SAVED_SEARCHES_KEY, saved.toSet()).apply()
+    }
+
+    private fun logSearchTerm(term: String) {
+        val trimmed = term.trim().take(100)
+        if (trimmed.length < 2) return
+        val raw = prefs.getString(SEARCH_ANALYTICS_KEY, null) ?: ""
+        val map = parseAnalytics(raw).toMutableMap()
+        map[trimmed] = (map[trimmed] ?: 0) + 1
+        val serialized = map.entries.joinToString("|") { "${it.key}::${it.value}" }
+        prefs.edit().putString(SEARCH_ANALYTICS_KEY, serialized).apply()
+        _popularSearches.value = parseAnalytics(serialized)
+            .entries.sortedByDescending { it.value }
+            .take(MAX_POPULAR)
+            .map { it.key to it.value }
+    }
+
+    private fun loadSavedSearches(): List<String> {
+        return prefs.getStringSet(SAVED_SEARCHES_KEY, emptySet())?.toList() ?: emptyList()
+    }
+
+    private fun parseAnalytics(raw: String): Map<String, Int> {
+        if (raw.isBlank()) return emptyMap()
+        return try {
+            raw.split("|").mapNotNull { pair ->
+                val parts = pair.split("::", limit = 2)
+                if (parts.size == 2) {
+                    val term = parts[0]
+                    val count = parts[1].toIntOrNull()
+                    if (count != null && count > 0) term to count else null
+                } else null
+            }.toMap()
+        } catch (_: Exception) { emptyMap() }
+    }
+
+    private fun loadPopularSearches(): List<Pair<String, Int>> {
+        val raw = prefs.getString(SEARCH_ANALYTICS_KEY, null) ?: ""
+        return parseAnalytics(raw)
+            .entries.sortedByDescending { it.value }
+            .take(MAX_POPULAR)
+            .map { it.key to it.value }
+    }
+
+    fun getDistinctAppPackages(): List<String> {
+        return _results.value.map { it.appPackage }.distinct().sorted()
     }
 
     class Factory(
@@ -115,6 +307,14 @@ class SearchViewModel(
             return SearchViewModel(searchEngine, application) as T
         }
     }
+
+    private data class FilterState(
+        val query: String,
+        val contentType: String?,
+        val bookmarked: Boolean,
+        val appPackage: String?,
+        val dateRange: Pair<Long, Long>?,
+    )
 
     companion object {
         private const val TAG = "SearchViewModel"

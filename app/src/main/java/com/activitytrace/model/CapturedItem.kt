@@ -18,4 +18,8 @@ data class CapturedItem(
     val category: String? = null,
     val timestamp: Long,
     val metadata: String? = null,
+    @ColumnInfo(name = "is_bookmarked")
+    val isBookmarked: Boolean = false,
+    @ColumnInfo(name = "image_blob")
+    val imageBlob: ByteArray? = null,
 )

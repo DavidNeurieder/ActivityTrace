@@ -20,15 +20,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
-import com.activitytrace.R
 import com.activitytrace.ui.OnboardingScreen
 import com.activitytrace.ui.SearchScreen
 import com.activitytrace.ui.SearchViewModel
 import com.activitytrace.ui.SettingsScreen
+import com.activitytrace.ui.BlockedAppsScreen
+import com.activitytrace.ui.SavedSearchesScreen
+import com.activitytrace.ui.StatisticsScreen
 import com.activitytrace.ui.theme.ActivityTraceTheme
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { Search, Settings }
+    private enum class Screen { Search, Settings, Statistics, BlockedApps, SavedSearches }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,11 +74,33 @@ class MainActivity : ComponentActivity() {
                         Screen.Search -> SearchScreen(
                             viewModel = viewModel,
                             onNavigateToSettings = { screen = Screen.Settings },
+                            onNavigateToStatistics = { screen = Screen.Statistics },
                         )
+                        Screen.Statistics -> {
+                            BackHandler { screen = Screen.Search }
+                            StatisticsScreen(
+                                onBack = { screen = Screen.Search },
+                            )
+                        }
                         Screen.Settings -> {
                             BackHandler { screen = Screen.Search }
                             SettingsScreen(
                                 onBack = { screen = Screen.Search },
+                                onNavigateToBlockedApps = { screen = Screen.BlockedApps },
+                                onNavigateToSavedSearches = { screen = Screen.SavedSearches },
+                            )
+                        }
+                        Screen.BlockedApps -> {
+                            BackHandler { screen = Screen.Settings }
+                            BlockedAppsScreen(
+                                onBack = { screen = Screen.Settings },
+                            )
+                        }
+                        Screen.SavedSearches -> {
+                            BackHandler { screen = Screen.Settings }
+                            SavedSearchesScreen(
+                                viewModel = viewModel,
+                                onBack = { screen = Screen.Settings },
                             )
                         }
                     }

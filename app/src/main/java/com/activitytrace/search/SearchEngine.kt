@@ -7,19 +7,33 @@ import kotlinx.coroutines.flow.flowOf
 
 class SearchEngine(private val captureDao: CaptureDao) {
 
-    fun recentItems(contentType: String? = null): Flow<List<CapturedItem>> {
-        return if (contentType != null) captureDao.recentItemsFiltered(contentType)
-        else captureDao.recentItems()
+    fun recentItems(
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+    ): Flow<List<CapturedItem>> {
+        return captureDao.searchLike(
+            patterns = emptyList(),
+            timeRange = dateRange,
+            contentType = contentType,
+            appPackage = appPackage,
+        )
     }
 
-    fun search(rawQuery: String, contentType: String? = null): Flow<List<CapturedItem>> {
+    fun search(
+        rawQuery: String,
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+    ): Flow<List<CapturedItem>> {
         val parsed = QueryParser.parse(rawQuery)
         val keywords = parsed.keywords
 
         val effectiveType = contentType ?: parsed.typeFilter
-        val appPackage = parsed.appFilter
+        val effectiveApp = appPackage ?: parsed.appFilter
+        val effectiveRange = dateRange ?: parsed.timeRange
 
-        if (keywords.isEmpty() && parsed.timeRange == null && effectiveType == null && appPackage == null) {
+        if (keywords.isEmpty() && effectiveRange == null && effectiveType == null && effectiveApp == null) {
             return flowOf(emptyList())
         }
 
@@ -31,6 +45,6 @@ class SearchEngine(private val captureDao: CaptureDao) {
                 if (!p.endsWith("%")) append("%")
             }
         }
-        return captureDao.searchLike(patterns, parsed.timeRange, effectiveType, appPackage)
+        return captureDao.searchLike(patterns, effectiveRange, effectiveType, effectiveApp)
     }
 }

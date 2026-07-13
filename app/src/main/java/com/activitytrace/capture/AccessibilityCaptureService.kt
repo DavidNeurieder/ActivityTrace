@@ -41,6 +41,13 @@ class AccessibilityCaptureService : AccessibilityService() {
         return parts.joinToString(" — ")
     }
 
+    private fun isToastEvent(event: AccessibilityEvent): Boolean {
+        val className = event.className?.toString() ?: return false
+        return className.contains("Toast", ignoreCase = true) ||
+                className.contains("PopupWindow", ignoreCase = true) ||
+                event.packageName == "android"
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         val pkg = event.packageName?.toString() ?: "unknown"
@@ -83,6 +90,19 @@ class AccessibilityCaptureService : AccessibilityService() {
                 }
             }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                if (isToastEvent(event)) {
+                    val collected = collectEventText(event)
+                    if (collected.isBlank()) return
+                    scope.launch {
+                        CaptureIngestor.ingest(
+                            text = collected,
+                            appPackage = pkg,
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
+                            contentType = "toast",
+                        )
+                    }
+                    return
+                }
                 val collected = collectEventText(event)
                 if (collected.isBlank()) return
                 scope.launch {
@@ -92,6 +112,20 @@ class AccessibilityCaptureService : AccessibilityService() {
                         appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
                         contentType = "screen",
                     )
+                }
+            }
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                if (isToastEvent(event)) {
+                    val collected = collectEventText(event)
+                    if (collected.isBlank()) return
+                    scope.launch {
+                        CaptureIngestor.ingest(
+                            text = collected,
+                            appPackage = pkg,
+                            appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
+                            contentType = "toast",
+                        )
+                    }
                 }
             }
         }

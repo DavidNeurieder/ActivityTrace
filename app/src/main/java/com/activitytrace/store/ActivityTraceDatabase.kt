@@ -6,16 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.activitytrace.model.BlockedApp
 import com.activitytrace.model.CapturedItem
 import net.sqlcipher.database.SupportFactory
 
 @Database(
-    entities = [CapturedItem::class],
-    version = 4,
+    entities = [CapturedItem::class, BlockedApp::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun captureDao(): CaptureDao
+    abstract fun blockedAppDao(): BlockedAppDao
 
     companion object {
         @Volatile
@@ -37,7 +39,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     "activity_trace.db"
                 )
                     .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
             } catch (e: Exception) {
                 context.deleteDatabase("activity_trace.db")
@@ -136,6 +138,20 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                 db.execSQL("DROP TRIGGER IF EXISTS captured_items_fts_ad")
                 db.execSQL("DROP TRIGGER IF EXISTS captured_items_fts_au")
                 db.execSQL("DROP TABLE IF EXISTS captured_items_fts")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE captured_items ADD COLUMN is_bookmarked INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE captured_items ADD COLUMN image_blob BLOB DEFAULT NULL")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS blocked_apps (
+                        app_package TEXT NOT NULL PRIMARY KEY
+                    )
+                    """.trimIndent()
+                )
             }
         }
     }

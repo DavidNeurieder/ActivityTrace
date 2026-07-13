@@ -38,8 +38,9 @@ class SearchViewModelTest {
         every { app.getSharedPreferences("activity_trace", Context.MODE_PRIVATE) } returns prefs
         every { prefs.getString("search_query", "") } returns ""
         every { prefs.getString("content_type_filter", null) } returns null
+        every { prefs.getBoolean("bookmarked_filter", false) } returns false
         every { prefs.edit() } returns editor
-        every { searchEngine.recentItems(any()) } returns flowOf(emptyList())
+        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(emptyList())
         viewModel = SearchViewModel(searchEngine, app)
     }
 
@@ -57,7 +58,7 @@ class SearchViewModelTest {
     @Test
     fun `restores query from SharedPreferences`() {
         every { prefs.getString("search_query", "") } returns "saved"
-        every { searchEngine.search("saved") } returns flowOf(emptyList())
+        every { searchEngine.search("saved", any(), any(), any()) } returns flowOf(emptyList())
         val vm = SearchViewModel(searchEngine, app)
         assert(vm.query.value == "saved")
     }
@@ -71,8 +72,8 @@ class SearchViewModelTest {
 
     @Test
     fun `blank query shows recentItems`() {
-        every { searchEngine.search("hello") } returns flowOf(emptyList())
-        every { searchEngine.recentItems(any()) } returns flowOf(
+        every { searchEngine.search("hello", any(), any(), any()) } returns flowOf(emptyList())
+        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(
             listOf(CapturedItem(text = "x", appPackage = "com.x", contentType = "text", timestamp = 1L))
         )
         viewModel.onQueryChange("hello")
@@ -108,7 +109,7 @@ class SearchViewModelTest {
         val items = listOf(
             CapturedItem(text = "test", appPackage = "com.test", contentType = "text", timestamp = 1000L)
         )
-        every { searchEngine.search("test") } returns flowOf(items)
+        every { searchEngine.search("test", any(), any(), any()) } returns flowOf(items)
 
         viewModel.onQueryChange("test")
         assert(viewModel.results.value == items)

@@ -85,6 +85,8 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToBlockedApps: () -> Unit = {},
+    onNavigateToSavedSearches: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -130,6 +132,10 @@ fun SettingsScreen(
             FileIndexingSection(context, scope)
             Spacer(Modifier.height(24.dp))
             DataSection(context, scope, exportStatus, onExportStatus = { exportStatus = it })
+            Spacer(Modifier.height(24.dp))
+            BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
+            Spacer(Modifier.height(24.dp))
+            SavedSearchesSection(onNavigate = onNavigateToSavedSearches)
             Spacer(Modifier.height(24.dp))
             AboutSection(context)
         }
@@ -605,6 +611,48 @@ private fun DataSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BlockedAppsSection(onNavigate: () -> Unit) {
+    Text(
+        text = stringResource(R.string.blocked_apps_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigate() },
+    ) {
+        Text(
+            text = stringResource(R.string.blocked_apps_description),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun SavedSearchesSection(onNavigate: () -> Unit) {
+    Text(
+        text = stringResource(R.string.saved_searches_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigate() },
+    ) {
+        Text(
+            text = stringResource(R.string.saved_searches_description),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 

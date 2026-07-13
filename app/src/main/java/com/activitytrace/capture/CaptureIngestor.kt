@@ -18,6 +18,9 @@ object CaptureIngestor {
         }
     }
 
+    private val blockedApps = mutableSetOf<String>()
+    private var blockedAppsLoaded = false
+
     @Suppress("DEPRECATION")
     fun resolveAppName(context: Context, pkg: String): String? {
         return try {
@@ -38,6 +41,28 @@ object CaptureIngestor {
         db = ActivityTraceDatabase.getInstance(ctx.applicationContext)
     }
 
+    suspend fun reloadBlockedApps() {
+        try {
+            val dao = db?.blockedAppDao()
+            if (dao != null) {
+                val blocked = dao.getAllBlocked()
+                synchronized(blockedApps) {
+                    blockedApps.clear()
+                    blockedApps.addAll(blocked.toSet())
+                    blockedAppsLoaded = true
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load blocked apps", e)
+        }
+    }
+
+    fun isBlocked(appPackage: String): Boolean {
+        return synchronized(blockedApps) {
+            blockedAppsLoaded && blockedApps.contains(appPackage)
+        }
+    }
+
     suspend fun ingest(
         text: String,
         appPackage: String,
@@ -46,7 +71,13 @@ object CaptureIngestor {
         appName: String? = null,
         category: String? = null,
         timestamp: Long? = null,
+        imageBlob: ByteArray? = null,
     ) {
+        if (!blockedAppsLoaded) {
+            reloadBlockedApps()
+        }
+        if (isBlocked(appPackage)) return
+
         val key = "$appPackage|$contentType|$text"
         val now = System.currentTimeMillis()
         synchronized(recentHashes) {
@@ -65,6 +96,7 @@ object CaptureIngestor {
                     category = category,
                     timestamp = timestamp ?: System.currentTimeMillis(),
                     metadata = metadata,
+                    imageBlob = imageBlob,
                 )
             )
         } catch (e: Exception) {

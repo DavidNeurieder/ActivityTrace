@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
+import androidx.room.Update
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.activitytrace.model.CapturedItem
@@ -19,6 +20,9 @@ interface CaptureDao {
 
     @Delete
     suspend fun delete(item: CapturedItem)
+
+    @Update
+    suspend fun update(item: CapturedItem)
 
     @Query("SELECT COUNT(*) FROM captured_items WHERE metadata = :metadata")
     suspend fun countByMetadata(metadata: String): Int
@@ -44,7 +48,7 @@ interface CaptureDao {
     @Query("SELECT * FROM captured_items ORDER BY timestamp DESC")
     suspend fun getAllItems(): List<CapturedItem>
 
-    @Query("DELETE FROM captured_items WHERE timestamp < :cutoff")
+    @Query("DELETE FROM captured_items WHERE timestamp < :cutoff AND is_bookmarked = 0")
     suspend fun deleteOlderThan(cutoff: Long)
 
     @RawQuery(observedEntities = [CapturedItem::class])
@@ -92,4 +96,32 @@ interface CaptureDao {
 
         return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
+
+    @Query("UPDATE captured_items SET is_bookmarked = :bookmarked WHERE id = :id")
+    suspend fun setBookmarked(id: Long, bookmarked: Boolean)
+
+    @Query("SELECT * FROM captured_items WHERE is_bookmarked = 1 ORDER BY timestamp DESC LIMIT 100")
+    fun bookmarkedItems(): Flow<List<CapturedItem>>
+
+    @Query("SELECT app_package, COUNT(*) as count FROM captured_items GROUP BY app_package ORDER BY count DESC LIMIT 15")
+    suspend fun topApps(): List<AppCount>
+
+    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items GROUP BY date ORDER BY date DESC LIMIT 30")
+    suspend fun dailyCounts(): List<DateCount>
+
+    @Query("SELECT COUNT(*) FROM captured_items")
+    suspend fun totalCount(): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since")
+    suspend fun countSince(since: Long): Int
+
+    data class AppCount(
+        @ColumnInfo(name = "app_package") val appPackage: String,
+        val count: Int,
+    )
+
+    data class DateCount(
+        val date: String,
+        val count: Int,
+    )
 }
