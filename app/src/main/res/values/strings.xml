@@ -97,6 +97,10 @@
     <string name="statistics_top_apps">Top apps</string>
     <string name="statistics_no_data">Not enough data for chart</string>
     <string name="statistics_7day">7-day activity</string>
+    <string name="statistics_breakdown">Content type breakdown</string>
+    <string name="statistics_hourly">Time of day</string>
+    <string name="statistics_app_detail">App activity</string>
+    <string name="statistics_no_type">No %1$s items</string>
 
     <!-- Blocked apps -->
     <string name="blocked_apps_title">Blocked apps</string>

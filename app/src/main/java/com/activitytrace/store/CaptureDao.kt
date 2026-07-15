@@ -115,6 +115,36 @@ interface CaptureDao {
     @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since")
     suspend fun countSince(since: Long): Int
 
+    @Query("SELECT app_package, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY app_package ORDER BY count DESC LIMIT 15")
+    suspend fun topApps(contentType: String?): List<AppCount>
+
+    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT 7")
+    suspend fun dailyCounts(contentType: String?): List<DateCount>
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun totalCount(contentType: String?): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since AND (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun countSince(since: Long, contentType: String?): Int
+
+    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE app_package = :appPackage AND (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT 7")
+    suspend fun dailyCountsByApp(appPackage: String, contentType: String?): List<DateCount>
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun totalCountByApp(appPackage: String, contentType: String?): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND timestamp > :since AND (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun countSinceByApp(appPackage: String, since: Long, contentType: String?): Int
+
+    @Query("SELECT content_type, COUNT(*) as count FROM captured_items GROUP BY content_type")
+    suspend fun contentTypeBreakdown(): List<ContentTypeCount>
+
+    @Query("SELECT content_type, COUNT(*) as count FROM captured_items WHERE app_package = :appPackage GROUP BY content_type")
+    suspend fun contentTypeBreakdown(appPackage: String): List<ContentTypeCount>
+
+    @Query("SELECT CAST(strftime('%H', timestamp/1000, 'unixepoch') AS INTEGER) as hour, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) AND (:appPackage IS NULL OR app_package = :appPackage) GROUP BY hour ORDER BY hour")
+    suspend fun hourlyCounts(contentType: String?, appPackage: String?): List<HourCount>
+
     data class AppCount(
         @ColumnInfo(name = "app_package") val appPackage: String,
         val count: Int,
@@ -122,6 +152,16 @@ interface CaptureDao {
 
     data class DateCount(
         val date: String,
+        val count: Int,
+    )
+
+    data class ContentTypeCount(
+        @ColumnInfo(name = "content_type") val contentType: String,
+        val count: Int,
+    )
+
+    data class HourCount(
+        val hour: Int,
         val count: Int,
     )
 }
