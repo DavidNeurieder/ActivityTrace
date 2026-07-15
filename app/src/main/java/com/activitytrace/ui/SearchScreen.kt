@@ -125,7 +125,6 @@ fun SearchScreen(
     val bookmarkedOnly by viewModel.bookmarkedOnly.collectAsState()
     val appFilter by viewModel.appFilter.collectAsState()
     val dateFilter by viewModel.dateFilter.collectAsState()
-    val popularSearches by viewModel.popularSearches.collectAsState()
     val keywords = remember(query) {
         if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
     }
@@ -186,13 +185,6 @@ fun SearchScreen(
                         }
                     },
                 )
-                if (searchFocused && popularSearches.isNotEmpty()) {
-                    PopularSearchesDropdown(
-                        popularSearches = popularSearches,
-                        onSelect = { viewModel.onQueryChange(it) },
-                        onDismiss = { searchFocused = false },
-                    )
-                }
             }
 
             val distinctApps = remember(results) { viewModel.getDistinctAppPackages() }
@@ -329,47 +321,6 @@ fun SearchScreen(
                     }
                 },
                 confirmButton = {},
-            )
-        }
-    }
-}
-
-@Composable
-private fun PopularSearchesDropdown(
-    popularSearches: List<Pair<String, Int>>,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    DropdownMenu(
-        expanded = true,
-        onDismissRequest = onDismiss,
-        modifier = Modifier
-            .fillMaxWidth(0.9f)
-            .padding(horizontal = 8.dp),
-    ) {
-        popularSearches.forEach { (term, count) ->
-            DropdownMenuItem(
-                text = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(term, modifier = Modifier.weight(1f))
-                        Text(
-                            count.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                onClick = { onSelect(term); onDismiss() },
             )
         }
     }

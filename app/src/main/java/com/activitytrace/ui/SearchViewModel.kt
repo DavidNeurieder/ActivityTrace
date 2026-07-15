@@ -25,9 +25,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-private const val SEARCH_ANALYTICS_KEY = "search_analytics"
-private const val MAX_POPULAR = 5
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
     private val searchEngine: SearchEngine,
@@ -54,9 +51,6 @@ class SearchViewModel(
 
     private val _dateFilter = MutableStateFlow<Pair<Long, Long>?>(null)
     val dateFilter = _dateFilter.asStateFlow()
-
-    private val _popularSearches = MutableStateFlow(loadPopularSearches())
-    val popularSearches = _popularSearches.asStateFlow()
 
     private val _canOpenPackages = MutableStateFlow<Map<String, Boolean>>(emptyMap())
     val canOpenPackages = _canOpenPackages.asStateFlow()
@@ -145,9 +139,6 @@ class SearchViewModel(
     fun onQueryChange(text: String) {
         _query.value = text
         _queryToPersist.value = text
-        if (text.isNotBlank()) {
-            logSearchTerm(text)
-        }
     }
 
     fun setContentTypeFilter(type: String?) {
@@ -217,42 +208,6 @@ class SearchViewModel(
         val start = cal.timeInMillis
         cal.add(Calendar.MONTH, 1)
         setDateFilter(start to cal.timeInMillis)
-    }
-
-    private fun logSearchTerm(term: String) {
-        val trimmed = term.trim().take(100)
-        if (trimmed.length < 2) return
-        val raw = prefs.getString(SEARCH_ANALYTICS_KEY, null) ?: ""
-        val map = parseAnalytics(raw).toMutableMap()
-        map[trimmed] = (map[trimmed] ?: 0) + 1
-        val serialized = map.entries.joinToString("|") { "${it.key}::${it.value}" }
-        prefs.edit().putString(SEARCH_ANALYTICS_KEY, serialized).apply()
-        _popularSearches.value = parseAnalytics(serialized)
-            .entries.sortedByDescending { it.value }
-            .take(MAX_POPULAR)
-            .map { it.key to it.value }
-    }
-
-    private fun parseAnalytics(raw: String): Map<String, Int> {
-        if (raw.isBlank()) return emptyMap()
-        return try {
-            raw.split("|").mapNotNull { pair ->
-                val parts = pair.split("::", limit = 2)
-                if (parts.size == 2) {
-                    val term = parts[0]
-                    val count = parts[1].toIntOrNull()
-                    if (count != null && count > 0) term to count else null
-                } else null
-            }.toMap()
-        } catch (_: Exception) { emptyMap() }
-    }
-
-    private fun loadPopularSearches(): List<Pair<String, Int>> {
-        val raw = prefs.getString(SEARCH_ANALYTICS_KEY, null) ?: ""
-        return parseAnalytics(raw)
-            .entries.sortedByDescending { it.value }
-            .take(MAX_POPULAR)
-            .map { it.key to it.value }
     }
 
     fun getDistinctAppPackages(): List<String> {
