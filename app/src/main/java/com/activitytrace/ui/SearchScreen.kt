@@ -162,18 +162,21 @@ fun SearchScreen(
         modifier = modifier,
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding).navigationBarsPadding()) {
-            Box {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { viewModel.onQueryChange(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .onFocusChanged { searchFocused = it.isFocused },
-                    placeholder = { Text(stringResource(R.string.search_hint)) },
-                    singleLine = true,
-                    trailingIcon = {
-                        Row {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { viewModel.onQueryChange(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .onFocusChanged { searchFocused = it.isFocused },
+                        placeholder = { Text(stringResource(R.string.search_hint)) },
+                        singleLine = true,
+                        trailingIcon = {
                             if (query.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.onQueryChange("") }) {
                                     Icon(
@@ -182,18 +185,18 @@ fun SearchScreen(
                                     )
                                 }
                             }
-                            IconButton(onClick = { showStats = !showStats }) {
-                                Icon(
-                                    imageVector = if (showStats) Icons.Default.List else Icons.Default.BarChart,
-                                    contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
-                                                         else stringResource(R.string.statistics_title),
-                                    tint = if (showStats) MaterialTheme.colorScheme.primary
-                                           else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
+                IconButton(onClick = { showStats = !showStats }) {
+                    Icon(
+                        imageVector = if (showStats) Icons.Default.List else Icons.Default.BarChart,
+                        contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
+                                             else stringResource(R.string.statistics_title),
+                        tint = if (showStats) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             val distinctApps = remember(results) { viewModel.getDistinctAppPackages() }
