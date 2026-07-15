@@ -120,6 +120,7 @@
     <string name="statistics_dow_thu">Thu</string>
     <string name="statistics_dow_fri">Fri</string>
     <string name="statistics_dow_sat">Sat</string>
+    <string name="statistics_show_results">Show results</string>
     <string name="statistics_today_label">Today</string>
     <string name="statistics_peak_hour">Peak at %1$d:00</string>
     <string name="statistics_insight">Most captures on %1$s · Peak at %2$s · Top: %3$s</string>

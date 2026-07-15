@@ -108,6 +108,39 @@ fun StatisticsScreen(
     initialQuery: String = "",
     modifier: Modifier = Modifier,
 ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.statistics_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+        modifier = modifier,
+    ) { innerPadding ->
+        StatisticsPanel(
+            initialAppPackage = initialAppPackage,
+            initialQuery = initialQuery,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .navigationBarsPadding(),
+        )
+    }
+}
+
+@Composable
+fun StatisticsPanel(
+    initialAppPackage: String? = null,
+    initialQuery: String = "",
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val db = remember { ActivityTraceDatabase.getInstance(context) }
     val dao = remember { db.captureDao() }
@@ -188,184 +221,165 @@ fun StatisticsScreen(
         }
     }
 
-    @Composable
-    fun typeLabel(type: String?): String = when (type) {
-        null -> stringResource(R.string.filter_all)
-        "notification" -> stringResource(R.string.filter_notifications)
-        "screen" -> stringResource(R.string.filter_accessibility)
-        "toast" -> stringResource(R.string.filter_toast)
-        "page" -> stringResource(R.string.filter_folders)
-        else -> type
-    }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+    ) {
+        FilterRow(
+            selectedTypeLabel = typeLabel(selectedType),
+            onTypeSelect = { selectedType = it },
+            selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
+                               else selectedApp!!.substringAfterLast('.'),
+            onAppSelect = { selectedApp = it },
+            availableApps = availableApps,
+            selectedRange = selectedRange,
+            onRangeSelect = { selectedRange = it },
+        )
+        Spacer(Modifier.height(12.dp))
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.statistics_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
+        if (searchQuery.isNotBlank()) {
+            Text(
+                text = stringResource(R.string.statistics_filtered_by_query, searchQuery),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
             )
-        },
-        modifier = modifier,
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-        ) {
-            FilterRow(
-                selectedTypeLabel = typeLabel(selectedType),
-                onTypeSelect = { selectedType = it },
-                selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
-                                   else selectedApp!!.substringAfterLast('.'),
-                onAppSelect = { selectedApp = it },
-                availableApps = availableApps,
-                selectedRange = selectedRange,
-                onRangeSelect = { selectedRange = it },
+        }
+
+        if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
+            InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
+            Spacer(Modifier.height(16.dp))
+        }
+
+        if (selectedApp != null) {
+            val appName = resolveAppName2(context, selectedApp!!)
+            Text(
+                text = appName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
+            SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, selectedRange)
+            Spacer(Modifier.height(16.dp))
 
-            if (searchQuery.isNotBlank()) {
-                Text(
-                    text = stringResource(R.string.statistics_filtered_by_query, searchQuery),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
+            SectionHeader(
+                icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            if (appTypeBreakdown.isEmpty()) {
+                EmptyBreakdown(typeLabel(selectedType))
+            } else {
+                BreakdownDonutCard(appTypeBreakdown)
             }
+            Spacer(Modifier.height(16.dp))
 
-            if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
-                InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
-                Spacer(Modifier.height(16.dp))
+            SectionHeader(
+                icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            if (dayOfWeekData.any { it.count > 0 }) {
+                DayOfWeekCard(dayOfWeekData)
+            } else {
+                NoDataText()
             }
+            Spacer(Modifier.height(16.dp))
 
-            if (selectedApp != null) {
-                val appName = resolveAppName2(context, selectedApp!!)
-                Text(
-                    text = appName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(8.dp))
-                SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, selectedRange)
-                Spacer(Modifier.height(16.dp))
+            SectionHeader(
+                icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            if (appDaily.isNotEmpty()) {
+                DailyChart(fillDailyGaps(appDaily, selectedRange), selectedRange)
+            } else {
+                NoDataText()
+            }
+        } else {
+            SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, selectedRange)
+            Spacer(Modifier.height(16.dp))
 
+            if (selectedType == null) {
                 SectionHeader(
                     icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                     title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
                 )
                 Spacer(Modifier.height(8.dp))
-                if (appTypeBreakdown.isEmpty()) {
+                if (typeBreakdown.isEmpty()) {
                     EmptyBreakdown(typeLabel(selectedType))
                 } else {
-                    BreakdownDonutCard(appTypeBreakdown)
+                    BreakdownDonutCard(typeBreakdown)
                 }
                 Spacer(Modifier.height(16.dp))
+            }
 
-                SectionHeader(
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                if (dayOfWeekData.any { it.count > 0 }) {
-                    DayOfWeekCard(dayOfWeekData)
-                } else {
-                    NoDataText()
-                }
-                Spacer(Modifier.height(16.dp))
-
-                SectionHeader(
-                    icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                if (appDaily.isNotEmpty()) {
-                    DailyChart(fillDailyGaps(appDaily, selectedRange), selectedRange)
-                } else {
-                    NoDataText()
-                }
+            SectionHeader(
+                icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            if (dayOfWeekData.any { it.count > 0 }) {
+                DayOfWeekCard(dayOfWeekData)
             } else {
-                SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, selectedRange)
-                Spacer(Modifier.height(16.dp))
-
-                if (selectedType == null) {
-                    SectionHeader(
-                        icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                        title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    if (typeBreakdown.isEmpty()) {
-                        EmptyBreakdown(typeLabel(selectedType))
-                    } else {
-                        BreakdownDonutCard(typeBreakdown)
-                    }
-                    Spacer(Modifier.height(16.dp))
-                }
-
-                SectionHeader(
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                if (dayOfWeekData.any { it.count > 0 }) {
-                    DayOfWeekCard(dayOfWeekData)
-                } else {
-                    NoDataText()
-                }
-                Spacer(Modifier.height(16.dp))
-
-                SectionHeader(
-                    icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                if (dailyCounts.isNotEmpty()) {
-                    DailyChart(fillDailyGaps(dailyCounts, selectedRange), selectedRange)
-                } else {
-                    NoDataText()
-                }
+                NoDataText()
             }
+            Spacer(Modifier.height(16.dp))
 
-            if (hourly.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                SectionHeader(
-                    icon = { Icon(Icons.Default.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_hourly), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                HourlyChart(hourly)
-            }
-
-            if (bookmarkedTotal > 0) {
-                Spacer(Modifier.height(16.dp))
-                SectionHeader(
-                    icon = { Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_bookmarked), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                BookmarkCard(bookmarkedTotal, bookmarkedRecent)
-            }
-
-            if (selectedApp == null && topApps.isNotEmpty()) {
-                Spacer(Modifier.height(24.dp))
-                SectionHeader(
-                    icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-                )
-                Spacer(Modifier.height(8.dp))
-                TopAppsList(topApps, onAppClick = { selectedApp = it })
+            SectionHeader(
+                icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            if (dailyCounts.isNotEmpty()) {
+                DailyChart(fillDailyGaps(dailyCounts, selectedRange), selectedRange)
+            } else {
+                NoDataText()
             }
         }
+
+        if (hourly.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            SectionHeader(
+                icon = { Icon(Icons.Default.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_hourly), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            HourlyChart(hourly)
+        }
+
+        if (bookmarkedTotal > 0) {
+            Spacer(Modifier.height(16.dp))
+            SectionHeader(
+                icon = { Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_bookmarked), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            BookmarkCard(bookmarkedTotal, bookmarkedRecent)
+        }
+
+        if (selectedApp == null && topApps.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            SectionHeader(
+                icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            )
+            Spacer(Modifier.height(8.dp))
+            TopAppsList(topApps, onAppClick = { selectedApp = it })
+        }
     }
+}
+
+@Composable
+private fun typeLabel(type: String?): String = when (type) {
+    null -> stringResource(R.string.filter_all)
+    "notification" -> stringResource(R.string.filter_notifications)
+    "screen" -> stringResource(R.string.filter_accessibility)
+    "toast" -> stringResource(R.string.filter_toast)
+    "page" -> stringResource(R.string.filter_folders)
+    else -> type
 }
 
 @Composable

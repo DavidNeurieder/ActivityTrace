@@ -116,7 +116,6 @@ import java.util.Locale
 fun SearchScreen(
     viewModel: SearchViewModel,
     onNavigateToSettings: () -> Unit,
-    onNavigateToStatistics: (appPackage: String?, query: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val query by viewModel.query.collectAsState()
@@ -133,6 +132,7 @@ fun SearchScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var searchFocused by remember { mutableStateOf(false) }
+    var showStats by remember { mutableStateOf(false) }
     var contextMenuTarget by remember { mutableStateOf<CapturedItem?>(null) }
 
     Scaffold(
@@ -148,8 +148,14 @@ fun SearchScreen(
                             contentDescription = stringResource(R.string.filter_bookmarked),
                         )
                     }
-                    IconButton(onClick = { onNavigateToStatistics(appFilter, query) }) {
-                        Icon(Icons.Default.BarChart, contentDescription = stringResource(R.string.statistics_title))
+                    IconButton(onClick = { showStats = !showStats }) {
+                        Icon(
+                            Icons.Default.BarChart,
+                            contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
+                                                 else stringResource(R.string.statistics_title),
+                            tint = if (showStats) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.search_settings))
@@ -222,65 +228,73 @@ fun SearchScreen(
                 )
             }
 
-            if (results.isNotEmpty()) {
-                val resultCountText = if (results.size >= 100) {
-                    context.resources.getQuantityString(R.plurals.result_count_capped, results.size, results.size)
-                } else {
-                    context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
-                }
-                Text(
-                    text = resultCountText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            if (showStats) {
+                StatisticsPanel(
+                    initialAppPackage = appFilter,
+                    initialQuery = query,
+                    modifier = Modifier.fillMaxSize().weight(1f),
                 )
-            }
-
-            val todayLabel = stringResource(R.string.date_today)
-            val yesterdayLabel = stringResource(R.string.date_yesterday)
-            val thisWeekLabel = stringResource(R.string.date_this_week)
-            val olderLabel = stringResource(R.string.date_older)
-            val grouped = remember(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel) {
-                groupByDate(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel)
-            }
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (results.isEmpty()) {
-                    item {
-                        EmptyState(query = query, filter = if (bookmarkedOnly) "bookmarked" else contentTypeFilter)
+            } else {
+                if (results.isNotEmpty()) {
+                    val resultCountText = if (results.size >= 100) {
+                        context.resources.getQuantityString(R.plurals.result_count_capped, results.size, results.size)
+                    } else {
+                        context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
                     }
-                } else {
-                    grouped.forEach { (dateLabel, items) ->
-                        item(key = dateLabel) {
-                            Text(
-                                text = dateLabel,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
+                    Text(
+                        text = resultCountText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+
+                val todayLabel = stringResource(R.string.date_today)
+                val yesterdayLabel = stringResource(R.string.date_yesterday)
+                val thisWeekLabel = stringResource(R.string.date_this_week)
+                val olderLabel = stringResource(R.string.date_older)
+                val grouped = remember(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel) {
+                    groupByDate(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel)
+                }
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (results.isEmpty()) {
+                        item {
+                            EmptyState(query = query, filter = if (bookmarkedOnly) "bookmarked" else contentTypeFilter)
                         }
-                        items.forEach { captured ->
-                            item(key = captured.id) {
-                                val canOpen = captured.metadata != null || canOpenPackages[captured.appPackage] == true
-                                ResultCard(
-                                    item = captured,
-                                    appName = resolveAppName(context, captured.appPackage, captured.appName),
-                                    canOpen = canOpen,
-                                    onOpenApp = {
-                                        if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar(context.getString(R.string.could_not_open))
-                                            }
-                                        }
-                                    },
-                                    onLongClick = { contextMenuTarget = captured },
-                                    onToggleBookmark = { viewModel.toggleBookmark(captured) },
-                                    keywords = keywords,
+                    } else {
+                        grouped.forEach { (dateLabel, items) ->
+                            item(key = dateLabel) {
+                                Text(
+                                    text = dateLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 )
                             }
+                            items.forEach { captured ->
+                                item(key = captured.id) {
+                                    val canOpen = captured.metadata != null || canOpenPackages[captured.appPackage] == true
+                                    ResultCard(
+                                        item = captured,
+                                        appName = resolveAppName(context, captured.appPackage, captured.appName),
+                                        canOpen = canOpen,
+                                        onOpenApp = {
+                                            if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(context.getString(R.string.could_not_open))
+                                                }
+                                            }
+                                        },
+                                        onLongClick = { contextMenuTarget = captured },
+                                        onToggleBookmark = { viewModel.toggleBookmark(captured) },
+                                        keywords = keywords,
+                                    )
+                                }
+                            }
                         }
+                    }
                 }
             }
-        }
         }
 
         if (contextMenuTarget != null) {
