@@ -232,18 +232,13 @@ fun StatisticsScreen(
             SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, dateRangeMs)
             Spacer(Modifier.height(10.dp))
 
-            if (selectedType == null) {
+            if (selectedApp == null && topApps.isNotEmpty()) {
                 SectionHeader(
-                    icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                    title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+                    icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                    title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
                 )
                 Spacer(Modifier.height(6.dp))
-                if (typeBreakdown.isEmpty()) {
-                    EmptyBreakdown(typeLabel(selectedType))
-                } else {
-                    BreakdownDonutCard(typeBreakdown)
-                }
-                Spacer(Modifier.height(10.dp))
+                TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = { })
             }
 
             TimelineSection(
@@ -264,14 +259,18 @@ fun StatisticsScreen(
             )
         }
 
-        if (selectedApp == null && topApps.isNotEmpty()) {
+        if (selectedType == null) {
             Spacer(Modifier.height(10.dp))
             SectionHeader(
-                icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+                icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+                title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             )
             Spacer(Modifier.height(6.dp))
-            TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = { })
+            if (typeBreakdown.isEmpty()) {
+                EmptyBreakdown(typeLabel(selectedType))
+            } else {
+                BreakdownDonutCard(typeBreakdown)
+            }
         }
     }
 }
