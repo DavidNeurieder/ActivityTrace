@@ -125,7 +125,6 @@ fun SearchScreen(
     val bookmarkedOnly by viewModel.bookmarkedOnly.collectAsState()
     val appFilter by viewModel.appFilter.collectAsState()
     val dateFilter by viewModel.dateFilter.collectAsState()
-    val savedSearches by viewModel.savedSearches.collectAsState()
     val popularSearches by viewModel.popularSearches.collectAsState()
     val keywords = remember(query) {
         if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
@@ -187,12 +186,10 @@ fun SearchScreen(
                         }
                     },
                 )
-                if (searchFocused && savedSearches.isNotEmpty()) {
-                    SavedSearchesDropdown(
-                        savedSearches = savedSearches,
+                if (searchFocused && popularSearches.isNotEmpty()) {
+                    PopularSearchesDropdown(
                         popularSearches = popularSearches,
-                        onSelect = { viewModel.onSavedSearchClick(it) },
-                        onClearAll = { viewModel.clearSavedSearches() },
+                        onSelect = { viewModel.onQueryChange(it) },
                         onDismiss = { searchFocused = false },
                     )
                 }
@@ -337,11 +334,9 @@ fun SearchScreen(
 }
 
 @Composable
-private fun SavedSearchesDropdown(
-    savedSearches: List<String>,
+private fun PopularSearchesDropdown(
     popularSearches: List<Pair<String, Int>>,
     onSelect: (String) -> Unit,
-    onClearAll: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     DropdownMenu(
@@ -351,71 +346,29 @@ private fun SavedSearchesDropdown(
             .fillMaxWidth(0.9f)
             .padding(horizontal = 8.dp),
     ) {
-        if (popularSearches.isNotEmpty()) {
-            Text(
-                text = "Popular",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            )
-            popularSearches.forEach { (term, count) ->
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Default.Schedule,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(term, modifier = Modifier.weight(1f))
-                            Text(
-                                count.toString(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    onClick = { onSelect(term); onDismiss() },
-                )
-            }
-        }
-        if (savedSearches.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.saved_searches_title),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            )
-            savedSearches.take(5).forEach { term ->
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.History,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(term)
-                        }
-                    },
-                    onClick = { onSelect(term); onDismiss() },
-                )
-            }
+        popularSearches.forEach { (term, count) ->
             DropdownMenuItem(
                 text = {
-                    Text(
-                        stringResource(R.string.clear_saved_searches),
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(term, modifier = Modifier.weight(1f))
+                        Text(
+                            count.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 },
-                onClick = { onClearAll(); onDismiss() },
+                onClick = { onSelect(term); onDismiss() },
             )
         }
     }

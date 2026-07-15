@@ -15,8 +15,6 @@
     <string name="add_bookmark">Bookmark</string>
     <string name="remove_bookmark">Remove bookmark</string>
     <string name="empty_no_bookmarks">No bookmarked items</string>
-    <string name="saved_searches_title">Saved searches</string>
-    <string name="clear_saved_searches">Clear saved searches</string>
     <string name="filter_all_apps">All apps</string>
     <string name="filter_all_time">All time</string>
     <string name="date_today">Today</string>
@@ -138,11 +136,6 @@
     <string name="search_apps_hint">Search apps…</string>
     <string name="block_this_app">Block this app</string>
     <string name="copy_to_clipboard">Copy to clipboard</string>
-
-    <!-- Saved searches -->
-    <string name="saved_searches_description">View and remove saved search terms</string>
-    <string name="no_saved_searches">No saved searches</string>
-    <string name="remove_saved_search">Remove saved search</string>
 
     <!-- Widget -->
     <string name="widget_title">Activity Trace</string>

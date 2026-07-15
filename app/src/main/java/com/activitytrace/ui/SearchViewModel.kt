@@ -25,9 +25,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-private const val SAVED_SEARCHES_KEY = "saved_searches"
 private const val SEARCH_ANALYTICS_KEY = "search_analytics"
-private const val MAX_SAVED = 10
 private const val MAX_POPULAR = 5
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -56,9 +54,6 @@ class SearchViewModel(
 
     private val _dateFilter = MutableStateFlow<Pair<Long, Long>?>(null)
     val dateFilter = _dateFilter.asStateFlow()
-
-    private val _savedSearches = MutableStateFlow(loadSavedSearches())
-    val savedSearches = _savedSearches.asStateFlow()
 
     private val _popularSearches = MutableStateFlow(loadPopularSearches())
     val popularSearches = _popularSearches.asStateFlow()
@@ -151,7 +146,6 @@ class SearchViewModel(
         _query.value = text
         _queryToPersist.value = text
         if (text.isNotBlank()) {
-            saveSearchTerm(text)
             logSearchTerm(text)
         }
     }
@@ -225,35 +219,6 @@ class SearchViewModel(
         setDateFilter(start to cal.timeInMillis)
     }
 
-    fun onSavedSearchClick(term: String) {
-        _query.value = term
-        _queryToPersist.value = term
-        logSearchTerm(term)
-    }
-
-    fun clearSavedSearches() {
-        _savedSearches.value = emptyList()
-        prefs.edit().remove(SAVED_SEARCHES_KEY).apply()
-    }
-
-    fun removeSavedSearch(term: String) {
-        val current = _savedSearches.value.toMutableList()
-        current.remove(term)
-        _savedSearches.value = current
-        prefs.edit().putStringSet(SAVED_SEARCHES_KEY, current.toSet()).apply()
-    }
-
-    private fun saveSearchTerm(term: String) {
-        val trimmed = term.trim().take(100)
-        if (trimmed.length < 2) return
-        val current = _savedSearches.value.toMutableList()
-        current.remove(trimmed)
-        current.add(0, trimmed)
-        val saved = current.take(MAX_SAVED)
-        _savedSearches.value = saved
-        prefs.edit().putStringSet(SAVED_SEARCHES_KEY, saved.toSet()).apply()
-    }
-
     private fun logSearchTerm(term: String) {
         val trimmed = term.trim().take(100)
         if (trimmed.length < 2) return
@@ -266,10 +231,6 @@ class SearchViewModel(
             .entries.sortedByDescending { it.value }
             .take(MAX_POPULAR)
             .map { it.key to it.value }
-    }
-
-    private fun loadSavedSearches(): List<String> {
-        return prefs.getStringSet(SAVED_SEARCHES_KEY, emptySet())?.toList() ?: emptyList()
     }
 
     private fun parseAnalytics(raw: String): Map<String, Int> {
