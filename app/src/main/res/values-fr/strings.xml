@@ -59,6 +59,7 @@
     <string name="backup_description">Sauvegarde complète des éléments capturés sous forme de base SQLite non chiffrée. Seuls les fichiers .sqlite exportés par cette app peuvent être restaurés.</string>
     <string name="database_exported">Base de données exportée</string>
     <string name="export_failed">Échec de l\'exportation</string>
+    <string name="export_failed_log_created">Échec de l\'exportation, fichier journal créé</string>
     <string name="backup_to_sqlite">Sauvegarde SQLite</string>
     <string name="restore_from_backup">Restaurer depuis une sauvegarde</string>
     <string name="export_formats_title">Formats d\'exportation</string>

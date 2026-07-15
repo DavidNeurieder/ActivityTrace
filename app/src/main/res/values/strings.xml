@@ -69,6 +69,7 @@
     <string name="backup_description">Full backup of captured items as a plain SQLite database. Only .sqlite files exported by this app can be restored.</string>
     <string name="database_exported">Database exported</string>
     <string name="export_failed">Export failed</string>
+    <string name="export_failed_log_created">Export failed, logfile created</string>
     <string name="backup_to_sqlite">Backup to SQLite</string>
     <string name="restore_from_backup">Restore from backup</string>
     <string name="export_formats_title">Export Formats</string>

@@ -521,8 +521,8 @@ private fun DataSection(
                         onExportStatus(null)
                         val result = DatabaseExporter.export(context)
                         onExportStatus(
-                            if (result) ExportStatus.Success(context.getString(R.string.database_exported))
-                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                            if (result is ExportStatus.Success) ExportStatus.Success(context.getString(R.string.database_exported))
+                            else result
                         )
                     }
                 },
@@ -563,8 +563,8 @@ private fun DataSection(
                         val db = ActivityTraceDatabase.getInstance(context)
                         val result = DataExporter.exportToJson(context, db.captureDao())
                         onExportStatus(
-                            if (result) ExportStatus.Success(context.getString(R.string.exported_as_json))
-                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                            if (result is ExportStatus.Success) ExportStatus.Success(context.getString(R.string.exported_as_json))
+                            else result
                         )
                     }
                 },
@@ -580,8 +580,8 @@ private fun DataSection(
                         val db = ActivityTraceDatabase.getInstance(context)
                         val result = DataExporter.exportToCsv(context, db.captureDao())
                         onExportStatus(
-                            if (result) ExportStatus.Success(context.getString(R.string.exported_as_csv))
-                            else ExportStatus.Error(context.getString(R.string.export_failed))
+                            if (result is ExportStatus.Success) ExportStatus.Success(context.getString(R.string.exported_as_csv))
+                            else result
                         )
                     }
                 },

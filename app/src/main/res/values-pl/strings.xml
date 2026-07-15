@@ -63,6 +63,7 @@
     <string name="backup_description">Pełna kopia zapasowa przechwyconych elementów jako niezaszyfrowana baza danych SQLite. Można przywrócić tylko pliki .sqlite wyeksportowane przez tę aplikację.</string>
     <string name="database_exported">Baza danych wyeksportowana</string>
     <string name="export_failed">Eksport nie powiódł się</string>
+    <string name="export_failed_log_created">Eksport nie powiódł się, utworzono plik dziennika</string>
     <string name="backup_to_sqlite">Kopia zapasowa SQLite</string>
     <string name="restore_from_backup">Przywróć z kopii</string>
     <string name="export_formats_title">Formaty eksportu</string>

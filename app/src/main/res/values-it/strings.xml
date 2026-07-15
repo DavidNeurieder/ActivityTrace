@@ -59,6 +59,7 @@
     <string name="backup_description">Backup completo degli elementi catturati come database SQLite non crittografato. Solo i file .sqlite esportati da questa app possono essere ripristinati.</string>
     <string name="database_exported">Database esportato</string>
     <string name="export_failed">Esportazione fallita</string>
+    <string name="export_failed_log_created">Esportazione fallita, file di log creato</string>
     <string name="backup_to_sqlite">Backup SQLite</string>
     <string name="restore_from_backup">Ripristina da backup</string>
     <string name="export_formats_title">Formati di esportazione</string>

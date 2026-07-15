@@ -6,7 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.annotation.RequiresApi
+import com.activitytrace.R
 import com.activitytrace.model.CapturedItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,11 +20,13 @@ import java.io.OutputStream
 
 object DataExporter {
 
+    private const val TAG = "DataExporter"
+
     suspend fun exportToJson(
         context: Context,
         dao: CaptureDao,
         onProgress: (ExportStatus) -> Unit = {},
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): ExportStatus = withContext(Dispatchers.IO) {
         try {
             onProgress(ExportStatus.Progress("Reading items\u2026"))
             val items = dao.getAllItems()
@@ -31,9 +35,14 @@ object DataExporter {
             val json = buildJson(items)
 
             onProgress(ExportStatus.Progress("Writing file\u2026"))
-            writeToDownloads(context, "activity_trace.json", "application/json", json)
-        } catch (_: Exception) {
-            false
+            if (!writeToDownloads(context, "activity_trace.json", "application/json", json)) {
+                throw RuntimeException("Failed to write JSON file to Downloads")
+            }
+            ExportStatus.Success("")
+        } catch (e: Exception) {
+            Log.e(TAG, "JSON export failed", e)
+            ExportErrorLogger.saveErrorLog(context, "JSON export", e)
+            ExportStatus.Error(context.getString(R.string.export_failed_log_created))
         }
     }
 
@@ -62,7 +71,7 @@ object DataExporter {
         context: Context,
         dao: CaptureDao,
         onProgress: (ExportStatus) -> Unit = {},
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): ExportStatus = withContext(Dispatchers.IO) {
         try {
             onProgress(ExportStatus.Progress("Reading items\u2026"))
             val items = dao.getAllItems()
@@ -71,9 +80,14 @@ object DataExporter {
             val csv = buildCsv(items)
 
             onProgress(ExportStatus.Progress("Writing file\u2026"))
-            writeToDownloads(context, "activity_trace.csv", "text/csv; charset=utf-8", csv)
-        } catch (_: Exception) {
-            false
+            if (!writeToDownloads(context, "activity_trace.csv", "text/csv; charset=utf-8", csv)) {
+                throw RuntimeException("Failed to write CSV file to Downloads")
+            }
+            ExportStatus.Success("")
+        } catch (e: Exception) {
+            Log.e(TAG, "CSV export failed", e)
+            ExportErrorLogger.saveErrorLog(context, "CSV export", e)
+            ExportStatus.Error(context.getString(R.string.export_failed_log_created))
         }
     }
 
@@ -121,13 +135,22 @@ object DataExporter {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, mimeType)
             put(MediaStore.Downloads.RELATIVE_PATH, "Download/ActivityTrace")
+            if (Build.VERSION.SDK_INT >= 30) {
+                put("is_pending", 1)
+            }
         }
         val uri = context.contentResolver.insert(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             contentValues,
         ) ?: return false
 
-        return writeContent(context.contentResolver.openOutputStream(uri), content)
+        if (!writeContent(context.contentResolver.openOutputStream(uri), content)) return false
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            val finalValues = ContentValues().apply { put("is_pending", 0) }
+            context.contentResolver.update(uri, finalValues, null, null)
+        }
+        return true
     }
 
     private fun writeViaLegacyApi(fileName: String, content: String): Boolean {

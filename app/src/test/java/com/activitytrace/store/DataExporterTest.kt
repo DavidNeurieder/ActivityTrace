@@ -10,7 +10,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,7 +131,7 @@ class DataExporterTest {
 
         val result = DataExporter.exportToJson(context, dao)
 
-        assertTrue("Expected export to succeed", result)
+        assertTrue("Expected export to succeed, got: ${(result as? ExportStatus.Error)?.message}", result is ExportStatus.Success)
         assertTrue("Exported file should exist", legacyExportFile.exists())
 
         val content = legacyExportFile.readText()
@@ -145,13 +144,13 @@ class DataExporterTest {
     }
 
     @Test
-    fun `exportToJson returns false when dao returns empty list`() = runTest {
+    fun `exportToJson succeeds when dao returns empty list`() = runTest {
         val dao = mockk<CaptureDao>()
         coEvery { dao.getAllItems() } returns emptyList()
 
         val result = DataExporter.exportToJson(context, dao)
 
-        assertTrue(result)
+        assertTrue("Expected success, got: ${(result as? ExportStatus.Error)?.message}", result is ExportStatus.Success)
         assertTrue(legacyExportFile.exists())
 
         val root = JSONObject(legacyExportFile.readText())
@@ -159,13 +158,13 @@ class DataExporterTest {
     }
 
     @Test
-    fun `exportToJson returns false when dao throws`() = runTest {
+    fun `exportToJson returns error when dao throws`() = runTest {
         val dao = mockk<CaptureDao>()
         coEvery { dao.getAllItems() } throws RuntimeException("db error")
 
         val result = DataExporter.exportToJson(context, dao)
 
-        assertFalse(result)
+        assertTrue("Expected error, got success", result is ExportStatus.Error)
     }
 
     @Test
@@ -217,7 +216,7 @@ class DataExporterTest {
 
         val result = DataExporter.exportToCsv(context, dao)
 
-        assertTrue(result)
+        assertTrue("Expected success, got: ${(result as? ExportStatus.Error)?.message}", result is ExportStatus.Success)
         assertTrue(legacyCsvExportFile.exists())
         val content = legacyCsvExportFile.readText()
         assertTrue(content.contains("csv item"))

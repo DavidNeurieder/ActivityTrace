@@ -6,7 +6,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import androidx.annotation.RequiresApi
+import com.activitytrace.R
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,22 +18,29 @@ import java.io.FileOutputStream
 
 object DatabaseExporter {
 
-    suspend fun export(context: Context): Boolean = withContext(Dispatchers.IO) {
+    private const val TAG = "DatabaseExporter"
+
+    suspend fun export(context: Context): ExportStatus = withContext(Dispatchers.IO) {
+        val tempFile = File(context.cacheDir, "export_temp/activity_trace.sqlite")
         try {
+            tempFile.parentFile?.mkdirs()
             val roomDb = ActivityTraceDatabase.getInstance(context)
             val database = roomDb.openHelper.writableDatabase
-            val tempFile = File(context.cacheDir, "export_temp/activity_trace.sqlite").also {
-                it.parentFile?.mkdirs()
-            }
             exportToPlainSqlite(database, tempFile)
             moveToDownloads(context, tempFile)
-            true
-        } catch (_: Exception) {
-            false
+            ExportStatus.Success("")
+        } catch (e: Exception) {
+            Log.e(TAG, "Export failed", e)
+            ExportErrorLogger.saveErrorLog(context, "database export", e)
+            ExportStatus.Error(context.getString(R.string.export_failed_log_created))
+        } finally {
+            tempFile.delete()
+            tempFile.parentFile?.delete()
         }
     }
 
     internal fun exportToPlainSqlite(database: SupportSQLiteDatabase, outputFile: File) {
+        outputFile.delete()
         SQLiteDatabase.openOrCreateDatabase(outputFile.absolutePath, null).close()
         val escapedPath = outputFile.absolutePath.replace("'", "''")
         database.execSQL("ATTACH DATABASE '$escapedPath' AS plain KEY ''")
@@ -53,6 +62,9 @@ object DatabaseExporter {
             put(MediaStore.Downloads.DISPLAY_NAME, "activity_trace.sqlite")
             put(MediaStore.Downloads.MIME_TYPE, "application/octet-stream")
             put(MediaStore.Downloads.RELATIVE_PATH, "Download/ActivityTrace")
+            if (Build.VERSION.SDK_INT >= 30) {
+                put("is_pending", 1)
+            }
         }
         val uri = context.contentResolver.insert(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
@@ -63,6 +75,11 @@ object DatabaseExporter {
             FileInputStream(file).use { input ->
                 input.copyTo(output)
             }
+        } ?: throw RuntimeException("Failed to open output stream")
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            val finalValues = ContentValues().apply { put("is_pending", 0) }
+            context.contentResolver.update(uri, finalValues, null, null)
         }
     }
 

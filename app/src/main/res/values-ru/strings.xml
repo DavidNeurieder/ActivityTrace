@@ -63,6 +63,7 @@
     <string name="backup_description">Полная резервная копия захваченных элементов в виде незашифрованной базы данных SQLite. Можно восстановить только файлы .sqlite, экспортированные этим приложением.</string>
     <string name="database_exported">База данных экспортирована</string>
     <string name="export_failed">Экспорт не удался</string>
+    <string name="export_failed_log_created">Экспорт не удался, файл журнала создан</string>
     <string name="backup_to_sqlite">Резервная копия SQLite</string>
     <string name="restore_from_backup">Восстановить из копии</string>
     <string name="export_formats_title">Форматы экспорта</string>

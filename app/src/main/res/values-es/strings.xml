@@ -59,6 +59,7 @@
     <string name="backup_description">Copia de seguridad completa de los elementos capturados como base de datos SQLite sin cifrar. Solo se pueden restaurar archivos .sqlite exportados por esta app.</string>
     <string name="database_exported">Base de datos exportada</string>
     <string name="export_failed">Exportación fallida</string>
+    <string name="export_failed_log_created">Exportación fallida, archivo de registro creado</string>
     <string name="backup_to_sqlite">Copia de seguridad SQLite</string>
     <string name="restore_from_backup">Restaurar desde copia</string>
     <string name="export_formats_title">Formatos de exportación</string>

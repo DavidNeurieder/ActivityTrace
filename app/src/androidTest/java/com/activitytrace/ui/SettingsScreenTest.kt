@@ -16,6 +16,7 @@ import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.BackupImporter
 import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
+import com.activitytrace.store.ExportStatus
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -161,14 +162,19 @@ class SettingsScreenTest {
             )
         )
 
-        assert(DataExporter.exportToCsv(context, dao)) { "CSV export should succeed" }
+        assert(DataExporter.exportToCsv(context, dao) is ExportStatus.Success) { "CSV export should succeed" }
 
         val dbResult = DatabaseExporter.export(context)
-        assert(dbResult) { "Database export should succeed" }
-        val exportedFile = File(context.cacheDir, "export_temp/activity_trace.sqlite")
-        assert(exportedFile.exists()) { "Exported temp SQLite should exist" }
+        assert(dbResult is ExportStatus.Success) { "Database export should succeed, got: ${(dbResult as? ExportStatus.Error)?.message}" }
 
-        val dedupCount = BackupImporter.importFromBackup(context, Uri.fromFile(exportedFile), dao)
+        val backupFile = File(context.cacheDir, "import_roundtrip_test/backup.sqlite").also {
+            it.parentFile?.mkdirs()
+            it.delete()
+        }
+        val roomDb = ActivityTraceDatabase.getInstance(context)
+        DatabaseExporter.exportToPlainSqlite(roomDb.openHelper.writableDatabase, backupFile)
+
+        val dedupCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
         assert(dedupCount == 0) { "Importing same items should dedup to 0, got $dedupCount" }
 
         val backupDir = File(context.cacheDir, "import_roundtrip_test")
