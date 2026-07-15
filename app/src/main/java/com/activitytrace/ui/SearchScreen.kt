@@ -176,6 +176,16 @@ fun SearchScreen(
                         .onFocusChanged { searchFocused = it.isFocused },
                     placeholder = { Text(stringResource(R.string.search_hint)) },
                     singleLine = true,
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onQueryChange("") }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.clear_search),
+                                )
+                            }
+                        }
+                    },
                 )
                 if (searchFocused && savedSearches.isNotEmpty()) {
                     SavedSearchesDropdown(
