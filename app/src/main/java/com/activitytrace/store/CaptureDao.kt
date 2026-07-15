@@ -51,6 +51,9 @@ interface CaptureDao {
     @Query("DELETE FROM captured_items WHERE timestamp < :cutoff AND is_bookmarked = 0")
     suspend fun deleteOlderThan(cutoff: Long)
 
+    @Query("DELETE FROM captured_items WHERE app_package = :appPackage")
+    suspend fun deleteByAppPackage(appPackage: String)
+
     @RawQuery(observedEntities = [CapturedItem::class])
     fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 

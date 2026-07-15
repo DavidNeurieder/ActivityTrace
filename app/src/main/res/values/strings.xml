@@ -132,6 +132,11 @@
     <string name="blocked_apps_restore_defaults">Block recommended system apps</string>
     <string name="no_blocked_apps">No apps are blocked</string>
     <string name="remove_blocked_app">Unblock app</string>
+    <string name="delete_blocked_collected">Delete collected data</string>
+    <string name="delete_blocked_collected_title">Delete collected data</string>
+    <string name="delete_blocked_collected_message">Delete all captured data for this app?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
     <string name="add_blocked_app">Add blocked app</string>
     <string name="select_app_to_block">Select an app to block</string>
     <string name="search_apps_hint">Search apps…</string>

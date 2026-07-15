@@ -29,9 +29,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -172,6 +175,11 @@ fun BlockedAppsScreen(
                                     db.blockedAppDao().delete(app.appPackage)
                                 }
                             },
+                            onDeleteCollected = {
+                                scope.launch {
+                                    db.captureDao().deleteByAppPackage(app.appPackage)
+                                }
+                            },
                         )
                     }
                 }
@@ -208,6 +216,11 @@ fun BlockedAppsScreen(
                             onUnblock = {
                                 scope.launch {
                                     db.blockedAppDao().delete(app.appPackage)
+                                }
+                            },
+                            onDeleteCollected = {
+                                scope.launch {
+                                    db.captureDao().deleteByAppPackage(app.appPackage)
                                 }
                             },
                         )
@@ -351,6 +364,7 @@ private fun AppPickerDialog(
 private fun BlockedAppRow(
     app: BlockedApp,
     onUnblock: () -> Unit,
+    onDeleteCollected: () -> Unit,
 ) {
     val context = LocalContext.current
     val appName = remember(app.appPackage) { resolveAppName(context, app.appPackage) }
@@ -360,6 +374,7 @@ private fun BlockedAppRow(
                 .toBitmap().asImageBitmap()
         } catch (_: Exception) { null }
     }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -405,6 +420,13 @@ private fun BlockedAppRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            IconButton(onClick = { showDeleteConfirm = true }) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete_blocked_collected),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
             IconButton(onClick = onUnblock) {
                 Icon(
                     Icons.Default.Close,
@@ -412,6 +434,27 @@ private fun BlockedAppRow(
                 )
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.delete_blocked_collected_title)) },
+            text = { Text(stringResource(R.string.delete_blocked_collected_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onDeleteCollected()
+                }) {
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 
