@@ -116,7 +116,7 @@ import java.util.Locale
 fun SearchScreen(
     viewModel: SearchViewModel,
     onNavigateToSettings: () -> Unit,
-    onNavigateToStatistics: (appPackage: String?) -> Unit,
+    onNavigateToStatistics: (appPackage: String?, query: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val query by viewModel.query.collectAsState()
@@ -149,7 +149,7 @@ fun SearchScreen(
                             contentDescription = stringResource(R.string.filter_bookmarked),
                         )
                     }
-                    IconButton(onClick = { onNavigateToStatistics(appFilter) }) {
+                    IconButton(onClick = { onNavigateToStatistics(appFilter, query) }) {
                         Icon(Icons.Default.BarChart, contentDescription = stringResource(R.string.statistics_title))
                     }
                     IconButton(onClick = onNavigateToSettings) {
@@ -236,30 +236,12 @@ fun SearchScreen(
                 } else {
                     context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = resultCountText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    IconButton(
-                        onClick = { onNavigateToStatistics(appFilter) },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.BarChart,
-                            contentDescription = stringResource(R.string.statistics_title),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+                Text(
+                    text = resultCountText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
             }
 
             val todayLabel = stringResource(R.string.date_today)

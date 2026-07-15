@@ -68,14 +68,16 @@ class MainActivity : ComponentActivity() {
                 var onboarded by remember { mutableStateOf(prefs.getBoolean("onboarded", false)) }
                 var screen by remember { mutableStateOf(Screen.Search) }
                 var initialStatsAppPackage by remember { mutableStateOf<String?>(null) }
+                var initialStatsQuery by remember { mutableStateOf("") }
 
                 if (onboarded) {
                     when (screen) {
                         Screen.Search -> SearchScreen(
                             viewModel = viewModel,
                             onNavigateToSettings = { screen = Screen.Settings },
-                            onNavigateToStatistics = { appPackage ->
+                            onNavigateToStatistics = { appPackage, query ->
                                 initialStatsAppPackage = appPackage
+                                initialStatsQuery = query
                                 screen = Screen.Statistics
                             },
                         )
@@ -83,13 +85,16 @@ class MainActivity : ComponentActivity() {
                             BackHandler {
                                 screen = Screen.Search
                                 initialStatsAppPackage = null
+                                initialStatsQuery = ""
                             }
                             StatisticsScreen(
                                 onBack = {
                                     screen = Screen.Search
                                     initialStatsAppPackage = null
+                                    initialStatsQuery = ""
                                 },
                                 initialAppPackage = initialStatsAppPackage,
+                                initialQuery = initialStatsQuery,
                             )
                         }
                         Screen.Settings -> {

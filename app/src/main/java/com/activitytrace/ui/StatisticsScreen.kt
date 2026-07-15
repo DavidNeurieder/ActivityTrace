@@ -105,6 +105,7 @@ private enum class DateRange {
 fun StatisticsScreen(
     onBack: () -> Unit,
     initialAppPackage: String? = null,
+    initialQuery: String = "",
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -113,6 +114,7 @@ fun StatisticsScreen(
 
     var selectedType by remember { mutableStateOf<String?>(null) }
     var selectedApp by remember { mutableStateOf(initialAppPackage) }
+    var searchQuery by remember { mutableStateOf(initialQuery) }
     var selectedRange by remember { mutableStateOf(DateRange.DAYS_7) }
 
     var totalCount by remember { mutableStateOf(0) }
@@ -231,6 +233,15 @@ fun StatisticsScreen(
                 onRangeSelect = { selectedRange = it },
             )
             Spacer(Modifier.height(12.dp))
+
+            if (searchQuery.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.statistics_filtered_by_query, searchQuery),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
 
             if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
                 InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
