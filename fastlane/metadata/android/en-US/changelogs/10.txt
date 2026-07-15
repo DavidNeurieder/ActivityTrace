@@ -1,8 +1,18 @@
 New features:
-- Multi-language support: German, French, Spanish, Italian, Portuguese, Russian, Polish
-- Search recognizes month names in your language
-- All app text now properly translatable
+- Statistics screen with summary cards, timeline charts, top apps, breakdown
+- Blocked system apps auto-configured on fresh install
+- Diagnostic error logs for export and backup failures
 
 Improvements:
-- Proper plural forms for result and import counts
-- More consistent Settings status messages
+- Timeline charts now same size — no jumping when switching tabs
+- Top apps always visible (even with 0 or 1 entry)
+- Breakdown always shown after timeline
+- More detailed export error messages
+
+Fixes:
+- Export no longer crashes on some Android 16 devices
+- SQLite backup no longer fails on retry (stale temp file)
+- No more duplicate breakdowns when filtering by app in statistics
+- Overlapping numbers in daily chart bars fixed
+
+Multi-language support added in previous update.

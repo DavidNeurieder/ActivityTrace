@@ -4,6 +4,8 @@
 <li>Search notifications, accessibility and files</li>
 <li>Prefix and wildcard matching</li>
 <li>Search term highlighting in results</li>
+<li>Statistics with timeline charts and breakdown by content type</li>
+<li>System app blocking for unwanted sources</li>
 <li>Full encryption at rest (SQLCipher + Android Keystore)</li>
 <li>Zero network — no internet permission, no telemetry</li>
 <li>Open source (GPL-3.0-only)</li>

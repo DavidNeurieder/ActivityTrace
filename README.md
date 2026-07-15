@@ -15,6 +15,8 @@ Search across notifications, accessibility screen captures, and indexed files wi
 - **Natural language queries** — `yesterday`, `last week`, `in:signal`, `type:notification`
 - **Prefix & wildcard search** — `test` matches `testing`/`tested`, `*error` matches `fatal error`
 - **Search term highlighting** — matched keywords highlighted in results
+- **Statistics** — summary cards, timeline charts, top apps, content type breakdown
+- **System app blocking** — capture from selected apps disabled by default
 - **Full encryption** — SQLCipher + Android Keystore (StrongBox on capable hardware)
 - **Zero-network** — no internet permission, no telemetry, no cloud
 - **Open source** — GPL-3.0-only, distributed via F-Droid

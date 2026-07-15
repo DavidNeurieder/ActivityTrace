@@ -1,14 +1,33 @@
 # Changelog
 
-## v0.8.0 — 2026-07-13
+## v0.8.0 — 2026-07-15
 
 ### New
 - Multi-language support: German, French, Spanish, Italian, Portuguese (BR), Russian, Polish
 - Search now accepts localized month names (e.g. "marzo", "mai", "juin")
 - All hardcoded UI strings extracted to `strings.xml` with `stringResource()` bindings
+- Statistics screen with summary cards, timeline charts, top apps, and content type breakdown
+- Auto-blocked system apps on fresh install (7 system packages blocked by default)
+
+### Improvements
+- Timeline charts unified to same size (160dp) — no layout jump on tab switch
+- DailyChart count labels no longer overlap with date labels (short bars draw count inside the bar)
+- Export/backup failures now write diagnostic error logs to `Download/ActivityTrace/`
+- Export operations use `ExportStatus` sealed return type with detailed error information
+
+### Fixes
+- Export crashing when `MediaStore.Downloads.insert()` returns null
+- SQLite backup failing silently when `openOutputStream` returns null
+- `exportToPlainSqlite` crashing on retry with "table captured_items already exists" (stale temp file)
+- `IS_PENDING` constant removed in API 36 — uses string literal `"is_pending"` instead
+- Stale `topApps` data causing duplicate breakdown when filtering by app in Statistics
+- Statistics top apps now shown even with 0 or 1 entry; breakdown always follows timeline
 
 ### Technical
 - `ExportStatus` sealed class replaces raw string color logic in Settings
+- `ExportErrorLogger` writes full stack traces with fallback locations
+- `BlockedAppDefaults.kt` centralizes blocked packages (avoids circular dependency)
+- `ActivityTraceDatabase` version 5→6 with auto-seed migration
 - Proper `<plurals>` for result count and import count in all 7 new locales
 - `QueryParser` months map built dynamically from `java.time.Month` per device locale
 - Fastlane metadata and changelogs for all 7 new languages
