@@ -56,11 +56,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.activitytrace.R
+import com.activitytrace.capture.DEFAULT_BLOCKED
 import com.activitytrace.model.BlockedApp
 import com.activitytrace.store.ActivityTraceDatabase
 import kotlinx.coroutines.launch
@@ -104,6 +106,9 @@ fun BlockedAppsScreen(
         },
         modifier = modifier,
     ) { innerPadding ->
+        val userBlocked = blockedApps.filter { it.appPackage !in DEFAULT_BLOCKED }
+        val defaultBlocked = blockedApps.filter { it.appPackage in DEFAULT_BLOCKED }
+
         if (blockedApps.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -127,15 +132,35 @@ fun BlockedAppsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                items(blockedApps, key = { it.appPackage }) { app ->
-                    BlockedAppRow(
-                        app = app,
-                        onUnblock = {
-                            scope.launch {
-                                db.blockedAppDao().delete(app.appPackage)
-                            }
-                        },
-                    )
+                if (userBlocked.isNotEmpty()) {
+                    item(key = "header_user") {
+                        SectionLabel(stringResource(R.string.blocked_apps_manually_blocked))
+                    }
+                    items(userBlocked, key = { it.appPackage + "_user" }) { app ->
+                        BlockedAppRow(
+                            app = app,
+                            onUnblock = {
+                                scope.launch {
+                                    db.blockedAppDao().delete(app.appPackage)
+                                }
+                            },
+                        )
+                    }
+                }
+                if (defaultBlocked.isNotEmpty()) {
+                    item(key = "header_default") {
+                        SectionLabel(stringResource(R.string.blocked_apps_system_noise))
+                    }
+                    items(defaultBlocked, key = { it.appPackage + "_default" }) { app ->
+                        BlockedAppRow(
+                            app = app,
+                            onUnblock = {
+                                scope.launch {
+                                    db.blockedAppDao().delete(app.appPackage)
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -337,6 +362,17 @@ private fun BlockedAppRow(
             }
         }
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+    )
 }
 
 @Suppress("DEPRECATION")

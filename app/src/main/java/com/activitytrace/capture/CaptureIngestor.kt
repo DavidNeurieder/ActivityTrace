@@ -4,8 +4,22 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import com.activitytrace.model.BlockedApp
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.ActivityTraceDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+internal val DEFAULT_BLOCKED = setOf(
+    "com.android.systemui",
+    "com.android.settings",
+    "com.android.launcher3",
+    "com.google.android.apps.nexuslauncher",
+    "com.android.launcher",
+    "com.google.android.inputmethod.latin",
+    "com.android.inputmethod.latin",
+)
 
 object CaptureIngestor {
     private var db: ActivityTraceDatabase? = null
@@ -39,13 +53,22 @@ object CaptureIngestor {
 
     fun init(ctx: Context) {
         db = ActivityTraceDatabase.getInstance(ctx.applicationContext)
+        CoroutineScope(Dispatchers.IO).launch {
+            reloadBlockedApps()
+        }
     }
 
     suspend fun reloadBlockedApps() {
         try {
             val dao = db?.blockedAppDao()
             if (dao != null) {
-                val blocked = dao.getAllBlocked()
+                var blocked = dao.getAllBlocked()
+                if (blocked.isEmpty()) {
+                    DEFAULT_BLOCKED.forEach { pkg ->
+                        dao.insert(BlockedApp(pkg))
+                    }
+                    blocked = dao.getAllBlocked()
+                }
                 synchronized(blockedApps) {
                     blockedApps.clear()
                     blockedApps.addAll(blocked.toSet())
