@@ -118,8 +118,8 @@ interface CaptureDao {
     @Query("SELECT app_package, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY app_package ORDER BY count DESC LIMIT 15")
     suspend fun topApps(contentType: String?): List<AppCount>
 
-    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT 7")
-    suspend fun dailyCounts(contentType: String?): List<DateCount>
+    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT :limit")
+    suspend fun dailyCounts(contentType: String?, limit: Int = 7): List<DateCount>
 
     @Query("SELECT COUNT(*) FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType)")
     suspend fun totalCount(contentType: String?): Int
@@ -127,8 +127,8 @@ interface CaptureDao {
     @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since AND (:contentType IS NULL OR content_type = :contentType)")
     suspend fun countSince(since: Long, contentType: String?): Int
 
-    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE app_package = :appPackage AND (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT 7")
-    suspend fun dailyCountsByApp(appPackage: String, contentType: String?): List<DateCount>
+    @Query("SELECT strftime('%Y-%m-%d', timestamp/1000, 'unixepoch') as date, COUNT(*) as count FROM captured_items WHERE app_package = :appPackage AND (:contentType IS NULL OR content_type = :contentType) GROUP BY date ORDER BY date DESC LIMIT :limit")
+    suspend fun dailyCountsByApp(appPackage: String, contentType: String?, limit: Int = 7): List<DateCount>
 
     @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND (:contentType IS NULL OR content_type = :contentType)")
     suspend fun totalCountByApp(appPackage: String, contentType: String?): Int
@@ -144,6 +144,21 @@ interface CaptureDao {
 
     @Query("SELECT CAST(strftime('%H', timestamp/1000, 'unixepoch') AS INTEGER) as hour, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) AND (:appPackage IS NULL OR app_package = :appPackage) GROUP BY hour ORDER BY hour")
     suspend fun hourlyCounts(contentType: String?, appPackage: String?): List<HourCount>
+
+    @Query("SELECT CAST(strftime('%w', timestamp/1000, 'unixepoch') AS INTEGER) as dow, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) AND (:appPackage IS NULL OR app_package = :appPackage) GROUP BY dow ORDER BY dow")
+    suspend fun dayOfWeekCounts(contentType: String?, appPackage: String?): List<DayOfWeekCount>
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp BETWEEN :start AND :end AND (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun countBetween(start: Long, end: Long, contentType: String?): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND timestamp BETWEEN :start AND :end AND (:contentType IS NULL OR content_type = :contentType)")
+    suspend fun countBetweenByApp(appPackage: String, start: Long, end: Long, contentType: String?): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE is_bookmarked = 1")
+    suspend fun bookmarkedCount(): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE is_bookmarked = 1 AND timestamp > :since")
+    suspend fun bookmarkedCountSince(since: Long): Int
 
     data class AppCount(
         @ColumnInfo(name = "app_package") val appPackage: String,
@@ -162,6 +177,11 @@ interface CaptureDao {
 
     data class HourCount(
         val hour: Int,
+        val count: Int,
+    )
+
+    data class DayOfWeekCount(
+        val dow: Int,
         val count: Int,
     )
 }
