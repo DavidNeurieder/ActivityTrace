@@ -29,10 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Leaderboard
@@ -42,7 +40,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,6 +65,7 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.activitytrace.R
@@ -99,8 +97,6 @@ fun StatisticsScreen(
     var typeBreakdown by remember { mutableStateOf<List<ContentTypeCount>>(emptyList()) }
     var hourly by remember { mutableStateOf<List<HourCount>>(emptyList()) }
     var dayOfWeekData by remember { mutableStateOf<List<CaptureDao.DayOfWeekCount>>(emptyList()) }
-    var bookmarkedTotal by remember { mutableStateOf(0) }
-    var bookmarkedRecent by remember { mutableStateOf(0) }
 
     var appTypeBreakdown by remember { mutableStateOf<List<ContentTypeCount>>(emptyList()) }
     var appDaily by remember { mutableStateOf<List<CaptureDao.DateCount>>(emptyList()) }
@@ -108,7 +104,10 @@ fun StatisticsScreen(
     var appToday by remember { mutableStateOf(0) }
     var appWeek by remember { mutableStateOf(0) }
 
-    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, dateRangeMs) {
+    var showAllApps by remember { mutableStateOf(false) }
+    var timelineTab by remember { mutableStateOf("daily") }
+
+    LaunchedEffect(items.size, items.hashCode(), showAllApps, selectedType, selectedApp, dateRangeMs) {
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
@@ -131,9 +130,6 @@ fun StatisticsScreen(
         }
 
         val ranged = if (dateRangeMs != null) filtered.filter { it.timestamp in rangeStartMs until rangeEndMs } else filtered
-
-        bookmarkedTotal = items.count { it.isBookmarked }
-        bookmarkedRecent = items.count { it.isBookmarked && it.timestamp >= weekStart }
 
         val simpleDate: (Long) -> String = { ts ->
             val c = Calendar.getInstance().apply { timeInMillis = ts }
@@ -175,7 +171,7 @@ fun StatisticsScreen(
             topApps = ranged.groupBy { it.appPackage }
                 .map { (pkg, group) -> CaptureDao.AppCount(pkg, group.size) }
                 .sortedByDescending { it.count }
-                .take(15)
+                .take(if (showAllApps) 15 else 5)
             typeBreakdown = ranged.groupBy { it.contentType }
                 .map { (type, group) -> ContentTypeCount(type, group.size) }
             hourly = ranged.groupBy { toHour(it.timestamp) }
@@ -191,13 +187,8 @@ fun StatisticsScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(12.dp),
     ) {
-        if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
-            InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
-            Spacer(Modifier.height(16.dp))
-        }
-
         if (selectedApp != null) {
             val appName = resolveAppName2(context, selectedApp!!)
             Text(
@@ -205,115 +196,131 @@ fun StatisticsScreen(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, dateRangeMs)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
 
             SectionHeader(
                 icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                 title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             if (appTypeBreakdown.isEmpty()) {
                 EmptyBreakdown(typeLabel(selectedType))
             } else {
                 BreakdownDonutCard(appTypeBreakdown)
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
 
-            SectionHeader(
-                icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            TimelineSection(
+                timelineTab = timelineTab,
+                onTabChange = { timelineTab = it },
+                dailyChart = {
+                    if (appDaily.isNotEmpty()) DailyChart(fillDailyGaps(appDaily, dateRangeMs), dateRangeMs)
+                    else NoDataText()
+                },
+                hourlyChart = {
+                    if (hourly.isNotEmpty()) HourlyChart(hourly)
+                    else NoDataText()
+                },
+                dowChart = {
+                    if (dayOfWeekData.any { it.count > 0 }) DayOfWeekCard(dayOfWeekData)
+                    else NoDataText()
+                },
             )
-            Spacer(Modifier.height(8.dp))
-            if (dayOfWeekData.any { it.count > 0 }) {
-                DayOfWeekCard(dayOfWeekData)
-            } else {
-                NoDataText()
-            }
-            Spacer(Modifier.height(16.dp))
-
-            SectionHeader(
-                icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-            )
-            Spacer(Modifier.height(8.dp))
-            if (appDaily.isNotEmpty()) {
-                DailyChart(fillDailyGaps(appDaily, dateRangeMs), dateRangeMs)
-            } else {
-                NoDataText()
-            }
         } else {
             SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, dateRangeMs)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
 
             if (selectedType == null) {
                 SectionHeader(
                     icon = { Icon(Icons.Default.BarChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                     title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 if (typeBreakdown.isEmpty()) {
                     EmptyBreakdown(typeLabel(selectedType))
                 } else {
                     BreakdownDonutCard(typeBreakdown)
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
             }
 
-            SectionHeader(
-                icon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_day_of_week), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            TimelineSection(
+                timelineTab = timelineTab,
+                onTabChange = { timelineTab = it },
+                dailyChart = {
+                    if (dailyCounts.isNotEmpty()) DailyChart(fillDailyGaps(dailyCounts, dateRangeMs), dateRangeMs)
+                    else NoDataText()
+                },
+                hourlyChart = {
+                    if (hourly.isNotEmpty()) HourlyChart(hourly)
+                    else NoDataText()
+                },
+                dowChart = {
+                    if (dayOfWeekData.any { it.count > 0 }) DayOfWeekCard(dayOfWeekData)
+                    else NoDataText()
+                },
             )
-            Spacer(Modifier.height(8.dp))
-            if (dayOfWeekData.any { it.count > 0 }) {
-                DayOfWeekCard(dayOfWeekData)
-            } else {
-                NoDataText()
-            }
-            Spacer(Modifier.height(16.dp))
-
-            SectionHeader(
-                icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_7day), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-            )
-            Spacer(Modifier.height(8.dp))
-            if (dailyCounts.isNotEmpty()) {
-                DailyChart(fillDailyGaps(dailyCounts, dateRangeMs), dateRangeMs)
-            } else {
-                NoDataText()
-            }
-        }
-
-        if (hourly.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
-            SectionHeader(
-                icon = { Icon(Icons.Default.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_hourly), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-            )
-            Spacer(Modifier.height(8.dp))
-            HourlyChart(hourly)
-        }
-
-        if (bookmarkedTotal > 0) {
-            Spacer(Modifier.height(16.dp))
-            SectionHeader(
-                icon = { Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
-                title = { Text(stringResource(R.string.statistics_bookmarked), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
-            )
-            Spacer(Modifier.height(8.dp))
-            BookmarkCard(bookmarkedTotal, bookmarkedRecent)
         }
 
         if (selectedApp == null && topApps.isNotEmpty()) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(10.dp))
             SectionHeader(
                 icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
                 title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             )
-            Spacer(Modifier.height(8.dp))
-            TopAppsList(topApps, onAppClick = { })
+            Spacer(Modifier.height(6.dp))
+            TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = { })
         }
+    }
+}
+
+@Composable
+private fun TimelineSection(
+    timelineTab: String,
+    onTabChange: (String) -> Unit,
+    dailyChart: @Composable () -> Unit,
+    hourlyChart: @Composable () -> Unit,
+    dowChart: @Composable () -> Unit,
+) {
+    SectionHeader(
+        icon = { Icon(Icons.Default.Leaderboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
+        title = { Text(stringResource(R.string.statistics_timeline), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+    )
+    Spacer(Modifier.height(8.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        val chips = listOf("daily" to R.string.statistics_tab_daily, "hours" to R.string.statistics_tab_hours, "days" to R.string.statistics_tab_days)
+        chips.forEach { (value, labelRes) ->
+            val selected = timelineTab == value
+            Surface(
+                onClick = { onTabChange(value) },
+                shape = RoundedCornerShape(8.dp),
+                color = if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = stringResource(labelRes),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 6.dp),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+
+    when (timelineTab) {
+        "daily" -> dailyChart()
+        "hours" -> hourlyChart()
+        "days" -> dowChart()
     }
 }
 
@@ -443,7 +450,7 @@ private fun StatCard(
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             icon()
@@ -496,81 +503,6 @@ private fun trendPercent(current: Int, previous: Int): String? {
 }
 
 @Composable
-private fun BreakdownCard(data: List<ContentTypeCount>) {
-    val total = data.sumOf { it.count }.coerceAtLeast(1)
-    val colors = mapOf(
-        "notification" to MaterialTheme.colorScheme.primary,
-        "screen" to MaterialTheme.colorScheme.tertiary,
-        "toast" to MaterialTheme.colorScheme.secondary,
-        "page" to MaterialTheme.colorScheme.error,
-    )
-    val labels = mapOf(
-        "notification" to stringResource(R.string.filter_notifications),
-        "screen" to stringResource(R.string.filter_accessibility),
-        "toast" to stringResource(R.string.filter_toast),
-        "page" to stringResource(R.string.filter_folders),
-    )
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            data.forEach { item ->
-                val color = colors[item.contentType] ?: MaterialTheme.colorScheme.surfaceVariant
-                val label = labels[item.contentType] ?: item.contentType
-                val fraction = item.count.toFloat() / total
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Surface(
-                        modifier = Modifier.size(10.dp),
-                        shape = CircleShape,
-                        color = color,
-                    ) {}
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = "${item.count}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .padding(vertical = 2.dp),
-                ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 1.dp),
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        shape = RoundedCornerShape(3.dp),
-                        color = color.copy(alpha = 0.15f),
-                    ) {}
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .fillMaxWidth(fraction),
-                        shape = RoundedCornerShape(3.dp),
-                        color = color.copy(alpha = 0.6f),
-                    ) {}
-                }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long, Long>?) {
     val primary = MaterialTheme.colorScheme.primary
     val tertiary = MaterialTheme.colorScheme.tertiary
@@ -581,8 +513,8 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .padding(16.dp),
+                .height(160.dp)
+                .padding(12.dp),
         ) {
             val maxCount = data.maxOf { it.count }.coerceAtLeast(1)
             val barWidth = size.width / data.size * 0.55f
@@ -651,8 +583,8 @@ private fun HourlyChart(data: List<HourCount>) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp)
-                .padding(12.dp),
+                .height(110.dp)
+                .padding(8.dp),
         ) {
             val maxCount = data.maxOf { it.count }.coerceAtLeast(1)
             val totalSlots = 24
@@ -708,15 +640,18 @@ private fun HourlyChart(data: List<HourCount>) {
 @Composable
 private fun TopAppsList(
     apps: List<CaptureDao.AppCount>,
+    showAll: Boolean,
+    onShowAllChange: (Boolean) -> Unit,
     onAppClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val total = apps.sumOf { it.count }.coerceAtLeast(1)
     val medals = listOf("🥇", "🥈", "🥉")
+    val displayApps = if (showAll) apps else apps.take(5)
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            apps.forEachIndexed { index, app ->
+        Column(modifier = Modifier.padding(12.dp)) {
+            displayApps.forEachIndexed { index, app ->
                 val appName = remember(app.appPackage) { resolveAppName2(context, app.appPackage) }
                 val appIcon = remember(app.appPackage) {
                     try {
@@ -730,54 +665,66 @@ private fun TopAppsList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onAppClick(app.appPackage) }
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = medals.getOrElse(index) { "${index + 1}." },
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(28.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.width(24.dp),
                     )
                     if (appIcon != null) {
                         Icon(
                             painter = BitmapPainter(appIcon),
                             contentDescription = null,
                             tint = Color.Unspecified,
-                            modifier = Modifier.size(28.dp).clip(CircleShape),
+                            modifier = Modifier.size(24.dp).clip(CircleShape),
                         )
                     } else {
                         Surface(
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(24.dp),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceVariant,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(appName.take(1).uppercase(), style = MaterialTheme.typography.titleSmall)
+                                Text(appName.take(1).uppercase(), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = appName,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Surface(
-                            modifier = Modifier.fillMaxWidth(fraction).height(3.dp),
-                            shape = RoundedCornerShape(2.dp),
+                            modifier = Modifier.fillMaxWidth(fraction).height(2.dp),
+                            shape = RoundedCornerShape(1.dp),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         ) {}
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text = app.count.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
+            }
+            if (!showAll && apps.size > 5) {
+                Text(
+                    text = stringResource(R.string.statistics_show_all, apps.size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onShowAllChange(true) }
+                        .padding(vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -807,7 +754,7 @@ private fun DayOfWeekCard(data: List<CaptureDao.DayOfWeekCount>) {
     val maxDow = data.maxByOrNull { it.count }?.dow
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             for (dow in 0..6) {
                 val item = data.find { it.dow == dow }
                 val count = item?.count ?: 0
@@ -816,17 +763,17 @@ private fun DayOfWeekCard(data: List<CaptureDao.DayOfWeekCount>) {
                 val barColor = dayColors[dow]
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = labels[dow],
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = if (isMax) FontWeight.Bold else FontWeight.Normal,
                         color = if (isMax) barColor else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(48.dp),
+                        modifier = Modifier.width(38.dp),
                     )
-                    Box(modifier = Modifier.weight(1f).height(16.dp)) {
+                    Box(modifier = Modifier.weight(1f).height(12.dp)) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             shape = RoundedCornerShape(4.dp),
@@ -862,36 +809,6 @@ private fun DayOfWeekCard(data: List<CaptureDao.DayOfWeekCount>) {
 }
 
 @Composable
-private fun BookmarkCard(total: Int, recentWeek: Int) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                Icons.Default.Bookmark, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = total.toString(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            if (recentWeek > 0) {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "($recentWeek ${stringResource(R.string.statistics_this_week).lowercase()})",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
 private fun fillDailyGaps(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long, Long>?): List<CaptureDao.DateCount> {
     val days = dateRangeMs?.let { (s, e) -> ((e - s) / 86_400_000L).toInt() } ?: 30
     val cal = Calendar.getInstance()
@@ -913,61 +830,6 @@ private fun fillDailyGaps(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Lo
 }
 
 @Composable
-private fun InsightBanner(
-    dayOfWeekData: List<CaptureDao.DayOfWeekCount>,
-    hourly: List<HourCount>,
-    typeBreakdown: List<ContentTypeCount>,
-    topApps: List<CaptureDao.AppCount>,
-) {
-    val context = LocalContext.current
-    val dowLabels = listOf(
-        stringResource(R.string.statistics_dow_sun),
-        stringResource(R.string.statistics_dow_mon),
-        stringResource(R.string.statistics_dow_tue),
-        stringResource(R.string.statistics_dow_wed),
-        stringResource(R.string.statistics_dow_thu),
-        stringResource(R.string.statistics_dow_fri),
-        stringResource(R.string.statistics_dow_sat),
-    )
-    val bestDay = dayOfWeekData.maxByOrNull { it.count }
-    val peakHour = hourly.maxByOrNull { it.count }
-    val topApp = topApps.firstOrNull()
-    val topAppPct = if (topApp != null && typeBreakdown.isNotEmpty()) {
-        val total = typeBreakdown.sumOf { it.count }
-        if (total > 0) (topApp.count.toFloat() / total * 100).roundToInt() else null
-    } else null
-
-    val dayName = if (bestDay?.count ?: 0 > 0) dowLabels.getOrNull(bestDay!!.dow) else null
-    val peakHourVal = peakHour?.hour
-    val peakLabel = if (peakHourVal != null) stringResource(R.string.statistics_peak_hour, peakHourVal) else null
-    val topLabel = topApp?.let { app ->
-        val name = resolveAppName2(context, app.appPackage)
-        if (topAppPct != null) "$name ($topAppPct%)" else name
-    }
-
-    val parts = listOfNotNull(
-        dayName?.let { "Most captures on $it" },
-        peakLabel,
-        topLabel?.let { "Top: $it" },
-    )
-    if (parts.isEmpty()) return
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        tonalElevation = 1.dp,
-    ) {
-        Text(
-            text = parts.joinToString(" · "),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    }
-}
-
-@Composable
 private fun BreakdownDonutCard(data: List<ContentTypeCount>) {
     val total = data.sumOf { it.count }.coerceAtLeast(1)
     val colors = mapOf(
@@ -986,15 +848,15 @@ private fun BreakdownDonutCard(data: List<ContentTypeCount>) {
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface.hashCode()
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             // Donut
             Box(
-                modifier = Modifier.fillMaxWidth().height(160.dp),
+                modifier = Modifier.fillMaxWidth().height(130.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Canvas(modifier = Modifier.size(140.dp)) {
+                Canvas(modifier = Modifier.size(110.dp)) {
                     var startAngle = -90f
-                    val strokeWidth = 32f
+                    val strokeWidth = 24f
                     data.forEach { item ->
                         val fraction = item.count.toFloat() / total
                         val sweep = fraction * 360f
