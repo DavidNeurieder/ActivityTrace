@@ -116,7 +116,7 @@ import java.util.Locale
 fun SearchScreen(
     viewModel: SearchViewModel,
     onNavigateToSettings: () -> Unit,
-    onNavigateToStatistics: () -> Unit,
+    onNavigateToStatistics: (appPackage: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val query by viewModel.query.collectAsState()
@@ -149,7 +149,7 @@ fun SearchScreen(
                             contentDescription = stringResource(R.string.filter_bookmarked),
                         )
                     }
-                    IconButton(onClick = onNavigateToStatistics) {
+                    IconButton(onClick = { onNavigateToStatistics(appFilter) }) {
                         Icon(Icons.Default.BarChart, contentDescription = stringResource(R.string.statistics_title))
                     }
                     IconButton(onClick = onNavigateToSettings) {
@@ -228,6 +228,16 @@ fun SearchScreen(
                     onClear = { viewModel.setDateFilter(null) },
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(
+                    onClick = { onNavigateToStatistics(appFilter) },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        Icons.Default.BarChart,
+                        contentDescription = stringResource(R.string.statistics_title),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             if (results.isNotEmpty()) {

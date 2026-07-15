@@ -67,18 +67,29 @@ class MainActivity : ComponentActivity() {
                 val prefs = getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
                 var onboarded by remember { mutableStateOf(prefs.getBoolean("onboarded", false)) }
                 var screen by remember { mutableStateOf(Screen.Search) }
+                var initialStatsAppPackage by remember { mutableStateOf<String?>(null) }
 
                 if (onboarded) {
                     when (screen) {
                         Screen.Search -> SearchScreen(
                             viewModel = viewModel,
                             onNavigateToSettings = { screen = Screen.Settings },
-                            onNavigateToStatistics = { screen = Screen.Statistics },
+                            onNavigateToStatistics = { appPackage ->
+                                initialStatsAppPackage = appPackage
+                                screen = Screen.Statistics
+                            },
                         )
                         Screen.Statistics -> {
-                            BackHandler { screen = Screen.Search }
+                            BackHandler {
+                                screen = Screen.Search
+                                initialStatsAppPackage = null
+                            }
                             StatisticsScreen(
-                                onBack = { screen = Screen.Search },
+                                onBack = {
+                                    screen = Screen.Search
+                                    initialStatsAppPackage = null
+                                },
+                                initialAppPackage = initialStatsAppPackage,
                             )
                         }
                         Screen.Settings -> {

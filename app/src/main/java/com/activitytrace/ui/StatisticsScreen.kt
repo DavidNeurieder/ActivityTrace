@@ -104,6 +104,7 @@ private enum class DateRange {
 @Composable
 fun StatisticsScreen(
     onBack: () -> Unit,
+    initialAppPackage: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -111,7 +112,7 @@ fun StatisticsScreen(
     val dao = remember { db.captureDao() }
 
     var selectedType by remember { mutableStateOf<String?>(null) }
-    var selectedApp by remember { mutableStateOf<String?>(null) }
+    var selectedApp by remember { mutableStateOf(initialAppPackage) }
     var selectedRange by remember { mutableStateOf(DateRange.DAYS_7) }
 
     var totalCount by remember { mutableStateOf(0) }
