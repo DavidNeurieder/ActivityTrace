@@ -33,9 +33,8 @@ class SearchScreenTest {
 
     private fun createViewModel(items: List<CapturedItem> = emptyList()): SearchViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        every { searchEngine.recentItems(any()) } returns flowOf(items)
-        every { searchEngine.search(any()) } returns flowOf(emptyList())
-        every { searchEngine.search(any(), any()) } returns flowOf(emptyList())
+        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(items)
+        every { searchEngine.search(any(), any(), any(), any()) } returns flowOf(emptyList())
         return SearchViewModel(searchEngine, app)
     }
 
@@ -50,7 +49,7 @@ class SearchScreenTest {
                 timestamp = 1000L,
             )
         )
-        every { searchEngine.search("test", any()) } returns flowOf(items)
+        every { searchEngine.search("test", any(), any(), any()) } returns flowOf(items)
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -94,14 +93,14 @@ class SearchScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Today").assertExists()
-        composeTestRule.onNodeWithText("This Week").assertExists()
+        composeTestRule.onNodeWithText("This week").assertExists()
         composeTestRule.onNodeWithText("2 results").assertExists()
     }
 
     @Test
     fun showsNoResultsText() {
         val viewModel = createViewModel()
-        every { searchEngine.search("xyz", any()) } returns flowOf(emptyList())
+        every { searchEngine.search("xyz", any(), any(), any()) } returns flowOf(emptyList())
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -175,9 +174,8 @@ class SearchScreenTest {
         }
 
         composeTestRule.onNodeWithText("All").assertExists()
-        composeTestRule.onNodeWithText("Notifications").assertExists()
-        composeTestRule.onNodeWithText("Folders").assertExists()
-        composeTestRule.onNodeWithText("Accessibility").assertExists()
+        composeTestRule.onNodeWithText("All apps").assertExists()
+        composeTestRule.onNodeWithText("All time").assertExists()
     }
 
     @Test
