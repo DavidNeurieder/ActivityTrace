@@ -139,6 +139,7 @@ fun StatisticsScreen(
 fun StatisticsPanel(
     initialAppPackage: String? = null,
     initialQuery: String = "",
+    showFilters: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -227,19 +228,21 @@ fun StatisticsPanel(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FilterRow(
-            selectedTypeLabel = typeLabel(selectedType),
-            onTypeSelect = { selectedType = it },
-            selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
-                               else selectedApp!!.substringAfterLast('.'),
-            onAppSelect = { selectedApp = it },
-            availableApps = availableApps,
-            selectedRange = selectedRange,
-            onRangeSelect = { selectedRange = it },
-        )
-        Spacer(Modifier.height(12.dp))
+        if (showFilters) {
+            FilterRow(
+                selectedTypeLabel = typeLabel(selectedType),
+                onTypeSelect = { selectedType = it },
+                selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
+                                   else selectedApp!!.substringAfterLast('.'),
+                onAppSelect = { selectedApp = it },
+                availableApps = availableApps,
+                selectedRange = selectedRange,
+                onRangeSelect = { selectedRange = it },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
 
-        if (searchQuery.isNotBlank()) {
+        if (showFilters && searchQuery.isNotBlank()) {
             Text(
                 text = stringResource(R.string.statistics_filtered_by_query, searchQuery),
                 style = MaterialTheme.typography.bodySmall,

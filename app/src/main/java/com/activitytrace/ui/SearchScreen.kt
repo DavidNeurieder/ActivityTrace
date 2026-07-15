@@ -232,6 +232,7 @@ fun SearchScreen(
                 StatisticsPanel(
                     initialAppPackage = appFilter,
                     initialQuery = query,
+                    showFilters = false,
                     modifier = Modifier.fillMaxSize().weight(1f),
                 )
             } else {
