@@ -94,7 +94,7 @@ interface CaptureDao {
 
         val sql = """
             SELECT * FROM captured_items$whereClause
-            ORDER BY timestamp DESC LIMIT 100
+            ORDER BY timestamp DESC
         """.trimIndent()
 
         return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))

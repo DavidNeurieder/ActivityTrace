@@ -235,19 +235,14 @@ fun SearchScreen(
             }
 
             if (showStats) {
-                StatisticsPanel(
+                StatisticsScreen(
+                    items = results,
                     initialAppPackage = appFilter,
-                    initialQuery = query,
-                    showFilters = false,
                     modifier = Modifier.fillMaxSize().weight(1f),
                 )
             } else {
                 if (results.isNotEmpty()) {
-                    val resultCountText = if (results.size >= 100) {
-                        context.resources.getQuantityString(R.plurals.result_count_capped, results.size, results.size)
-                    } else {
-                        context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
-                    }
+                    val resultCountText = context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
                     Text(
                         text = resultCountText,
                         style = MaterialTheme.typography.bodySmall,

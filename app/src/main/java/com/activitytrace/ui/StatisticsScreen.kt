@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AllInclusive
@@ -46,16 +44,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,7 +75,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.activitytrace.R
-import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.CaptureDao
 import com.activitytrace.store.CaptureDao.ContentTypeCount
 import com.activitytrace.store.CaptureDao.HourCount
@@ -100,55 +94,16 @@ private enum class DateRange {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
-    onBack: () -> Unit,
+    items: List<CapturedItem>,
     initialAppPackage: String? = null,
-    initialQuery: String = "",
-    modifier: Modifier = Modifier,
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.statistics_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_description))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-        },
-        modifier = modifier,
-    ) { innerPadding ->
-        StatisticsPanel(
-            initialAppPackage = initialAppPackage,
-            initialQuery = initialQuery,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .navigationBarsPadding(),
-        )
-    }
-}
-
-@Composable
-fun StatisticsPanel(
-    initialAppPackage: String? = null,
-    initialQuery: String = "",
-    showFilters: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val db = remember { ActivityTraceDatabase.getInstance(context) }
-    val dao = remember { db.captureDao() }
 
     var selectedType by remember { mutableStateOf<String?>(null) }
     var selectedApp by remember { mutableStateOf(initialAppPackage) }
-    var searchQuery by remember { mutableStateOf(initialQuery) }
     var selectedRange by remember { mutableStateOf(DateRange.DAYS_7) }
 
     var totalCount by remember { mutableStateOf(0) }
@@ -172,7 +127,7 @@ fun StatisticsPanel(
 
     var availableApps by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    LaunchedEffect(selectedType, selectedApp, selectedRange) {
+    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, selectedRange) {
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
@@ -186,40 +141,70 @@ fun StatisticsPanel(
 
         val yesterdayStart = todayStart - 86_400_000L
         val rangeDays = selectedRange.days
-        val rangeStart = if (rangeDays != null) todayStart - rangeDays * 86_400_000L else null
+        val rangeStartMs = if (rangeDays != null) todayStart - rangeDays * 86_400_000L else 0L
 
-        availableApps = dao.topApps().map { it.appPackage }
+        availableApps = items.map { it.appPackage }.distinct().sorted()
 
-        dayOfWeekData = dao.dayOfWeekCounts(selectedType, selectedApp)
-        bookmarkedTotal = dao.bookmarkedCount()
-        bookmarkedRecent = dao.bookmarkedCountSince(weekStart)
+        val filtered = items.filter { item ->
+            (selectedType == null || item.contentType == selectedType) &&
+            (selectedApp == null || item.appPackage == selectedApp)
+        }
 
-        val dailyLimit = rangeDays ?: 30
+        val ranged = if (rangeDays != null) filtered.filter { it.timestamp >= rangeStartMs } else filtered
+
+        bookmarkedTotal = items.count { it.isBookmarked }
+        bookmarkedRecent = items.count { it.isBookmarked && it.timestamp >= weekStart }
+
+        val simpleDate: (Long) -> String = { ts ->
+            val c = Calendar.getInstance().apply { timeInMillis = ts }
+            String.format(Locale.US, "%04d-%02d-%02d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH))
+        }
+        val toHour: (Long) -> Int = { ts ->
+            Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.HOUR_OF_DAY)
+        }
+        val toDow: (Long) -> Int = { ts ->
+            (Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.DAY_OF_WEEK) + 6) % 7
+        }
+
+        totalCount = ranged.size
+        todayCount = ranged.count { it.timestamp >= todayStart }
+        weekCount = ranged.count { it.timestamp >= weekStart }
+        yesterdayCount = ranged.count { it.timestamp in yesterdayStart until todayStart }
+        prevWeekCount = ranged.count { it.timestamp in prevWeekStart until weekStart }
 
         if (selectedApp != null) {
-            appTotal = dao.totalCountByApp(selectedApp!!, selectedType)
-            appToday = dao.countSinceByApp(selectedApp!!, todayStart, selectedType)
-            appWeek = dao.countSinceByApp(selectedApp!!, weekStart, selectedType)
-            appDaily = dao.dailyCountsByApp(selectedApp!!, selectedType, dailyLimit)
-            appTypeBreakdown = dao.contentTypeBreakdown(selectedApp!!)
-            hourly = dao.hourlyCounts(selectedType, selectedApp)
-            yesterdayCount = dao.countBetweenByApp(selectedApp!!, yesterdayStart, todayStart, selectedType)
-            prevWeekCount = dao.countBetweenByApp(selectedApp!!, prevWeekStart, weekStart, selectedType)
+            appTotal = ranged.size
+            appToday = ranged.count { it.timestamp >= todayStart }
+            appWeek = ranged.count { it.timestamp >= weekStart }
+            val dailyLimit = rangeDays ?: 30
+            appDaily = ranged.groupBy { simpleDate(it.timestamp) }
+                .map { (date, group) -> CaptureDao.DateCount(date, group.size) }
+                .sortedBy { it.date }
+                .takeLast(dailyLimit)
+            appTypeBreakdown = ranged.groupBy { it.contentType }
+                .map { (type, group) -> ContentTypeCount(type, group.size) }
+            hourly = ranged.groupBy { toHour(it.timestamp) }
+                .map { (hour, group) -> HourCount(hour, group.size) }
+                .sortedBy { it.hour }
         } else {
-            if (rangeStart != null) {
-                totalCount = dao.countSince(rangeStart, selectedType)
-            } else {
-                totalCount = dao.totalCount(selectedType)
-            }
-            todayCount = dao.countSince(todayStart, selectedType)
-            weekCount = dao.countSince(weekStart, selectedType)
-            yesterdayCount = dao.countBetween(yesterdayStart, todayStart, selectedType)
-            prevWeekCount = dao.countBetween(prevWeekStart, weekStart, selectedType)
-            topApps = dao.topApps(selectedType)
-            dailyCounts = dao.dailyCounts(selectedType, dailyLimit)
-            typeBreakdown = dao.contentTypeBreakdown()
-            hourly = dao.hourlyCounts(selectedType, null)
+            val dailyLimit = rangeDays ?: 30
+            dailyCounts = ranged.groupBy { simpleDate(it.timestamp) }
+                .map { (date, group) -> CaptureDao.DateCount(date, group.size) }
+                .sortedBy { it.date }
+                .takeLast(dailyLimit)
+            topApps = ranged.groupBy { it.appPackage }
+                .map { (pkg, group) -> CaptureDao.AppCount(pkg, group.size) }
+                .sortedByDescending { it.count }
+                .take(15)
+            typeBreakdown = ranged.groupBy { it.contentType }
+                .map { (type, group) -> ContentTypeCount(type, group.size) }
+            hourly = ranged.groupBy { toHour(it.timestamp) }
+                .map { (hour, group) -> HourCount(hour, group.size) }
+                .sortedBy { it.hour }
         }
+
+        dayOfWeekData = ranged.groupBy { toDow(it.timestamp) }
+            .map { (dow, group) -> CaptureDao.DayOfWeekCount(dow, group.size) }
     }
 
     Column(
@@ -228,28 +213,17 @@ fun StatisticsPanel(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        if (showFilters) {
-            FilterRow(
-                selectedTypeLabel = typeLabel(selectedType),
-                onTypeSelect = { selectedType = it },
-                selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
-                                   else selectedApp!!.substringAfterLast('.'),
-                onAppSelect = { selectedApp = it },
-                availableApps = availableApps,
-                selectedRange = selectedRange,
-                onRangeSelect = { selectedRange = it },
-            )
-            Spacer(Modifier.height(12.dp))
-        }
-
-        if (showFilters && searchQuery.isNotBlank()) {
-            Text(
-                text = stringResource(R.string.statistics_filtered_by_query, searchQuery),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-        }
+        FilterRow(
+            selectedTypeLabel = typeLabel(selectedType),
+            onTypeSelect = { selectedType = it },
+            selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
+                               else selectedApp!!.substringAfterLast('.'),
+            onAppSelect = { selectedApp = it },
+            availableApps = availableApps,
+            selectedRange = selectedRange,
+            onRangeSelect = { selectedRange = it },
+        )
+        Spacer(Modifier.height(12.dp))
 
         if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
             InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
