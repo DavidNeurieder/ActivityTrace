@@ -80,7 +80,7 @@ object DataExporter {
             val csv = buildCsv(items)
 
             onProgress(ExportStatus.Progress("Writing file\u2026"))
-            if (!writeToDownloads(context, "activity_trace.csv", "text/csv; charset=utf-8", csv)) {
+            if (!writeToDownloads(context, "activity_trace.csv", "text/csv", csv)) {
                 throw RuntimeException("Failed to write CSV file to Downloads")
             }
             ExportStatus.Success("")
