@@ -177,10 +177,10 @@ class SettingsScreenTest {
         val dedupCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
         assert(dedupCount == 0) { "Importing same items should dedup to 0, got $dedupCount" }
 
-        val backupDir = File(context.cacheDir, "import_roundtrip_test")
-        backupDir.mkdirs()
-        val backupFile = File(backupDir, "backup.sqlite").also { it.delete() }
-        SQLiteDatabase.openOrCreateDatabase(backupFile, null).use { db ->
+        val manualBackupDir = File(context.cacheDir, "import_roundtrip_test")
+        manualBackupDir.mkdirs()
+        val manualBackupFile = File(manualBackupDir, "manual_backup.sqlite").also { it.delete() }
+        SQLiteDatabase.openOrCreateDatabase(manualBackupFile, null).use { db ->
             db.execSQL(
                 """
                 CREATE TABLE captured_items (
@@ -201,20 +201,18 @@ class SettingsScreenTest {
             )
             db.execSQL(
                 "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                arrayOf("new item b", "com.new", "NewApp", "notification", null, 40000L, null),
-            )
-        }
 
-        val newCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
+
+        val newCount = BackupImporter.importFromBackup(context, Uri.fromFile(manualBackupFile), dao)
         assert(newCount == 2) { "Should import 2 new items, got $newCount" }
 
-        val rededupCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
+        val rededupCount = BackupImporter.importFromBackup(context, Uri.fromFile(manualBackupFile), dao)
         assert(rededupCount == 0) { "Re-importing should dedup to 0, got $rededupCount" }
 
         val allKeys = dao.getAllItemKeys()
         assert(allKeys.size == 4) { "Total items should be 4, got ${allKeys.size}" }
 
-        backupDir.deleteRecursively()
+        manualBackupDir.deleteRecursively()
         }
     }
 
