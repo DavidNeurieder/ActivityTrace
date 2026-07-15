@@ -170,7 +170,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
 
         private fun seedDefaultBlocked(db: SupportSQLiteDatabase) {
             for (pkg in DEFAULT_BLOCKED) {
-                db.execSQL("INSERT OR IGNORE INTO blocked_apps(app_package) VALUES(?)", arrayOf(pkg))
+                db.execSQL("INSERT OR IGNORE INTO blocked_apps(app_package) VALUES('$pkg')")
             }
         }
     }
