@@ -228,16 +228,6 @@ fun SearchScreen(
                     onClear = { viewModel.setDateFilter(null) },
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(
-                    onClick = { onNavigateToStatistics(appFilter) },
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    Icon(
-                        Icons.Default.BarChart,
-                        contentDescription = stringResource(R.string.statistics_title),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
 
             if (results.isNotEmpty()) {
@@ -246,12 +236,30 @@ fun SearchScreen(
                 } else {
                     context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
                 }
-                Text(
-                    text = resultCountText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = resultCountText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    IconButton(
+                        onClick = { onNavigateToStatistics(appFilter) },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.BarChart,
+                            contentDescription = stringResource(R.string.statistics_title),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
 
             val todayLabel = stringResource(R.string.date_today)
