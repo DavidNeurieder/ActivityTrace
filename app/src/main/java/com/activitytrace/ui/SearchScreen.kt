@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Clear
@@ -148,15 +149,6 @@ fun SearchScreen(
                             contentDescription = stringResource(R.string.filter_bookmarked),
                         )
                     }
-                    IconButton(onClick = { showStats = !showStats }) {
-                        Icon(
-                            Icons.Default.BarChart,
-                            contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
-                                                 else stringResource(R.string.statistics_title),
-                            tint = if (showStats) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.search_settings))
                     }
@@ -181,11 +173,22 @@ fun SearchScreen(
                     placeholder = { Text(stringResource(R.string.search_hint)) },
                     singleLine = true,
                     trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onQueryChange("") }) {
+                        Row {
+                            if (query.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.onQueryChange("") }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = stringResource(R.string.clear_search),
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { showStats = !showStats }) {
                                 Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = stringResource(R.string.clear_search),
+                                    imageVector = if (showStats) Icons.Default.List else Icons.Default.BarChart,
+                                    contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
+                                                         else stringResource(R.string.statistics_title),
+                                    tint = if (showStats) MaterialTheme.colorScheme.primary
+                                           else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
