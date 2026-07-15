@@ -201,7 +201,8 @@ class SettingsScreenTest {
             )
             db.execSQL(
                 "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-
+                arrayOf("new item b", "com.new2", "NewApp2", "text", null, 40000L, null),
+            )
 
         val newCount = BackupImporter.importFromBackup(context, Uri.fromFile(manualBackupFile), dao)
         assert(newCount == 2) { "Should import 2 new items, got $newCount" }
@@ -214,6 +215,7 @@ class SettingsScreenTest {
 
         manualBackupDir.deleteRecursively()
         }
+    }
     }
 
     @Test
