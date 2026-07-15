@@ -481,7 +481,8 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
             val gap = size.width / data.size * 0.45f / 2
 
             data.forEachIndexed { index, item ->
-                val barHeight = (item.count.toFloat() / maxCount) * (size.height - 50f)
+                val bottomMargin = 45f
+                val barHeight = (item.count.toFloat() / maxCount) * (size.height - bottomMargin)
                 val x = index * (barWidth + gap * 2) + gap
                 val y = size.height - barHeight
 
@@ -501,15 +502,18 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
 
                 drawContext.canvas.nativeCanvas.apply {
                     val paint = android.graphics.Paint().apply {
-                        this.color = onSurface.copy(alpha = 0.8f).hashCode()
                         textSize = 26f
                         textAlign = android.graphics.Paint.Align.CENTER
                         isFakeBoldText = true
                     }
+                    val countY = if (barHeight > 32f) y - 6f
+                                 else y + barHeight / 2f + 9f
+                    paint.color = if (barHeight > 32f) onSurface.copy(alpha = 0.8f).hashCode()
+                                  else onSurface.copy(alpha = 1f).hashCode()
                     drawText(
                         item.count.toString(),
                         x + barWidth / 2,
-                        y - 6f,
+                        countY,
                         paint,
                     )
                     paint.apply {
@@ -539,11 +543,11 @@ private fun HourlyChart(data: List<HourCount>) {
     val onSurface = MaterialTheme.colorScheme.onSurface
     val peak = data.maxByOrNull { it.count }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.fillMaxWidth()) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(110.dp)
+                .height(160.dp)
                 .padding(8.dp),
         ) {
             val maxCount = data.maxOf { it.count }.coerceAtLeast(1)
@@ -554,7 +558,8 @@ private fun HourlyChart(data: List<HourCount>) {
 
             for (hour in 0 until totalSlots) {
                 val count = dataMap[hour] ?: 0
-                val barHeight = (count.toFloat() / maxCount) * (size.height - 20f)
+                val bottomMargin = 30f
+                val barHeight = (count.toFloat() / maxCount) * (size.height - bottomMargin)
                 val x = hour * (barWidth + gap * 2) + gap
                 val y = size.height - barHeight
 
@@ -713,54 +718,56 @@ private fun DayOfWeekCard(data: List<CaptureDao.DayOfWeekCount>) {
     val maxCount = data.maxOfOrNull { it.count } ?: return
     val maxDow = data.maxByOrNull { it.count }?.dow
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            for (dow in 0..6) {
-                val item = data.find { it.dow == dow }
-                val count = item?.count ?: 0
-                val fraction = if (maxCount > 0) count.toFloat() / maxCount else 0f
-                val isMax = dow == maxDow
-                val barColor = dayColors[dow]
+    Card(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                for (dow in 0..6) {
+                    val item = data.find { it.dow == dow }
+                    val count = item?.count ?: 0
+                    val fraction = if (maxCount > 0) count.toFloat() / maxCount else 0f
+                    val isMax = dow == maxDow
+                    val barColor = dayColors[dow]
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = labels[dow],
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (isMax) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isMax) barColor else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.width(38.dp),
-                    )
-                    Box(modifier = Modifier.weight(1f).height(12.dp)) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = RoundedCornerShape(4.dp),
-                            color = barColor.copy(alpha = 0.1f),
-                        ) {}
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(fraction).fillMaxSize(),
-                            shape = RoundedCornerShape(4.dp),
-                            color = if (count > 0) barColor.copy(alpha = 0.55f) else Color.Transparent,
-                        ) {}
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = count.toString(),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (isMax) FontWeight.Bold else FontWeight.SemiBold,
-                        modifier = Modifier.width(36.dp),
-                        color = if (isMax) barColor else MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (isMax && count > 0) {
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = barColor,
-                            modifier = Modifier.size(14.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = labels[dow],
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (isMax) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isMax) barColor else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.width(38.dp),
                         )
+                        Box(modifier = Modifier.weight(1f).height(12.dp)) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = RoundedCornerShape(4.dp),
+                                color = barColor.copy(alpha = 0.1f),
+                            ) {}
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(fraction).fillMaxSize(),
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (count > 0) barColor.copy(alpha = 0.55f) else Color.Transparent,
+                            ) {}
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (isMax) FontWeight.Bold else FontWeight.SemiBold,
+                            modifier = Modifier.width(36.dp),
+                            color = if (isMax) barColor else MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (isMax && count > 0) {
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = barColor,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 }
             }
