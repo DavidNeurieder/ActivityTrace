@@ -38,8 +38,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Clear
@@ -141,12 +141,13 @@ fun SearchScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = {
-                        viewModel.setBookmarkedFilter(!bookmarkedOnly)
-                    }) {
+                    IconButton(onClick = { showStats = !showStats }) {
                         Icon(
-                            imageVector = if (bookmarkedOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = stringResource(R.string.filter_bookmarked),
+                            imageVector = if (showStats) Icons.AutoMirrored.Filled.List else Icons.Default.BarChart,
+                            contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
+                                                 else stringResource(R.string.statistics_title),
+                            tint = if (showStats) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     IconButton(onClick = onNavigateToSettings) {
@@ -186,15 +187,6 @@ fun SearchScreen(
                                 }
                             }
                         },
-                    )
-                }
-                IconButton(onClick = { showStats = !showStats }) {
-                    Icon(
-                        imageVector = if (showStats) Icons.Default.List else Icons.Default.BarChart,
-                        contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
-                                             else stringResource(R.string.statistics_title),
-                        tint = if (showStats) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
