@@ -12,7 +12,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [CapturedItem::class, BlockedApp::class],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class ActivityTraceDatabase : RoomDatabase() {
@@ -39,7 +39,8 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     "activity_trace.db"
                 )
                     .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addCallback(SEED_DEFAULTS_CALLBACK)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
             } catch (e: Exception) {
                 context.deleteDatabase("activity_trace.db")
@@ -152,6 +153,24 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                seedDefaultBlocked(db)
+            }
+        }
+
+        private val SEED_DEFAULTS_CALLBACK = object : Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                seedDefaultBlocked(db)
+            }
+        }
+
+        private fun seedDefaultBlocked(db: SupportSQLiteDatabase) {
+            for (pkg in DEFAULT_BLOCKED) {
+                db.execSQL("INSERT OR IGNORE INTO blocked_apps(app_package) VALUES(?)", arrayOf(pkg))
             }
         }
     }

@@ -11,16 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-internal val DEFAULT_BLOCKED = setOf(
-    "com.android.systemui",
-    "com.android.settings",
-    "com.android.launcher3",
-    "com.google.android.apps.nexuslauncher",
-    "com.android.launcher",
-    "com.google.android.inputmethod.latin",
-    "com.android.inputmethod.latin",
-)
-
 object CaptureIngestor {
     private var db: ActivityTraceDatabase? = null
     private const val TAG = "CaptureIngestor"

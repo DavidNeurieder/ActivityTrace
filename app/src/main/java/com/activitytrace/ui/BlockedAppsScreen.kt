@@ -66,7 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.activitytrace.R
-import com.activitytrace.capture.DEFAULT_BLOCKED
+import com.activitytrace.store.DEFAULT_BLOCKED
 import com.activitytrace.model.BlockedApp
 import com.activitytrace.store.ActivityTraceDatabase
 import kotlinx.coroutines.launch
