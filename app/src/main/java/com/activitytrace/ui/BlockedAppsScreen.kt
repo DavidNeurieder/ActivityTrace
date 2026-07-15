@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -109,6 +110,8 @@ fun BlockedAppsScreen(
         val userBlocked = blockedApps.filter { it.appPackage !in DEFAULT_BLOCKED }
         val defaultBlocked = blockedApps.filter { it.appPackage in DEFAULT_BLOCKED }
 
+        val allDefaultBlocked = DEFAULT_BLOCKED.all { pkg -> blockedApps.any { it.appPackage == pkg } }
+
         if (blockedApps.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -117,13 +120,38 @@ fun BlockedAppsScreen(
                     .navigationBarsPadding(),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = stringResource(R.string.no_blocked_apps),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(R.string.no_blocked_apps),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (!allDefaultBlocked) {
+                        Spacer(Modifier.height(16.dp))
+                        Surface(
+                            modifier = Modifier.clickable {
+                                scope.launch {
+                                    DEFAULT_BLOCKED.forEach { pkg ->
+                                        db.blockedAppDao().insert(BlockedApp(pkg))
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.blocked_apps_restore_defaults),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    }
+                }
             }
         } else {
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -147,9 +175,32 @@ fun BlockedAppsScreen(
                         )
                     }
                 }
-                if (defaultBlocked.isNotEmpty()) {
+                if (defaultBlocked.isNotEmpty() || !allDefaultBlocked) {
                     item(key = "header_default") {
                         SectionLabel(stringResource(R.string.blocked_apps_system_noise))
+                    }
+                    if (!allDefaultBlocked) {
+                        item(key = "restore_defaults") {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    scope.launch {
+                                        DEFAULT_BLOCKED.forEach { pkg ->
+                                            db.blockedAppDao().insert(BlockedApp(pkg))
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.blocked_apps_restore_defaults),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(16.dp),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
                     }
                     items(defaultBlocked, key = { it.appPackage + "_default" }) { app ->
                         BlockedAppRow(

@@ -62,13 +62,7 @@ object CaptureIngestor {
         try {
             val dao = db?.blockedAppDao()
             if (dao != null) {
-                var blocked = dao.getAllBlocked()
-                if (blocked.isEmpty()) {
-                    DEFAULT_BLOCKED.forEach { pkg ->
-                        dao.insert(BlockedApp(pkg))
-                    }
-                    blocked = dao.getAllBlocked()
-                }
+                val blocked = dao.getAllBlocked()
                 synchronized(blockedApps) {
                     blockedApps.clear()
                     blockedApps.addAll(blocked.toSet())

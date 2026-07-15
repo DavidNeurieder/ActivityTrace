@@ -129,6 +129,7 @@
     <string name="blocked_apps_description">Manage apps that are excluded from capture</string>
     <string name="blocked_apps_manually_blocked">Manually blocked</string>
     <string name="blocked_apps_system_noise">System apps (blocked by default)</string>
+    <string name="blocked_apps_restore_defaults">Block recommended system apps</string>
     <string name="no_blocked_apps">No apps are blocked</string>
     <string name="remove_blocked_app">Unblock app</string>
     <string name="add_blocked_app">Add blocked app</string>
