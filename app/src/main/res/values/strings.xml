@@ -103,6 +103,11 @@
     <string name="blocked_apps_description">Manage apps that are excluded from capture</string>
     <string name="no_blocked_apps">No apps are blocked</string>
     <string name="remove_blocked_app">Unblock app</string>
+    <string name="add_blocked_app">Add blocked app</string>
+    <string name="select_app_to_block">Select an app to block</string>
+    <string name="search_apps_hint">Search apps…</string>
+    <string name="block_this_app">Block this app</string>
+    <string name="copy_to_clipboard">Copy to clipboard</string>
 
     <!-- Saved searches -->
     <string name="saved_searches_description">View and remove saved search terms</string>

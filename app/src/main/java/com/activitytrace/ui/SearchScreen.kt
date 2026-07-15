@@ -33,11 +33,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -54,12 +54,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -97,6 +99,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.activitytrace.R
 import com.activitytrace.capture.deserializeToIntent
+import com.activitytrace.model.BlockedApp
+import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.capture.deserializeToIntentSender
 import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
@@ -131,6 +135,7 @@ fun SearchScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var searchFocused by remember { mutableStateOf(false) }
+    var contextMenuTarget by remember { mutableStateOf<CapturedItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -183,33 +188,39 @@ fun SearchScreen(
                 }
             }
 
-            FilterChipsRow(
-                selected = if (bookmarkedOnly) "bookmarked" else contentTypeFilter,
-                onSelect = { type ->
-                    if (type == "bookmarked") {
-                        viewModel.setBookmarkedFilter(!bookmarkedOnly)
-                    } else {
-                        viewModel.setContentTypeFilter(type)
-                    }
-                },
-            )
-
             val distinctApps = remember(results) { viewModel.getDistinctAppPackages() }
-            if (distinctApps.isNotEmpty()) {
-                QuickAppChips(
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterDropdown(
+                    selected = if (bookmarkedOnly) "bookmarked" else contentTypeFilter,
+                    onSelect = { type ->
+                        if (type == "bookmarked") {
+                            viewModel.setBookmarkedFilter(!bookmarkedOnly)
+                        } else {
+                            viewModel.setContentTypeFilter(type)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                AppFilterDropdown(
                     apps = distinctApps,
                     selected = appFilter,
                     onSelect = { viewModel.setAppFilter(it) },
+                    modifier = Modifier.weight(1f),
+                )
+                DateFilterDropdown(
+                    selected = dateFilter,
+                    onToday = { viewModel.quickDateFilterToday() },
+                    onThisWeek = { viewModel.quickDateFilterThisWeek() },
+                    onThisMonth = { viewModel.quickDateFilterThisMonth() },
+                    onClear = { viewModel.setDateFilter(null) },
+                    modifier = Modifier.weight(1f),
                 )
             }
-
-            DateFilterChips(
-                selected = dateFilter,
-                onToday = { viewModel.quickDateFilterToday() },
-                onThisWeek = { viewModel.quickDateFilterThisWeek() },
-                onThisMonth = { viewModel.quickDateFilterThisMonth() },
-                onClear = { viewModel.setDateFilter(null) },
-            )
 
             if (results.isNotEmpty()) {
                 val resultCountText = if (results.size >= 100) {
@@ -261,23 +272,58 @@ fun SearchScreen(
                                             }
                                         }
                                     },
-                                    onLongClick = {
-                                        copyToClipboard(context, captured.text)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar(context.getString(R.string.copied_to_clipboard))
-                                        }
-                                    },
+                                    onLongClick = { contextMenuTarget = captured },
                                     onToggleBookmark = { viewModel.toggleBookmark(captured) },
                                     keywords = keywords,
                                 )
                             }
                         }
-                    }
                 }
             }
         }
-    }
+        }
 
+        if (contextMenuTarget != null) {
+            val target = contextMenuTarget!!
+            AlertDialog(
+                onDismissRequest = { contextMenuTarget = null },
+                title = {
+                    Text(resolveAppName(context, target.appPackage, target.appName))
+                },
+                text = {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                copyToClipboard(context, target.text)
+                                contextMenuTarget = null
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(context.getString(R.string.copied_to_clipboard))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.copy_to_clipboard))
+                        }
+                        if (target.appPackage != "local") {
+                            TextButton(
+                                onClick = {
+                                    contextMenuTarget = null
+                                    scope.launch {
+                                        val db = ActivityTraceDatabase.getInstance(context)
+                                        db.blockedAppDao().insert(com.activitytrace.model.BlockedApp(target.appPackage))
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.block_this_app))
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+            )
+        }
+    }
 }
 
 @Composable
@@ -365,11 +411,11 @@ private fun SavedSearchesDropdown(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FilterChipsRow(
+private fun FilterDropdown(
     selected: String?,
     onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val filters = listOf(
         null to stringResource(R.string.filter_all),
@@ -379,95 +425,114 @@ private fun FilterChipsRow(
         "page" to stringResource(R.string.filter_folders),
         "bookmarked" to stringResource(R.string.filter_bookmarked),
     )
+    val selectedLabel = filters.first { it.first == selected }.second
+    var expanded by remember { mutableStateOf(false) }
 
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        items(filters) { (type, label) ->
-            FilterChip(
-                selected = selected == type,
-                onClick = { onSelect(type) },
-                label = { Text(label) },
-            )
+    Box(modifier = modifier) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(selectedLabel, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            filters.forEach { (type, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = { onSelect(type); expanded = false },
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickAppChips(
+private fun AppFilterDropdown(
     apps: List<String>,
     selected: String?,
     onSelect: (String?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        item {
-            FilterChip(
-                selected = selected == null,
-                onClick = { onSelect(null) },
-                label = { Text(stringResource(R.string.filter_all_apps)) },
-            )
+    val selectedLabel = if (selected == null) stringResource(R.string.filter_all_apps)
+                        else selected.substringAfterLast('.')
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(selectedLabel, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
-        items(apps) { app ->
-            val appName = app.substringAfterLast('.')
-            FilterChip(
-                selected = selected == app,
-                onClick = { onSelect(if (selected == app) null else app) },
-                label = { Text(appName) },
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.filter_all_apps)) },
+                onClick = { onSelect(null); expanded = false },
             )
+            apps.forEach { app ->
+                val name = app.substringAfterLast('.')
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    onClick = { onSelect(app); expanded = false },
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateFilterChips(
+private fun DateFilterDropdown(
     selected: Pair<Long, Long>?,
     onToday: () -> Unit,
     onThisWeek: () -> Unit,
     onThisMonth: () -> Unit,
     onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        item {
-            FilterChip(
-                selected = selected == null,
-                onClick = onClear,
-                label = { Text(stringResource(R.string.filter_all_time)) },
-            )
+    val selectedLabel = when {
+        selected == null -> stringResource(R.string.filter_all_time)
+        isTodayFilter(selected) -> stringResource(R.string.date_today)
+        isThisWeekFilter(selected) -> stringResource(R.string.date_this_week)
+        isThisMonthFilter(selected) -> stringResource(R.string.date_this_month)
+        else -> stringResource(R.string.filter_all_time)
+    }
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(selectedLabel, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
-        item {
-            FilterChip(
-                selected = isTodayFilter(selected),
-                onClick = onToday,
-                label = { Text(stringResource(R.string.date_today)) },
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.filter_all_time)) },
+                onClick = { onClear(); expanded = false },
             )
-        }
-        item {
-            FilterChip(
-                selected = isThisWeekFilter(selected),
-                onClick = onThisWeek,
-                label = { Text(stringResource(R.string.date_this_week)) },
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.date_today)) },
+                onClick = { onToday(); expanded = false },
             )
-        }
-        item {
-            FilterChip(
-                selected = isThisMonthFilter(selected),
-                onClick = onThisMonth,
-                label = { Text(stringResource(R.string.date_this_month)) },
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.date_this_week)) },
+                onClick = { onThisWeek(); expanded = false },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.date_this_month)) },
+                onClick = { onThisMonth(); expanded = false },
             )
         }
     }
