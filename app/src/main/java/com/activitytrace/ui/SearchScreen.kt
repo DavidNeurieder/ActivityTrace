@@ -214,6 +214,7 @@ fun SearchScreen(
                     modifier = Modifier.weight(1f),
                 )
                 AppFilterDropdown(
+                    context = context,
                     apps = distinctApps,
                     selected = appFilter,
                     onSelect = { viewModel.setAppFilter(it) },
@@ -415,13 +416,14 @@ private fun FilterDropdown(
 
 @Composable
 private fun AppFilterDropdown(
+    context: Context,
     apps: List<String>,
     selected: String?,
     onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectedLabel = if (selected == null) stringResource(R.string.filter_all_apps)
-                        else selected.substringAfterLast('.')
+                        else resolveAppName(context, selected)
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = modifier) {
@@ -441,7 +443,7 @@ private fun AppFilterDropdown(
                 onClick = { onSelect(null); expanded = false },
             )
             apps.forEach { app ->
-                val name = app.substringAfterLast('.')
+                val name = resolveAppName(context, app)
                 DropdownMenuItem(
                     text = { Text(name) },
                     onClick = { onSelect(app); expanded = false },
