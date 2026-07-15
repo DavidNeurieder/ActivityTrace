@@ -31,7 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AllInclusive
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
@@ -41,13 +40,10 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,28 +79,15 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private enum class DateRange {
-    DAYS_7, DAYS_30, DAYS_90, ALL_TIME;
-
-    val days: Int? get() = when (this) {
-        DAYS_7 -> 7
-        DAYS_30 -> 30
-        DAYS_90 -> 90
-        ALL_TIME -> null
-    }
-}
-
 @Composable
 fun StatisticsScreen(
     items: List<CapturedItem>,
-    initialAppPackage: String? = null,
+    selectedType: String? = null,
+    selectedApp: String? = null,
+    dateRangeMs: Pair<Long, Long>? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-
-    var selectedType by remember { mutableStateOf<String?>(null) }
-    var selectedApp by remember { mutableStateOf(initialAppPackage) }
-    var selectedRange by remember { mutableStateOf(DateRange.DAYS_7) }
 
     var totalCount by remember { mutableStateOf(0) }
     var todayCount by remember { mutableStateOf(0) }
@@ -125,9 +108,7 @@ fun StatisticsScreen(
     var appToday by remember { mutableStateOf(0) }
     var appWeek by remember { mutableStateOf(0) }
 
-    var availableApps by remember { mutableStateOf<List<String>>(emptyList()) }
-
-    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, selectedRange) {
+    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, dateRangeMs) {
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
@@ -140,17 +121,16 @@ fun StatisticsScreen(
         val prevWeekStart = cal.timeInMillis
 
         val yesterdayStart = todayStart - 86_400_000L
-        val rangeDays = selectedRange.days
-        val rangeStartMs = if (rangeDays != null) todayStart - rangeDays * 86_400_000L else 0L
-
-        availableApps = items.map { it.appPackage }.distinct().sorted()
+        val rangeDays = dateRangeMs?.let { (s, e) -> ((e - s) / 86_400_000L).toInt() }
+        val rangeStartMs = dateRangeMs?.first ?: 0L
+        val rangeEndMs = dateRangeMs?.second ?: Long.MAX_VALUE
 
         val filtered = items.filter { item ->
             (selectedType == null || item.contentType == selectedType) &&
             (selectedApp == null || item.appPackage == selectedApp)
         }
 
-        val ranged = if (rangeDays != null) filtered.filter { it.timestamp >= rangeStartMs } else filtered
+        val ranged = if (dateRangeMs != null) filtered.filter { it.timestamp in rangeStartMs until rangeEndMs } else filtered
 
         bookmarkedTotal = items.count { it.isBookmarked }
         bookmarkedRecent = items.count { it.isBookmarked && it.timestamp >= weekStart }
@@ -213,18 +193,6 @@ fun StatisticsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        FilterRow(
-            selectedTypeLabel = typeLabel(selectedType),
-            onTypeSelect = { selectedType = it },
-            selectedAppLabel = if (selectedApp == null) stringResource(R.string.filter_all_apps)
-                               else selectedApp!!.substringAfterLast('.'),
-            onAppSelect = { selectedApp = it },
-            availableApps = availableApps,
-            selectedRange = selectedRange,
-            onRangeSelect = { selectedRange = it },
-        )
-        Spacer(Modifier.height(12.dp))
-
         if (selectedApp == null && selectedType == null && hourly.isNotEmpty()) {
             InsightBanner(dayOfWeekData, hourly, typeBreakdown, topApps)
             Spacer(Modifier.height(16.dp))
@@ -238,7 +206,7 @@ fun StatisticsScreen(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
-            SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, selectedRange)
+            SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, dateRangeMs)
             Spacer(Modifier.height(16.dp))
 
             SectionHeader(
@@ -271,12 +239,12 @@ fun StatisticsScreen(
             )
             Spacer(Modifier.height(8.dp))
             if (appDaily.isNotEmpty()) {
-                DailyChart(fillDailyGaps(appDaily, selectedRange), selectedRange)
+                DailyChart(fillDailyGaps(appDaily, dateRangeMs), dateRangeMs)
             } else {
                 NoDataText()
             }
         } else {
-            SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, selectedRange)
+            SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, dateRangeMs)
             Spacer(Modifier.height(16.dp))
 
             if (selectedType == null) {
@@ -311,7 +279,7 @@ fun StatisticsScreen(
             )
             Spacer(Modifier.height(8.dp))
             if (dailyCounts.isNotEmpty()) {
-                DailyChart(fillDailyGaps(dailyCounts, selectedRange), selectedRange)
+                DailyChart(fillDailyGaps(dailyCounts, dateRangeMs), dateRangeMs)
             } else {
                 NoDataText()
             }
@@ -344,7 +312,7 @@ fun StatisticsScreen(
                 title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
             )
             Spacer(Modifier.height(8.dp))
-            TopAppsList(topApps, onAppClick = { selectedApp = it })
+            TopAppsList(topApps, onAppClick = { })
         }
     }
 }
@@ -385,105 +353,12 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun FilterRow(
-    selectedTypeLabel: String,
-    onTypeSelect: (String?) -> Unit,
-    selectedAppLabel: String,
-    onAppSelect: (String?) -> Unit,
-    availableApps: List<String>,
-    selectedRange: DateRange,
-    onRangeSelect: (DateRange) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        StatsFilterDropdown(
-            label = selectedTypeLabel,
-            options = listOf(
-                null to stringResource(R.string.filter_all),
-                "notification" to stringResource(R.string.filter_notifications),
-                "screen" to stringResource(R.string.filter_accessibility),
-                "toast" to stringResource(R.string.filter_toast),
-                "page" to stringResource(R.string.filter_folders),
-            ),
-            onSelect = onTypeSelect,
-            modifier = Modifier.weight(1f),
-        )
-        StatsFilterDropdown(
-            label = selectedAppLabel,
-            options = listOf(null to stringResource(R.string.filter_all_apps)) +
-                availableApps.take(15).map { it to it.substringAfterLast('.') },
-            onSelect = onAppSelect,
-            modifier = Modifier.weight(1f),
-        )
-        StatsFilterDropdown(
-            label = stringResource(
-                when (selectedRange) {
-                    DateRange.DAYS_7 -> R.string.statistics_7d
-                    DateRange.DAYS_30 -> R.string.statistics_30d
-                    DateRange.DAYS_90 -> R.string.statistics_90d
-                    DateRange.ALL_TIME -> R.string.statistics_all_time
-                }
-            ),
-            options = DateRange.entries.map { range ->
-                range.name to stringResource(
-                    when (range) {
-                        DateRange.DAYS_7 -> R.string.statistics_7d
-                        DateRange.DAYS_30 -> R.string.statistics_30d
-                        DateRange.DAYS_90 -> R.string.statistics_90d
-                        DateRange.ALL_TIME -> R.string.statistics_all_time
-                    }
-                )
-            },
-            onSelect = { value -> onRangeSelect(DateRange.valueOf(value!!)) },
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun StatsFilterDropdown(
-    label: String,
-    options: List<Pair<String?, String>>,
-    onSelect: (String?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier = modifier) {
-        OutlinedButton(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { (value, display) ->
-                DropdownMenuItem(
-                    text = { Text(display) },
-                    onClick = { onSelect(value); expanded = false },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryCards(total: Int, today: Int, week: Int, yesterday: Int, prevWeek: Int, range: DateRange) {
+private fun SummaryCards(total: Int, today: Int, week: Int, yesterday: Int, prevWeek: Int, dateRangeMs: Pair<Long, Long>?) {
     val todayTrend = trendPercent(today, yesterday)
     val weekTrend = trendPercent(week, prevWeek)
     val avg = if (total == 0) 0 else {
-        val days = when (range) {
-            DateRange.DAYS_7 -> 7
-            DateRange.DAYS_30 -> 30
-            DateRange.DAYS_90 -> 90
-            DateRange.ALL_TIME -> null
-        }
-        if (days != null) (total.toFloat() / days).roundToInt() else 0
+        val days = dateRangeMs?.let { (s, e) -> ((e - s) / 86_400_000L).toInt() }
+        if (days != null && days > 0) (total.toFloat() / days).roundToInt() else 0
     }
 
     Row(
@@ -696,7 +571,7 @@ private fun BreakdownCard(data: List<ContentTypeCount>) {
 }
 
 @Composable
-private fun DailyChart(data: List<CaptureDao.DateCount>, range: DateRange) {
+private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long, Long>?) {
     val primary = MaterialTheme.colorScheme.primary
     val tertiary = MaterialTheme.colorScheme.tertiary
     val onSurface = MaterialTheme.colorScheme.onSurface
@@ -751,7 +626,7 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, range: DateRange) {
                         this.color = if (isLast) tertiary.copy(alpha = 0.9f).hashCode()
                                     else onSurface.copy(alpha = 0.5f).hashCode()
                     }
-                    val label = if (isLast && range != DateRange.ALL_TIME) todayLabel
+                    val label = if (isLast && dateRangeMs != null) todayLabel
                                 else item.date.substringAfterLast("-")
                     drawText(
                         label,
@@ -1017,8 +892,8 @@ private fun BookmarkCard(total: Int, recentWeek: Int) {
     }
 }
 
-private fun fillDailyGaps(data: List<CaptureDao.DateCount>, range: DateRange): List<CaptureDao.DateCount> {
-    val days = range.days ?: 7
+private fun fillDailyGaps(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long, Long>?): List<CaptureDao.DateCount> {
+    val days = dateRangeMs?.let { (s, e) -> ((e - s) / 86_400_000L).toInt() } ?: 30
     val cal = Calendar.getInstance()
     val dataMap = data.associate { it.date to it.count }
     val result = mutableListOf<CaptureDao.DateCount>()

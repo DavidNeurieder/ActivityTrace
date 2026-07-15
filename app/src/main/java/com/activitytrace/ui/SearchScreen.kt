@@ -237,7 +237,9 @@ fun SearchScreen(
             if (showStats) {
                 StatisticsScreen(
                     items = results,
-                    initialAppPackage = appFilter,
+                    selectedType = contentTypeFilter,
+                    selectedApp = appFilter,
+                    dateRangeMs = dateFilter,
                     modifier = Modifier.fillMaxSize().weight(1f),
                 )
             } else {
