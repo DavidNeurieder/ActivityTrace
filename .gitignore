@@ -29,7 +29,7 @@ Thumbs.db
 .env
 
 # docs
-/docs
+/old_docs
 
 # python 
 /__pycache__

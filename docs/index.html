@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Activity Trace — On-device cross-app memory search for Android</title>
+  <meta name="description" content="On-device cross-app memory search for Android. Search notifications, screen captures, and files with natural language — encrypted at rest, zero network, no AI, no cloud.">
+  <link rel="canonical" href="https://davidneurieder.github.io/ActivityTrace/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Activity Trace">
+  <meta property="og:title" content="Activity Trace — On-device cross-app memory search">
+  <meta property="og:description" content="Search notifications, screen captures, and files with natural language. Encrypted at rest, zero network, no AI, no cloud.">
+  <meta property="og:url" content="https://davidneurieder.github.io/ActivityTrace/">
+  <meta property="og:image" content="https://davidneurieder.github.io/ActivityTrace/og-banner.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Activity Trace — On-device cross-app memory search">
+  <meta name="twitter:description" content="Search notifications, screen captures, and files with natural language. Encrypted at rest, zero network, no AI, no cloud.">
+  <meta name="twitter:image" content="https://davidneurieder.github.io/ActivityTrace/og-banner.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Activity Trace",
+    "operatingSystem": "Android",
+    "applicationCategory": "UtilitiesApplication",
+    "description": "On-device cross-app memory search for Android. Search notifications, screen captures, and indexed files with natural language — encrypted at rest, zero network, no AI, no cloud.",
+    "url": "https://davidneurieder.github.io/ActivityTrace/",
+    "softwareVersion": "0.8.0",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "David Neurieder" }
+  }
+  </script>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <span class="eyebrow">Android · Zero-network</span>
+      <h1>Activity Trace</h1>
+      <p class="lead">On-device cross-app memory search. Search your notifications, screen captures, and files with natural language — all encrypted at rest, with no AI, no cloud, and no internet permission.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://f-droid.org/en/packages/com.activitytrace/">
+          <img class="fdroid-mark" src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'&gt;&lt;path d='M12 2 3 7v10l9 5 9-5V7z' opacity='.9'/&gt;&lt;/svg&gt;" alt=""> Get it on F-Droid
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/DavidNeurieder/ActivityTrace">View source</a>
+      </div>
+      <p class="trust">No AI · No cloud · No internet permission</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="section" id="features">
+      <div class="container">
+        <h2>Remember everything on your device</h2>
+        <div class="grid">
+          <div class="card">
+            <div class="icon">🔎</div>
+            <h3>Search anything</h3>
+            <p>Notifications, accessibility screen captures, and indexed files — one search across them all.</p>
+          </div>
+          <div class="card">
+            <div class="icon">💬</div>
+            <h3>Natural language</h3>
+            <p>Query with <code>yesterday</code>, <code>last week</code>, <code>in:signal</code>, or <code>type:notification</code>.</p>
+          </div>
+          <div class="card">
+            <div class="icon">⚡</div>
+            <h3>Prefix &amp; wildcard</h3>
+            <p><code>test</code> matches <code>testing</code>; <code>*error</code> matches <code>fatal error</code>. Matches are highlighted.</p>
+          </div>
+          <div class="card">
+            <div class="icon">📊</div>
+            <h3>Statistics</h3>
+            <p>Summary cards, timeline charts, top apps, and content-type breakdown.</p>
+          </div>
+          <div class="card">
+            <div class="icon">🛡️</div>
+            <h3>Full encryption</h3>
+            <p>SQLCipher + Android Keystore (StrongBox on capable hardware). AES-256-CBC at rest.</p>
+          </div>
+          <div class="card">
+            <div class="icon">🚫</div>
+            <h3>System app blocking</h3>
+            <p>Capture from system apps is disabled by default — you choose what gets indexed.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-tint" id="how">
+      <div class="container">
+        <h2>How it stays private</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="num">1</span>
+            <div>
+              <h3>Capture on device</h3>
+              <p>NotificationListener, AccessibilityService, and SAF file indexing feed a unified capture pipeline — no server involved.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">2</span>
+            <div>
+              <h3>Encrypt at rest</h3>
+              <p>Everything is stored in a SQLCipher database secured by the Android Keystore, and erased on a configurable retention schedule via WorkManager.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">3</span>
+            <div>
+              <h3>Zero network</h3>
+              <p>No internet permission, no telemetry, no analytics, no crash reporting. F-Droid only — no Google Play Services.</p>
+            </div>
+          </div>
+        </div>
+        <p class="privacy-note">Zero-trust by default: your data never leaves the device, and only you can search it.</p>
+      </div>
+    </section>
+
+    <section class="section" id="screenshots">
+      <div class="container">
+        <h2>Screenshots</h2>
+        <div class="shots">
+          <img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Activity Trace screenshot 1" loading="lazy">
+          <img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Activity Trace screenshot 2" loading="lazy">
+          <img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Activity Trace screenshot 3" loading="lazy">
+          <img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="Activity Trace screenshot 4" loading="lazy">
+          <img src="../fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="Activity Trace screenshot 5" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-tint" id="get">
+      <div class="container">
+        <h2>Get it on F-Droid</h2>
+        <p class="center">Free and open source (GPL-3.0). Install from F-Droid — no Google Play account needed.</p>
+        <div class="cta center">
+          <a class="btn btn-primary" href="https://f-droid.org/en/packages/com.activitytrace/">
+            <img class="fdroid-mark" src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'&gt;&lt;path d='M12 2 3 7v10l9 5 9-5V7z' opacity='.9'/&gt;&lt;/svg&gt;" alt=""> Get it on F-Droid
+          </a>
+        </div>
+        <h3>Build from source</h3>
+        <pre><code>./gradlew assembleDebug     # debug build (unminified)
+./gradlew assembleRelease   # release build (minified, ProGuard)</code></pre>
+        <p>Min SDK 26 (Android 8.0), target SDK 36. Requires JDK 17 and Android SDK 36.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Activity Trace — version 0.8.0. GPL-3.0-only — <a href="https://github.com/DavidNeurieder/ActivityTrace/blob/main/LICENSE">License</a> · <a href="https://github.com/DavidNeurieder/ActivityTrace">Source</a></p>
+    </div>
+  </footer>
+</body>
+</html>
