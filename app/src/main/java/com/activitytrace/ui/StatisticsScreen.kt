@@ -482,9 +482,10 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
 
             data.forEachIndexed { index, item ->
                 val bottomMargin = 45f
+                val barBaseline = size.height - bottomMargin
                 val barHeight = (item.count.toFloat() / maxCount) * (size.height - bottomMargin)
                 val x = index * (barWidth + gap * 2) + gap
-                val y = size.height - barHeight
+                val y = barBaseline - barHeight
 
                 val isLast = index == data.lastIndex
                 val barColor = if (isLast) tertiary else primary
@@ -493,7 +494,7 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
                     brush = Brush.verticalGradient(
                         colors = listOf(barColor, barColor.copy(alpha = 0.2f)),
                         startY = y,
-                        endY = size.height,
+                        endY = barBaseline,
                     ),
                     topLeft = Offset(x, y),
                     size = Size(barWidth, barHeight),
@@ -508,7 +509,7 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
                     }
                     if (item.count > 0) {
                         val countY = if (barHeight > 32f) y - 6f
-                                     else y + barHeight / 2f + 9f
+                                     else (y + barHeight / 2f + 9f).coerceAtMost(barBaseline - 6f)
                         paint.color = if (barHeight > 32f) onSurface.copy(alpha = 0.8f).hashCode()
                                       else onSurface.copy(alpha = 1f).hashCode()
                         drawText(
@@ -561,9 +562,10 @@ private fun HourlyChart(data: List<HourCount>) {
             for (hour in 0 until totalSlots) {
                 val count = dataMap[hour] ?: 0
                 val bottomMargin = 30f
+                val barBaseline = size.height - bottomMargin
                 val barHeight = (count.toFloat() / maxCount) * (size.height - bottomMargin)
                 val x = hour * (barWidth + gap * 2) + gap
-                val y = size.height - barHeight
+                val y = barBaseline - barHeight
 
                 val isPeak = peak != null && hour == peak.hour
                 val barColor = if (isPeak) tertiary else primary
