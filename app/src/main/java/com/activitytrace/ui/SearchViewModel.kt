@@ -46,6 +46,9 @@ class SearchViewModel(
     private val _bookmarkedOnly = MutableStateFlow(prefs.getBoolean("bookmarked_filter", false))
     val bookmarkedOnly = _bookmarkedOnly.asStateFlow()
 
+    private val _showStats = MutableStateFlow(prefs.getBoolean("show_stats", false))
+    val showStats = _showStats.asStateFlow()
+
     private val _appFilter = MutableStateFlow<String?>(null)
     val appFilter = _appFilter.asStateFlow()
 
@@ -155,6 +158,11 @@ class SearchViewModel(
         _contentTypeFilter.value = null
         prefs.edit().putBoolean("bookmarked_filter", enabled).apply()
         prefs.edit().putString("content_type_filter", null).apply()
+    }
+
+    fun setShowStats(enabled: Boolean) {
+        _showStats.value = enabled
+        prefs.edit().putBoolean("show_stats", enabled).apply()
     }
 
     fun toggleBookmark(item: CapturedItem) {

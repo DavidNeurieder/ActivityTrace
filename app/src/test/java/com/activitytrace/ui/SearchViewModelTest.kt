@@ -27,6 +27,7 @@ class SearchViewModelTest {
     private val prefs: SharedPreferences = mockk(relaxed = true)
     private val editor = mockk<SharedPreferences.Editor>(relaxed = true).also {
         every { it.putString(any(), any()) } returns it
+        every { it.putBoolean(any(), any()) } returns it
     }
     private lateinit var dispatcher: TestDispatcher
     private lateinit var viewModel: SearchViewModel
@@ -39,6 +40,7 @@ class SearchViewModelTest {
         every { prefs.getString("search_query", "") } returns ""
         every { prefs.getString("content_type_filter", null) } returns null
         every { prefs.getBoolean("bookmarked_filter", false) } returns false
+        every { prefs.getBoolean("show_stats", false) } returns false
         every { prefs.edit() } returns editor
         every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(emptyList())
         viewModel = SearchViewModel(searchEngine, app)
@@ -139,5 +141,19 @@ class SearchViewModelTest {
         viewModel.setContentTypeFilter("notification")
         viewModel.setContentTypeFilter(null)
         assert(viewModel.contentTypeFilter.value == null)
+    }
+
+    @Test
+    fun `restores showStats from SharedPreferences`() {
+        every { prefs.getBoolean("show_stats", false) } returns true
+        val vm = SearchViewModel(searchEngine, app)
+        assert(vm.showStats.value)
+    }
+
+    @Test
+    fun `setShowStats persists to SharedPreferences`() {
+        viewModel.setShowStats(true)
+        verify { editor.putBoolean("show_stats", true) }
+        verify { editor.apply() }
     }
 }

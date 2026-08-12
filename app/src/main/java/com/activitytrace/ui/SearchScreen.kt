@@ -123,6 +123,7 @@ fun SearchScreen(
     val results by viewModel.results.collectAsState()
     val contentTypeFilter by viewModel.contentTypeFilter.collectAsState()
     val bookmarkedOnly by viewModel.bookmarkedOnly.collectAsState()
+    val showStats by viewModel.showStats.collectAsState()
     val appFilter by viewModel.appFilter.collectAsState()
     val dateFilter by viewModel.dateFilter.collectAsState()
     val keywords = remember(query) {
@@ -133,7 +134,6 @@ fun SearchScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var searchFocused by remember { mutableStateOf(false) }
-    var showStats by remember { mutableStateOf(false) }
     var contextMenuTarget by remember { mutableStateOf<CapturedItem?>(null) }
 
     Scaffold(
@@ -141,7 +141,7 @@ fun SearchScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = { showStats = !showStats }) {
+                    IconButton(onClick = { viewModel.setShowStats(!showStats) }) {
                         Icon(
                             imageVector = if (showStats) Icons.AutoMirrored.Filled.List else Icons.Default.BarChart,
                             contentDescription = if (showStats) stringResource(R.string.statistics_show_results)
