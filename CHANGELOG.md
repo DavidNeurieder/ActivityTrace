@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.9.0 — 2026-08-12
+
+### New
+- Project landing page with documentation and screenshots
+- Statistics view now persists across app restarts
+
+### Improvements
+- Daily chart bars and labels separated for clearer statistics
+- Daily statistic no longer shows zero-value entries
+
+### Fixes
+- Duplicate captures prevented when the same content appears repeatedly
+- Upgrade crash caused by wrong dedup-index name in the v6→v7 migration (index renamed to the canonical Room-generated name)
+- Database corruption from an encryption key mismatch now resets safely instead of crashing
+
+### Technical
+- `ActivityTraceDatabase` version 6→7 with `exportSchema = true` and committed schema JSONs
+- Migration path regression-tested via `MigrationTestHelper` through Room's real open path
+- `buildDatabase` hardened: eager open + detection of SQLCipher encryption failures (key-mismatch reset only on genuine corruption)
+
+---
+
 ## v0.8.0 — 2026-07-15
 
 ### New
