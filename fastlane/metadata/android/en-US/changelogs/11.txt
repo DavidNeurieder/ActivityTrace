@@ -1,0 +1,10 @@
+Improvements:
+- Statistics screen: bars and labels separated for clearer daily charts
+- Daily statistic no longer shows zero-value entries
+- Statistics view persists across app restarts
+- Added project landing page with documentation and screenshots
+
+Bug fixes:
+- Duplicate captures are now prevented
+- Fixed database schema migration (dedup index) that could cause crashes after upgrade
+- Database corruption from key mismatch now triggers a safe reset instead of a crash
