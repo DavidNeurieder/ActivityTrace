@@ -2,6 +2,7 @@ package com.activitytrace.store
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import androidx.room.testing.MigrationTestHelper
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -9,6 +10,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowInstrumentation
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
@@ -17,6 +19,11 @@ class ActivityTraceDatabaseMigrationTest {
 
     private val context: Context = RuntimeEnvironment.getApplication()
     private val tempDir = File(context.cacheDir, "migration_test")
+
+    private val helper = MigrationTestHelper(
+        ShadowInstrumentation.getInstrumentation(),
+        ActivityTraceDatabase::class.java,
+    )
 
     @After
     fun tearDown() {
@@ -66,31 +73,41 @@ class ActivityTraceDatabaseMigrationTest {
     }
 
     @Test
-    fun `MIGRATION_6_7 creates dedup index and preserves existing rows`() {
-        val dbFile = createV5Database()
-        val db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+    fun `MIGRATION_6_7 migrates a real v6 database to v7 without data loss`() {
+        helper.createDatabase(TEST_DB, 6).use { db ->
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked) VALUES ('hello', 'com.test', 'screen', 1000, 0)"
+            )
+            db.execSQL("INSERT INTO blocked_apps(app_package) VALUES ('com.custom.app')")
+        }
 
-        db.execSQL(
-            "INSERT INTO captured_items (text, app_package, content_type, timestamp) VALUES ('hello', 'com.test', 'screen', 1000)"
-        )
+        helper.runMigrationsAndValidate(TEST_DB, 7, true, ActivityTraceDatabase.MIGRATION_6_7)
+            .use { db ->
+                val rowCursor = db.query("SELECT COUNT(*) FROM captured_items")
+                rowCursor.moveToFirst()
+                assertEquals(1, rowCursor.getInt(0))
+                rowCursor.close()
 
-        db.execSQL(
-            "CREATE INDEX IF NOT EXISTS index_captured_items_dedup ON captured_items(app_package, content_type, text, timestamp)"
-        )
+                val blockedCursor =
+                    db.query("SELECT COUNT(*) FROM blocked_apps WHERE app_package = 'com.custom.app'")
+                blockedCursor.moveToFirst()
+                assertEquals(1, blockedCursor.getInt(0))
+                blockedCursor.close()
 
-        val indexCursor = db.rawQuery(
-            "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_dedup'",
-            null,
-        )
-        indexCursor.moveToFirst()
-        assertEquals("index_captured_items_dedup", indexCursor.getString(0))
-        indexCursor.close()
+                val indexCursor = db.query(
+                    "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_app_package_content_type_text_timestamp'"
+                )
+                indexCursor.moveToFirst()
+                assertEquals(
+                    "index_captured_items_app_package_content_type_text_timestamp",
+                    indexCursor.getString(0),
+                )
+                indexCursor.close()
+            }
+    }
 
-        val rowCursor = db.rawQuery("SELECT COUNT(*) FROM captured_items", null)
-        rowCursor.moveToFirst()
-        assertEquals(1, rowCursor.getInt(0))
-        rowCursor.close()
-        db.close()
+    private companion object {
+        const val TEST_DB = "migration-test-6-7.db"
     }
 
     private fun createV5Database(): File {

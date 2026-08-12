@@ -60,3 +60,11 @@ python3 build_and_test.py   # automate full CI workflow
 - Run tests: `./gradlew test`
 - Compose reports at `app/build/reports/`
 - PRs and tags used for release; no APK uploads (F-Droid builds from source)
+
+## Room schema & migrations
+- `@Database(exportSchema = true)`; KSP arg `room.schemaLocation="$projectDir/schemas"` in `app/build.gradle.kts`
+- Schema JSONs committed to `app/schemas/com.activitytrace.store.ActivityTraceDatabase/{version}.json`
+- Unit tests (Robolectric) read schemas via `android.sourceSets["debug"]/["release"].assets.srcDir("$projectDir/schemas")` — the JSONs must land in the apk-for-local-test that Robolectric mounts. Robolectric does NOT serve test source-set assets, and test `src/test/resources` are not on the unit-test classpath (AGP routes Android source-set resources to `java_res/<variant>UnitTest/out`, which the worker classloader cannot resolve). Consequence: the two small schema JSONs also ship in the debug and release APKs
+- `MigrationTestHelper` (from `androidx.room:room-testing`) requires an Instrumentation; under Robolectric use `ShadowInstrumentation.getInstrumentation()` — `RuntimeEnvironment` has no such accessor
+- Migration tests must exercise the real migration through Room's open path (see `ActivityTraceDatabaseMigrationTest`), because Room validates the full schema incl. index names after every migration (the dedup-index v6→7 bug was an index-name mismatch)
+- When bumping the schema version: bump `version`, add `MIGRATION_x_y` to the builder's `.addMigrations(...)`, build to export the new JSON, and update/add a MigrationTestHelper test

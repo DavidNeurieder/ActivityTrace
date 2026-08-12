@@ -232,6 +232,7 @@ fun SearchScreen(
                     selectedType = contentTypeFilter,
                     selectedApp = appFilter,
                     dateRangeMs = dateFilter,
+                    onAppClick = { viewModel.setAppFilter(it) },
                     modifier = Modifier.fillMaxSize().weight(1f),
                 )
             } else {

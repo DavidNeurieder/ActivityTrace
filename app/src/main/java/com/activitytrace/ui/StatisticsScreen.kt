@@ -83,6 +83,7 @@ fun StatisticsScreen(
     selectedType: String? = null,
     selectedApp: String? = null,
     dateRangeMs: Pair<Long, Long>? = null,
+    onAppClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -106,7 +107,7 @@ fun StatisticsScreen(
     var showAllApps by remember { mutableStateOf(false) }
     var timelineTab by remember { mutableStateOf("daily") }
 
-    LaunchedEffect(items.size, items.hashCode(), showAllApps, selectedType, selectedApp, dateRangeMs) {
+    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, dateRangeMs) {
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
@@ -151,7 +152,6 @@ fun StatisticsScreen(
         topApps = ranged.groupBy { it.appPackage }
             .map { (pkg, group) -> CaptureDao.AppCount(pkg, group.size) }
             .sortedByDescending { it.count }
-            .take(if (showAllApps) 15 else 5)
         typeBreakdown = ranged.groupBy { it.contentType }
             .map { (type, group) -> ContentTypeCount(type, group.size) }
         hourly = ranged.groupBy { toHour(it.timestamp) }
@@ -200,9 +200,10 @@ fun StatisticsScreen(
         SectionHeader(
             icon = { Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) },
             title = { Text(stringResource(R.string.statistics_top_apps), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
+            onClick = { showAllApps = !showAllApps },
         )
         Spacer(Modifier.height(6.dp))
-        TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = { })
+        TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = onAppClick)
 
         TimelineSection(
             timelineTab = timelineTab,
@@ -298,6 +299,7 @@ private fun typeLabel(type: String?): String = when (type) {
 private fun SectionHeader(
     icon: @Composable () -> Unit,
     title: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -309,7 +311,11 @@ private fun SectionHeader(
         )
         Spacer(Modifier.height(12.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             icon()
@@ -683,14 +689,15 @@ private fun TopAppsList(
                     )
                 }
             }
-            if (!showAll && apps.size > 5) {
+            if (apps.size > 5) {
                 Text(
-                    text = stringResource(R.string.statistics_show_all, apps.size),
+                    text = if (showAll) stringResource(R.string.show_less)
+                            else stringResource(R.string.statistics_show_all, apps.size),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onShowAllChange(true) }
+                        .clickable { onShowAllChange(!showAll) }
                         .padding(vertical = 8.dp),
                     textAlign = TextAlign.Center,
                 )

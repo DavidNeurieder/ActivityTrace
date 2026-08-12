@@ -13,7 +13,7 @@ import net.sqlcipher.database.SupportFactory
 @Database(
     entities = [CapturedItem::class, BlockedApp::class],
     version = 7,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun captureDao(): CaptureDao
@@ -30,23 +30,43 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): ActivityTraceDatabase {
-            return try {
-                val passphrase = EncryptionManager.getOrCreateKey(context)
-                val factory = SupportFactory(passphrase)
-                Room.databaseBuilder(
-                    context.applicationContext,
-                    ActivityTraceDatabase::class.java,
-                    "activity_trace.db"
-                )
-                    .openHelperFactory(factory)
-                    .addCallback(SEED_DEFAULTS_CALLBACK)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-                    .build()
+            val passphrase = EncryptionManager.getOrCreateKey(context)
+            val factory = SupportFactory(passphrase)
+            val db = Room.databaseBuilder(
+                context.applicationContext,
+                ActivityTraceDatabase::class.java,
+                "activity_trace.db"
+            )
+                .openHelperFactory(factory)
+                .addCallback(SEED_DEFAULTS_CALLBACK)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .build()
+            try {
+                db.openHelper.writableDatabase
             } catch (e: Exception) {
-                context.deleteDatabase("activity_trace.db")
-                EncryptionManager.getOrCreateKey(context)
+                if (isEncryptionFailure(e)) {
+                    context.deleteDatabase("activity_trace.db")
+                    EncryptionManager.getOrCreateKey(context)
+                }
                 throw e
             }
+            return db
+        }
+
+        private fun isEncryptionFailure(e: Throwable): Boolean {
+            var current: Throwable? = e
+            while (current != null) {
+                val message = current.message
+                if (current is android.database.sqlite.SQLiteException && message != null &&
+                    (message.contains("not a database", ignoreCase = true) ||
+                        message.contains("file is encrypted", ignoreCase = true) ||
+                        message.contains("error code 26", ignoreCase = true))
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
         }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -162,11 +182,11 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_6_7 = object : Migration(6, 7) {
+        internal val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
-                    CREATE INDEX IF NOT EXISTS index_captured_items_dedup
+                    CREATE INDEX IF NOT EXISTS index_captured_items_app_package_content_type_text_timestamp
                     ON captured_items(app_package, content_type, text, timestamp)
                     """.trimIndent()
                 )

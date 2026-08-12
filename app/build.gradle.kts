@@ -17,8 +17,8 @@ android {
         applicationId = "com.activitytrace"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.8.0"
+        versionCode = 11
+        versionName = "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -63,6 +63,14 @@ android {
         compose = true
     }
 
+    // Room schema JSONs are exported here and fed to the unit test (Robolectric)
+    // apk-for-local-test via the variant assets. Robolectric does not serve test
+    // source-set assets, and test resources are not on the unit-test classpath.
+    sourceSets {
+        getByName("debug").assets.srcDir("$projectDir/schemas")
+        getByName("release").assets.srcDir("$projectDir/schemas")
+    }
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
@@ -75,6 +83,10 @@ android {
             excludes += "/assets/dexopt/*"
         }
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -105,6 +117,7 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.arch.core.testing)
     testImplementation(libs.robolectric)
+    testImplementation(libs.room.testing)
 
     androidTestImplementation(libs.compose.ui.test)
     androidTestImplementation(libs.compose.ui.test.manifest)
