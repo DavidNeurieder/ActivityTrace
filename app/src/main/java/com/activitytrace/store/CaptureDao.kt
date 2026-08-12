@@ -118,6 +118,9 @@ interface CaptureDao {
     @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since")
     suspend fun countSince(since: Long): Int
 
+    @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND content_type = :contentType AND text = :text AND timestamp >= :since")
+    suspend fun countRecentDuplicate(appPackage: String, contentType: String, text: String, since: Long): Int
+
     @Query("SELECT app_package, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY app_package ORDER BY count DESC LIMIT 15")
     suspend fun topApps(contentType: String?): List<AppCount>
 

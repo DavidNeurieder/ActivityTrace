@@ -65,6 +65,34 @@ class ActivityTraceDatabaseMigrationTest {
         db.close()
     }
 
+    @Test
+    fun `MIGRATION_6_7 creates dedup index and preserves existing rows`() {
+        val dbFile = createV5Database()
+        val db = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
+
+        db.execSQL(
+            "INSERT INTO captured_items (text, app_package, content_type, timestamp) VALUES ('hello', 'com.test', 'screen', 1000)"
+        )
+
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_captured_items_dedup ON captured_items(app_package, content_type, text, timestamp)"
+        )
+
+        val indexCursor = db.rawQuery(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_dedup'",
+            null,
+        )
+        indexCursor.moveToFirst()
+        assertEquals("index_captured_items_dedup", indexCursor.getString(0))
+        indexCursor.close()
+
+        val rowCursor = db.rawQuery("SELECT COUNT(*) FROM captured_items", null)
+        rowCursor.moveToFirst()
+        assertEquals(1, rowCursor.getInt(0))
+        rowCursor.close()
+        db.close()
+    }
+
     private fun createV5Database(): File {
         tempDir.mkdirs()
         val dbFile = File(tempDir, "v5_test.db").also { it.delete() }

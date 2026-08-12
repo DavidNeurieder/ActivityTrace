@@ -2,9 +2,13 @@ package com.activitytrace.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "captured_items")
+@Entity(
+    tableName = "captured_items",
+    indices = [Index(value = ["app_package", "content_type", "text", "timestamp"])],
+)
 data class CapturedItem(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,

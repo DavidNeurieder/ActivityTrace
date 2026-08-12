@@ -12,9 +12,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object CaptureIngestor {
-    private var db: ActivityTraceDatabase? = null
+    internal var db: ActivityTraceDatabase? = null
     private const val TAG = "CaptureIngestor"
     private const val DEDUP_COOLDOWN_MS = 2000L
+    private const val NOTIFICATION_DEDUP_WINDOW_MS = 5_000L
+    private const val TOAST_DEDUP_WINDOW_MS = 5_000L
+    private const val SCREEN_DEDUP_WINDOW_MS = 60_000L
+
+    internal fun dedupWindowFor(contentType: String): Long = when (contentType) {
+        "screen" -> SCREEN_DEDUP_WINDOW_MS
+        "toast" -> TOAST_DEDUP_WINDOW_MS
+        else -> NOTIFICATION_DEDUP_WINDOW_MS
+    }
 
     private val recentHashes = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
@@ -94,7 +103,11 @@ object CaptureIngestor {
         }
 
         try {
-            db?.captureDao()?.insert(
+            val dao = db?.captureDao()
+            val since = now - dedupWindowFor(contentType)
+            if (dao != null && dao.countRecentDuplicate(appPackage, contentType, text, since) > 0) return
+
+            dao?.insert(
                 CapturedItem(
                     text = text,
                     appPackage = appPackage,
