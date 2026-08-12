@@ -506,16 +506,18 @@ private fun DailyChart(data: List<CaptureDao.DateCount>, dateRangeMs: Pair<Long,
                         textAlign = android.graphics.Paint.Align.CENTER
                         isFakeBoldText = true
                     }
-                    val countY = if (barHeight > 32f) y - 6f
-                                 else y + barHeight / 2f + 9f
-                    paint.color = if (barHeight > 32f) onSurface.copy(alpha = 0.8f).hashCode()
-                                  else onSurface.copy(alpha = 1f).hashCode()
-                    drawText(
-                        item.count.toString(),
-                        x + barWidth / 2,
-                        countY,
-                        paint,
-                    )
+                    if (item.count > 0) {
+                        val countY = if (barHeight > 32f) y - 6f
+                                     else y + barHeight / 2f + 9f
+                        paint.color = if (barHeight > 32f) onSurface.copy(alpha = 0.8f).hashCode()
+                                      else onSurface.copy(alpha = 1f).hashCode()
+                        drawText(
+                            item.count.toString(),
+                            x + barWidth / 2,
+                            countY,
+                            paint,
+                        )
+                    }
                     paint.apply {
                         textSize = 22f
                         isFakeBoldText = false
