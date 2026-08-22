@@ -26,6 +26,8 @@ No cloud. No account. No telemetry. **No Internet permission.**
      alt="Get it on F-Droid"
      height="60">](https://f-droid.org/en/packages/com.activitytrace/)
 
+**[Watch the 20-second demo](#see-it-in-action)**
+
 ---
 
 ## Why ActivityTrace?
@@ -34,15 +36,27 @@ Android gives you lots of information, but finding something you saw earlier can
 
 ActivityTrace creates a private, searchable memory of information your phone has already shown you.
 
-### Find what you saw
+Search it when you need it.
 
-Everything ActivityTrace captures is combined into one searchable timeline:
+---
+
+## See it in action
+
+*[20-second demo — coming soon]*
+
+**You saw it. Now find it.**
+
+---
+
+## One search for everything ActivityTrace captures
 
 - Notifications
-- Screen content (via Accessibility)
+- Screen content
 - Indexed files (documents, PDFs, images)
 
-### Search naturally
+Everything is combined into one searchable timeline.
+
+## Search naturally
 
 Use ordinary language or precise filters to narrow results:
 
@@ -54,7 +68,7 @@ Use ordinary language or precise filters to narrow results:
 
 Prefix and wildcard matching (`test` matches `testing`, `*error` matches `fatal error`) and result highlighting are built in.
 
-### Private by design
+## Private by design
 
 Your ActivityTrace database stays on your device.
 
@@ -66,23 +80,22 @@ Your ActivityTrace database stays on your device.
 
 **ActivityTrace cannot send your data anywhere.**
 
-### You control retention
+## You control your data
 
 Choose how long captured information is kept — from 7 days to 90 days. Block individual apps from being captured entirely.
 
-### Statistics
+## How it works
 
-See when and where things appeared: activity over time, top apps, and content type breakdown.
+ActivityTrace runs entirely on your device.
 
----
+1. ActivityTrace captures information from the sources you enable.
+2. The information is indexed in a local encrypted database.
+3. You search it whenever you need it.
+4. Retention rules automatically remove old data.
 
-## Privacy isn't a promise. It's an architecture.
+Nothing is uploaded to a server. There is no hidden analytics endpoint, no cloud sync, and no telemetry waiting to be disabled — the app has no network access to send anything.
 
-ActivityTrace has **no Internet permission**.
-
-That means there is no hidden analytics endpoint, no cloud sync, and no telemetry waiting to be disabled.
-
-Your data stays on your device because the app has no network access to send it.
+**Optional capture:** Screen-content capture uses Android's AccessibilityService and is completely optional.
 
 ---
 
@@ -110,7 +123,9 @@ ActivityTrace is still early, and the most useful features come from real users.
 
 **What were you trying to find?**
 
-[Open an issue](https://github.com/DavidNeurieder/ActivityTrace/issues) and tell us what you were looking for, what happened, and what would have made ActivityTrace useful.
+[Give feedback](https://github.com/DavidNeurieder/ActivityTrace/issues) — tell us what you were looking for, what happened, and what would have made ActivityTrace useful.
+
+Developers can report bugs and contribute directly on GitHub.
 
 ---
 
@@ -126,6 +141,12 @@ ActivityTrace is free and open source software under the [GPL-3.0-only](LICENSE)
 Contributions are welcome.
 
 ---
+
+## Other features
+
+- Statistics dashboard — activity over time, top apps, content-type breakdown
+- Export as JSON or CSV
+- Encrypted-database backup and restore (plain SQLite)
 
 ## Technical details
 
