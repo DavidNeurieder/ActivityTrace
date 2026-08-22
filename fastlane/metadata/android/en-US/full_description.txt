@@ -1,12 +1,22 @@
-<p>Search across notifications, accessibility and indexed files. Everything stays encrypted on-device with SQLCipher AES-256-CBC + Android Keystore. No AI, no cloud, no account, no internet permission.</p>
+<p>Ever see something on your phone and then struggle to find it again?</p>
+
+<p>ActivityTrace creates a private, searchable memory of your Android activity.</p>
+
+<p>Search notifications, captured screen content, and indexed files from one place.</p>
+
+<p>No Internet permission. No cloud. No account. No telemetry.</p>
+
+<p>Your data stays encrypted on your device.</p>
 
 <ul>
-<li>Search notifications, accessibility and files</li>
-<li>Prefix and wildcard matching</li>
-<li>Search term highlighting in results</li>
-<li>Statistics with timeline charts and breakdown by content type</li>
-<li>System app blocking for unwanted sources</li>
-<li>Full encryption at rest (SQLCipher + Android Keystore)</li>
-<li>Zero network — no internet permission, no telemetry</li>
-<li>Open source (GPL-3.0-only)</li>
+<li><b>Find what you saw</b> — one searchable timeline of notifications, screen content and files</li>
+<li><b>Search naturally</b> — type &quot;yesterday&quot;, &quot;last week&quot; or plain keywords</li>
+<li><b>Filter precisely</b> — by app (<i>in:signal</i>) or content type (<i>type:notification</i>), with prefix, wildcard matching and highlighted results</li>
+<li><b>You control retention</b> — choose how long data is kept and block individual apps</li>
+<li><b>See when and where</b> — statistics about captured activity over time</li>
+<li><b>Encrypted at rest</b> — SQLCipher AES-256-CBC + Android Keystore</li>
 </ul>
+
+<p>Privacy isn&apos;t a promise — it&apos;s an architecture. ActivityTrace has no Internet permission, so there is no hidden analytics endpoint, no cloud sync, and no telemetry waiting to be disabled. Your data cannot leave your device.</p>
+
+<p>Free and open source software (GPL-3.0-only). Distributed via F-Droid: no Google Play Services, no proprietary dependencies, no AI or ML components.</p>

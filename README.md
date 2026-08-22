@@ -1,114 +1,148 @@
-# Activity Trace
+# ActivityTrace
 
+## Find something you saw on your phone.
+
+You know you saw it.
+
+A notification. A message. A link. A piece of text. A file.
+
+But now you can't remember where.
+
+**ActivityTrace makes your Android activity searchable.**
+
+Search across your notifications, captured screen content, and indexed files — entirely on your device.
+
+> "tracking number DHL"
+>
+> "message from Sarah yesterday"
+>
+> "that link I saw last week"
+>
+> "error from Signal"
+
+No cloud. No account. No telemetry. **No Internet permission.**
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
      alt="Get it on F-Droid"
-     height="80">](https://f-droid.org/en/packages/com.activitytrace/)
+     height="60">](https://f-droid.org/en/packages/com.activitytrace/)
 
-On-device cross-app memory search for Android. No AI, no cloud, no internet permission.
+---
 
-Search across notifications, accessibility screen captures, and indexed files with natural language — all encrypted at rest with **SQLCipher AES-256-CBC** + Android Keystore.
+## Why ActivityTrace?
 
-## Features
+Android gives you lots of information, but finding something you saw earlier can be surprisingly difficult.
 
-- **Search anything** — notifications, screen captures, indexed files
-- **Natural language queries** — `yesterday`, `last week`, `in:signal`, `type:notification`
-- **Prefix & wildcard search** — `test` matches `testing`/`tested`, `*error` matches `fatal error`
-- **Search term highlighting** — matched keywords highlighted in results
-- **Statistics** — summary cards, timeline charts, top apps, content type breakdown
-- **System app blocking** — capture from selected apps disabled by default
-- **Full encryption** — SQLCipher + Android Keystore (StrongBox on capable hardware)
-- **Zero-network** — no internet permission, no telemetry, no cloud
-- **Open source** — GPL-3.0-only, distributed via F-Droid
+ActivityTrace creates a private, searchable memory of information your phone has already shown you.
 
-## Architecture
+### Find what you saw
 
-| Layer | Technology |
-|-------|-----------|
-| UI | Jetpack Compose + Material 3 (dynamic color) |
-| Architecture | Single-Activity, ViewModel, reactive Flows |
-| Storage | Room + SQLCipher (AES-256-CBC, arm64-v8a only) |
-| Search | SQLite LIKE with substring matching |
-| Capture | NotificationListener, AccessibilityService, File indexing (SAF) |
-| Retention | WorkManager (configurable periodic cleanup) |
+Everything ActivityTrace captures is combined into one searchable timeline:
 
-**Min SDK:** 26 (Android 8.0) · **Target SDK:** 36
+- Notifications
+- Screen content (via Accessibility)
+- Indexed files (documents, PDFs, images)
+
+### Search naturally
+
+Use ordinary language or precise filters to narrow results:
+
+- `yesterday`
+- `last week`
+- `in:signal`
+- `type:notification`
+- `tracking number`
+
+Prefix and wildcard matching (`test` matches `testing`, `*error` matches `fatal error`) and result highlighting are built in.
+
+### Private by design
+
+Your ActivityTrace database stays on your device.
+
+- No Internet permission
+- No cloud
+- No account
+- No telemetry, analytics, or crash reporting
+- Encrypted at rest with SQLCipher + Android Keystore
+
+**ActivityTrace cannot send your data anywhere.**
+
+### You control retention
+
+Choose how long captured information is kept — from 7 days to 90 days. Block individual apps from being captured entirely.
+
+### Statistics
+
+See when and where things appeared: activity over time, top apps, and content type breakdown.
+
+---
+
+## Privacy isn't a promise. It's an architecture.
+
+ActivityTrace has **no Internet permission**.
+
+That means there is no hidden analytics endpoint, no cloud sync, and no telemetry waiting to be disabled.
+
+Your data stays on your device because the app has no network access to send it.
+
+---
 
 ## Screenshots
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Screenshot 1"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="Screenshot 2"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Screenshot 3"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="Screenshot 4"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="180" alt="Screenshot 5"> 
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Screenshot 1"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="Screenshot 2"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Screenshot 3"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="Screenshot 4"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="180" alt="Screenshot 5">
 
-## Build
+---
+
+## Get ActivityTrace
+
+### F-Droid
+
+[Install from F-Droid](https://f-droid.org/en/packages/com.activitytrace/)
+
+### Source code
+
+[GitHub](https://github.com/DavidNeurieder/ActivityTrace)
+
+---
+
+## Help shape ActivityTrace
+
+ActivityTrace is still early, and the most useful features come from real users.
+
+**What were you trying to find?**
+
+[Open an issue](https://github.com/DavidNeurieder/ActivityTrace/issues) and tell us what you were looking for, what happened, and what would have made ActivityTrace useful.
+
+---
+
+## Open source
+
+ActivityTrace is free and open source software under the [GPL-3.0-only](LICENSE) license.
+
+- No Google Play Services
+- No proprietary dependencies
+- No AI or ML components
+- No cloud features
+
+Contributions are welcome.
+
+---
+
+## Technical details
+
+- Android 8.0+ (API 26)
+- Jetpack Compose + Material 3
+- Room + SQLCipher (AES-256-CBC) + Android Keystore
+- WorkManager for retention cleanup and file indexing
+- NotificationListener + AccessibilityService capture
+- Storage Access Framework file indexing
+
+### Build
 
 ```bash
 ./gradlew assembleDebug     # debug build (unminified)
 ./gradlew assembleRelease   # release build (minified, ProGuard)
+./gradlew test              # unit tests
+./gradlew lint              # static analysis
 ```
 
-```bash
-./gradlew test               # unit tests
-./gradlew lint               # static analysis
-./gradlew connectedDebugAndroidTest  # instrumentation tests
-```
-
-### Prerequisites
-
-- Android Studio Hedgehog (2023.1.1) or later
-- JDK 17
-- Android SDK 36
-
-## Dependencies
-
-- **Compose BOM 2024.01.00** — Material 3, dynamic color
-- **Room 2.6.1** + KSP — type-safe SQLite
-- **WorkManager 2.9.0** — background retention cleanup
-- **SQLCipher 4.5.4** — encrypted database at rest
-- **MockK 1.13.9** — test mocking
-- **Turbine 1.0.0** — Flow testing
-
-See [`gradle/libs.versions.toml`](gradle/libs.versions.toml) for the full catalog.
-
-## Key files
-
-| File | Purpose |
-|------|---------|
-| [`MainActivity.kt`](app/src/main/java/com/activitytrace/MainActivity.kt) | Entry point, onboarding & settings routing |
-| [`SearchScreen.kt`](app/src/main/java/com/activitytrace/ui/SearchScreen.kt) | Main search UI with prefix/wildcard matching |
-| [`SearchViewModel.kt`](app/src/main/java/com/activitytrace/ui/SearchViewModel.kt) | Reactive search pipeline (flatMapLatest) |
-| [`SettingsScreen.kt`](app/src/main/java/com/activitytrace/ui/SettingsScreen.kt) | Permissions, retention, backup/restore (SQLite), export (JSON, CSV) |
-| [`SearchEngine.kt`](app/src/main/java/com/activitytrace/search/SearchEngine.kt) | LIKE substring search routing |
-| [`QueryParser.kt`](app/src/main/java/com/activitytrace/search/QueryParser.kt) | Natural language date & filter parsing |
-| [`EncryptionManager.kt`](app/src/main/java/com/activitytrace/store/EncryptionManager.kt) | Two-tier key derivation (Keystore → fallback) |
-| [`ActivityTraceDatabase.kt`](app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt) | Room + SQLCipher setup |
-| [`CaptureDao.kt`](app/src/main/java/com/activitytrace/store/CaptureDao.kt) | LIKE substring queries, insertAll, getAllItemKeys for import/CSV |
-| [`RetentionCleanupWorker.kt`](app/src/main/java/com/activitytrace/store/RetentionCleanupWorker.kt) | Configurable auto-delete via WorkManager |
-| [`BackupImporter.kt`](app/src/main/java/com/activitytrace/store/BackupImporter.kt) | SQLite restore from backup (merge with dedup) |
-| [`DataExporter.kt`](app/src/main/java/com/activitytrace/store/DataExporter.kt) | JSON and CSV export |
-| [`DatabaseExporter.kt`](app/src/main/java/com/activitytrace/store/DatabaseExporter.kt) | Plain SQLite backup (unencrypted) |
-| [`ActivityTraceNotificationListener.kt`](app/src/main/java/com/activitytrace/capture/ActivityTraceNotificationListener.kt) | Notification capture service |
-| [`AccessibilityCaptureService.kt`](app/src/main/java/com/activitytrace/capture/AccessibilityCaptureService.kt) | Screen capture via AccessibilityService |
-| [`CaptureIngestor.kt`](app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt) | Unified capture pipeline (write to Room) |
-| [`PendingIntentSerializer.kt`](app/src/main/java/com/activitytrace/capture/PendingIntentSerializer.kt) | Notification deep link serialization (Parcel ↔ Base64) |
-| [`FileIndexer.kt`](app/src/main/java/com/activitytrace/capture/FileIndexer.kt) | SAF directory walk + PDF text extraction |
-| [`FileIndexingWorker.kt`](app/src/main/java/com/activitytrace/capture/FileIndexingWorker.kt) | Background file indexing (daily / manual) |
-
-## Privacy
-
-Activity Trace is designed to be **zero-trust by default:**
-
-- No internet permission in the manifest
-- No telemetry, no analytics, no crash reporting
-- All data encrypted at rest with SQLCipher + Android Keystore
-- F-Droid only — no proprietary dependencies, no Google Play Services
-
-## License
-
-GNU General Public License v3.0 only. See [LICENSE](LICENSE).
-
-## Contributing
-
-Contributions are welcome. Please open an issue first to discuss changes.
-
-- Run `./gradlew test` before submitting
-- Maintain the GPL-3.0-only license
-- No AI/ML dependencies, no cloud features, no Play Services
+Prerequisites: JDK 17, Android SDK 36. See [`AGENTS.md`](AGENTS.md) for architecture details.

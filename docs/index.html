@@ -3,30 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Activity Trace — On-device cross-app memory search for Android</title>
-  <meta name="description" content="On-device cross-app memory search for Android. Search notifications, screen captures, and files with natural language — encrypted at rest, zero network, no AI, no cloud.">
+  <title>ActivityTrace — Find things you saw on your phone</title>
+  <meta name="description" content="Find things you saw on your phone — privately and entirely on-device. ActivityTrace makes your Android activity searchable: notifications, screen captures, and files in one encrypted timeline. No cloud, no account, no internet permission.">
   <link rel="canonical" href="https://davidneurieder.github.io/ActivityTrace/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Activity Trace">
-  <meta property="og:title" content="Activity Trace — On-device cross-app memory search">
-  <meta property="og:description" content="Search notifications, screen captures, and files with natural language. Encrypted at rest, zero network, no AI, no cloud.">
+  <meta property="og:site_name" content="ActivityTrace">
+  <meta property="og:title" content="ActivityTrace — Find things you saw on your phone">
+  <meta property="og:description" content="A private, searchable memory of your Android activity. No cloud. No account. No Internet permission.">
   <meta property="og:url" content="https://davidneurieder.github.io/ActivityTrace/">
   <meta property="og:image" content="https://davidneurieder.github.io/ActivityTrace/og-banner.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Activity Trace — On-device cross-app memory search">
-  <meta name="twitter:description" content="Search notifications, screen captures, and files with natural language. Encrypted at rest, zero network, no AI, no cloud.">
+  <meta name="twitter:title" content="ActivityTrace — Find things you saw on your phone">
+  <meta name="twitter:description" content="A private, searchable memory of your Android activity. No cloud. No account. No Internet permission.">
   <meta name="twitter:image" content="https://davidneurieder.github.io/ActivityTrace/og-banner.png">
   <link rel="stylesheet" href="styles.css">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Activity Trace",
+    "name": "ActivityTrace",
     "operatingSystem": "Android",
     "applicationCategory": "UtilitiesApplication",
-    "description": "On-device cross-app memory search for Android. Search notifications, screen captures, and indexed files with natural language — encrypted at rest, zero network, no AI, no cloud.",
+    "description": "Find things you saw on your phone — privately and entirely on-device. ActivityTrace makes your Android activity searchable: notifications, screen captures, and indexed files in one encrypted timeline.",
     "url": "https://davidneurieder.github.io/ActivityTrace/",
     "softwareVersion": "0.9.0",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -37,54 +37,55 @@
 <body>
   <header class="hero">
     <div class="container">
-      <img class="app-icon" src="icon.png" alt="Activity Trace app icon" width="104" height="104">
-      <span class="eyebrow">Android · Zero-network</span>
-      <h1>Activity Trace</h1>
-      <p class="lead">On-device cross-app memory search. Search your notifications, screen captures, and files with natural language — all encrypted at rest, with no AI, no cloud, and no internet permission.</p>
+      <img class="app-icon" src="icon.png" alt="ActivityTrace app icon" width="104" height="104">
+      <span class="eyebrow">Android · On-device</span>
+      <h1>ActivityTrace</h1>
+      <p class="lead">Ever see something on your phone and then struggle to find it again? ActivityTrace makes your Android activity searchable — notifications, screen content, and files in one private timeline.</p>
+      <p class="lead">&ldquo;tracking number DHL&rdquo; &middot; &ldquo;message from Sarah yesterday&rdquo; &middot; &ldquo;that link I saw last week&rdquo;</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://f-droid.org/en/packages/com.activitytrace/">
           <img class="fdroid-mark" src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'&gt;&lt;path d='M12 2 3 7v10l9 5 9-5V7z' opacity='.9'/&gt;&lt;/svg&gt;" alt=""> Get it on F-Droid
         </a>
         <a class="btn btn-ghost" href="https://github.com/DavidNeurieder/ActivityTrace">View source</a>
       </div>
-      <p class="trust">No AI · No cloud · No internet permission</p>
+      <p class="trust">No cloud · No account · No telemetry · No internet permission</p>
     </div>
   </header>
 
   <main>
     <section class="section" id="features">
       <div class="container">
-        <h2>Remember everything on your device</h2>
+        <h2>A searchable memory of your Android activity</h2>
         <div class="grid">
           <div class="card">
             <div class="icon">🔎</div>
-            <h3>Search anything</h3>
-            <p>Notifications, accessibility screen captures, and indexed files — one search across them all.</p>
+            <h3>Find what you saw</h3>
+            <p>Notifications, screen content, and indexed files — combined into one searchable timeline.</p>
           </div>
           <div class="card">
             <div class="icon">💬</div>
-            <h3>Natural language</h3>
-            <p>Query with <code>yesterday</code>, <code>last week</code>, <code>in:signal</code>, or <code>type:notification</code>.</p>
+            <h3>Search naturally</h3>
+            <p>Query with <code>yesterday</code>, <code>last week</code>, or plain keywords like <code>tracking number</code>.</p>
           </div>
           <div class="card">
             <div class="icon">⚡</div>
-            <h3>Prefix &amp; wildcard</h3>
-            <p><code>test</code> matches <code>testing</code>; <code>*error</code> matches <code>fatal error</code>. Matches are highlighted.</p>
+            <h3>Filter precisely</h3>
+            <p>Narrow by app (<code>in:signal</code>) or content type (<code>type:notification</code>). Prefix &amp; wildcard matching, highlighted results.</p>
+          </div>
+          <div class="card">
+            <div class="icon">🧹</div>
+            <h3>You control retention</h3>
+            <p>Choose how long captured information is kept — and block individual apps from being captured entirely.</p>
           </div>
           <div class="card">
             <div class="icon">📊</div>
             <h3>Statistics</h3>
-            <p>Summary cards, timeline charts, top apps, and content-type breakdown.</p>
+            <p>See when and where things appeared: activity over time, top apps, and content-type breakdown.</p>
           </div>
           <div class="card">
             <div class="icon">🛡️</div>
-            <h3>Full encryption</h3>
+            <h3>Encrypted at rest</h3>
             <p>SQLCipher + Android Keystore (StrongBox on capable hardware). AES-256-CBC at rest.</p>
-          </div>
-          <div class="card">
-            <div class="icon">🚫</div>
-            <h3>System app blocking</h3>
-            <p>Capture from system apps is disabled by default — you choose what gets indexed.</p>
           </div>
         </div>
       </div>
@@ -116,7 +117,7 @@
             </div>
           </div>
         </div>
-        <p class="privacy-note">Zero-trust by default: your data never leaves the device, and only you can search it.</p>
+        <p class="privacy-note">Privacy isn't a promise — it's an architecture. Your data never leaves the device, because there is no network path that could take it there.</p>
       </div>
     </section>
 
@@ -124,11 +125,11 @@
       <div class="container">
         <h2>Screenshots</h2>
         <div class="shots">
-          <img src="screenshots/1.png" alt="Activity Trace screenshot 1" loading="lazy">
-          <img src="screenshots/2.png" alt="Activity Trace screenshot 2" loading="lazy">
-          <img src="screenshots/3.png" alt="Activity Trace screenshot 3" loading="lazy">
-          <img src="screenshots/4.png" alt="Activity Trace screenshot 4" loading="lazy">
-          <img src="screenshots/5.png" alt="Activity Trace screenshot 5" loading="lazy">
+          <img src="screenshots/1.png" alt="ActivityTrace screenshot 1" loading="lazy">
+          <img src="screenshots/2.png" alt="ActivityTrace screenshot 2" loading="lazy">
+          <img src="screenshots/3.png" alt="ActivityTrace screenshot 3" loading="lazy">
+          <img src="screenshots/4.png" alt="ActivityTrace screenshot 4" loading="lazy">
+          <img src="screenshots/5.png" alt="ActivityTrace screenshot 5" loading="lazy">
         </div>
       </div>
     </section>
@@ -152,7 +153,7 @@
 
   <footer>
     <div class="container">
-      <p>Activity Trace — version 0.9.0. GPL-3.0-only — <a href="https://github.com/DavidNeurieder/ActivityTrace/blob/main/LICENSE">License</a> · <a href="https://github.com/DavidNeurieder/ActivityTrace">Source</a></p>
+      <p>ActivityTrace — version 0.9.0. GPL-3.0-only — <a href="https://github.com/DavidNeurieder/ActivityTrace/blob/main/LICENSE">License</a> · <a href="https://github.com/DavidNeurieder/ActivityTrace">Source</a></p>
     </div>
   </footer>
 </body>
