@@ -10,8 +10,6 @@ But now you can't remember where.
 
 **ActivityTrace makes your Android activity searchable.**
 
-Search across your notifications, captured screen content, and indexed files — entirely on your device.
-
 > "tracking number DHL"
 >
 > "message from Sarah yesterday"
@@ -26,7 +24,13 @@ No cloud. No account. No telemetry. **No Internet permission.**
      alt="Get it on F-Droid"
      height="60">](https://f-droid.org/en/packages/com.activitytrace/)
 
-**[Watch the 20-second demo](#see-it-in-action)**
+---
+
+## See it in action
+
+*[20-second demo — coming soon]*
+
+**You saw it. You dismissed it. Now find it.**
 
 ---
 
@@ -40,21 +44,13 @@ Search it when you need it.
 
 ---
 
-## See it in action
-
-*[20-second demo — coming soon]*
-
-**You saw it. Now find it.**
-
----
-
-## One search for everything ActivityTrace captures
+## Search across your phone's activity
 
 - Notifications
 - Screen content
 - Indexed files (documents, PDFs, images)
 
-Everything is combined into one searchable timeline.
+Everything ActivityTrace captures is combined into one searchable timeline.
 
 ## Search naturally
 
@@ -95,13 +91,15 @@ ActivityTrace runs entirely on your device.
 
 Nothing is uploaded to a server. There is no hidden analytics endpoint, no cloud sync, and no telemetry waiting to be disabled — the app has no network access to send anything.
 
-**Optional capture:** Screen-content capture uses Android's AccessibilityService and is completely optional.
+### Optional screen capture
+
+ActivityTrace can optionally index screen content using Android's AccessibilityService. This permission is not required for basic notification search.
 
 ---
 
 ## Screenshots
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Screenshot 1"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="Screenshot 2"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Screenshot 3"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="Screenshot 4"> 
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="180" alt="Screenshot 1"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="180" alt="Screenshot 2"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="180" alt="Screenshot 3"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="180" alt="Screenshot 4"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="180" alt="Screenshot 5">
 
 ---
 
@@ -123,9 +121,11 @@ ActivityTrace is still early, and the most useful features come from real users.
 
 **What were you trying to find?**
 
-[Give feedback](https://github.com/DavidNeurieder/ActivityTrace/issues) — tell us what you were looking for, what happened, and what would have made ActivityTrace useful.
+Tell us what you were looking for and what happened.
 
-Developers can report bugs and contribute directly on GitHub.
+[Give feedback](https://github.com/DavidNeurieder/ActivityTrace/issues)
+
+Developers: [report bugs and contribute on GitHub](https://github.com/DavidNeurieder/ActivityTrace/pulls).
 
 ---
 
