@@ -20,52 +20,59 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search wraps keyword in percent signs for substring match`() = runTest {
+    fun `search with no keywords but filters uses like dao`() = runTest {
+        searchEngine.search("type:notification").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
+    }
+
+    @Test
+    fun `search with no keywords but time range uses like dao`() = runTest {
+        searchEngine.search("today").collect { }
+
+        verify { captureDao.searchLike(emptyList<String>(), any(), null, null) }
+    }
+
+    @Test
+    fun `search wraps keyword in prefix token for fts`() = runTest {
         searchEngine.search("hello world").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%", "%world%"), null) }
+        verify { captureDao.searchFts("hello* world*", null, null, null) }
     }
 
     @Test
-    fun `search with single keyword wraps in percent signs`() = runTest {
+    fun `search with single keyword makes a prefix token`() = runTest {
         searchEngine.search("hello").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), null) }
+        verify { captureDao.searchFts("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with wildcard converts star to percent and wraps`() = runTest {
+    fun `search with wildcard drops star and makes prefix token`() = runTest {
         searchEngine.search("hello*").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), null) }
+        verify { captureDao.searchFts("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with leading wildcard converts and wraps`() = runTest {
+    fun `search with leading wildcard drops star and makes prefix token`() = runTest {
         searchEngine.search("*hello").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), null) }
+        verify { captureDao.searchFts("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with surrounding wildcard converts and wraps`() = runTest {
+    fun `search with surrounding wildcards drops stars and makes prefix token`() = runTest {
         searchEngine.search("*hello*").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), null) }
+        verify { captureDao.searchFts("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with time range passes it to like dao`() = runTest {
+    fun `search with time range passes it to fts dao`() = runTest {
         searchEngine.search("hello today").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), any()) }
-    }
-
-    @Test
-    fun `search with wildcard passes time range`() = runTest {
-        searchEngine.search("*hello today").collect { }
-
-        verify { captureDao.searchLike(listOf("%hello%"), any()) }
+        verify { captureDao.searchFts("hello*", any(), null, null) }
     }
 
     @Test
@@ -77,51 +84,52 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search strips time keywords from pattern`() = runTest {
+    fun `search strips time keywords from match query`() = runTest {
         searchEngine.search("today tomorrow").collect { }
 
-        verify { captureDao.searchLike(listOf("%tomorrow%"), any()) }
+        verify { captureDao.searchFts("tomorrow*", any(), null, null) }
     }
 
     @Test
-    fun `search with type filter passes contentType to dao`() = runTest {
-        searchEngine.search("type:notification").collect { }
-
-        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
-    }
-
-    @Test
-    fun `search with type synonym maps to canonical value`() = runTest {
-        searchEngine.search("type:accessibility").collect { }
-
-        verify { captureDao.searchLike(emptyList<String>(), null, "screen", null) }
-    }
-
-    @Test
-    fun `search with type synonym notif maps to notification`() = runTest {
-        searchEngine.search("type:notif").collect { }
-
-        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
-    }
-
-    @Test
-    fun `search with in filter passes appPackage to dao`() = runTest {
-        searchEngine.search("in:signal").collect { }
-
-        verify { captureDao.searchLike(emptyList<String>(), null, null, "signal") }
-    }
-
-    @Test
-    fun `search with combined type and in filters`() = runTest {
-        searchEngine.search("in:com.example type:screen").collect { }
-
-        verify { captureDao.searchLike(emptyList<String>(), null, "screen", "com.example") }
-    }
-
-    @Test
-    fun `search with type filter and keyword`() = runTest {
+    fun `search with type filter passes contentType to fts dao`() = runTest {
         searchEngine.search("type:notification hello").collect { }
 
-        verify { captureDao.searchLike(listOf("%hello%"), null, "notification", null) }
+        verify { captureDao.searchFts("hello*", null, "notification", null) }
+    }
+
+    @Test
+    fun `search with in filter passes appPackage to fts dao`() = runTest {
+        searchEngine.search("in:signal meeting").collect { }
+
+        verify { captureDao.searchFts("meeting*", null, null, "signal") }
+    }
+
+    @Test
+    fun `search with combined type and in filters and keyword`() = runTest {
+        searchEngine.search("in:com.example type:screen notes").collect { }
+
+        verify { captureDao.searchFts("notes*", null, "screen", "com.example") }
+    }
+
+    @Test
+    fun `search with operator chars quotes the token`() = runTest {
+        searchEngine.search("C++").collect { }
+
+        verify { captureDao.searchFts("\"c++\"", null, null, null) }
+    }
+
+    @Test
+    fun `search with colon char quotes the token`() = runTest {
+        searchEngine.search("3:30").collect { }
+
+        verify { captureDao.searchFts("\"3:30\"", null, null, null) }
+    }
+
+    @Test
+    fun `search with only wildcard returns empty`() = runTest {
+        val result = mutableListOf<List<CapturedItem>>()
+        searchEngine.search("*").collect { result.add(it) }
+
+        assert(result[0].isEmpty())
     }
 }

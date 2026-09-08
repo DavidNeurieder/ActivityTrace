@@ -64,14 +64,12 @@ class AccessibilityCaptureService : AccessibilityService() {
                         val summaryText = extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
                         if (title.isBlank() && text.isBlank() && bigText == null && subText == null && summaryText == null) return
                         val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
-                        val serialized = notification.contentIntent?.serialize()
                         scope.launch {
                             CaptureIngestor.ingest(
                                 text = fullText,
                                 appPackage = pkg,
                                 appName = CaptureIngestor.resolveAppName(this@AccessibilityCaptureService, pkg),
                                 contentType = "notification",
-                                metadata = serialized,
                                 category = notification.category,
                             )
                         }

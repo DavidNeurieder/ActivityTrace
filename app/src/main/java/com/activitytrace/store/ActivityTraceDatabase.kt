@@ -20,7 +20,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun blockedAppDao(): BlockedAppDao
 
     companion object {
-        const val CURRENT_VERSION = 8
+        const val CURRENT_VERSION = 9
         @Volatile
         private var INSTANCE: ActivityTraceDatabase? = null
 
@@ -57,7 +57,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             )
                 .openHelperFactory(factory)
                 .addCallback(SEED_DEFAULTS_CALLBACK)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .build()
         }
 
@@ -197,8 +197,62 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createFtsIndex(db)
+                db.execSQL(
+                    """
+                    INSERT INTO `captured_items_fts` (`rowid`, `text`, `app_name`)
+                    SELECT `id`, `text`, `app_name` FROM `captured_items`
+                    """.trimIndent()
+                )
+            }
+        }
+
+        private fun createFtsIndex(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS `captured_items_fts`
+                USING fts5(`text`, `app_name`, content=`captured_items`, content_rowid=`id`)
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS `captured_items_fts_ai`
+                AFTER INSERT ON `captured_items`
+                BEGIN
+                    INSERT INTO `captured_items_fts` (`rowid`, `text`, `app_name`)
+                    VALUES (new.`id`, new.`text`, new.`app_name`);
+                END
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS `captured_items_fts_ad`
+                AFTER DELETE ON `captured_items`
+                BEGIN
+                    INSERT INTO `captured_items_fts` (`captured_items_fts`, `rowid`, `text`, `app_name`)
+                    VALUES ('delete', old.`id`, old.`text`, old.`app_name`);
+                END
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TRIGGER IF NOT EXISTS `captured_items_fts_au`
+                AFTER UPDATE ON `captured_items`
+                BEGIN
+                    INSERT INTO `captured_items_fts` (`captured_items_fts`, `rowid`, `text`, `app_name`)
+                    VALUES ('delete', old.`id`, old.`text`, old.`app_name`);
+                    INSERT INTO `captured_items_fts` (`rowid`, `text`, `app_name`)
+                    VALUES (new.`id`, new.`text`, new.`app_name`);
+                END
+                """.trimIndent()
+            )
+        }
+
         private val SEED_DEFAULTS_CALLBACK = object : Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
+                createFtsIndex(db)
                 seedDefaultBlocked(db)
             }
         }

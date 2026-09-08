@@ -29,7 +29,6 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
         val summaryText = extras.getCharSequence(android.app.Notification.EXTRA_SUMMARY_TEXT)?.toString()
         if (text == null && title == null && bigText == null && subText == null && summaryText == null) return
         val fullText = listOfNotNull(title, text, subText, bigText, summaryText).joinToString(" — ")
-        val serialized = sbn.notification.contentIntent?.serialize()
         val imageBlob = extractImage(sbn)
         scope.launch {
             try {
@@ -38,7 +37,6 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
                     appPackage = sbn.packageName,
                     appName = CaptureIngestor.resolveAppName(this@ActivityTraceNotificationListener, sbn.packageName),
                     contentType = "notification",
-                    metadata = serialized,
                     category = sbn.notification.category,
                     timestamp = sbn.postTime,
                     imageBlob = imageBlob,

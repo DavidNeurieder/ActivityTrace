@@ -37,14 +37,45 @@ class SearchEngine(private val captureDao: CaptureDao) {
             return flowOf(emptyList())
         }
 
-        val patterns = keywords.map {
-            val p = it.replace("*", "%")
-            buildString {
-                if (!p.startsWith("%")) append("%")
-                append(p)
-                if (!p.endsWith("%")) append("%")
-            }
+        if (keywords.isEmpty()) {
+            return captureDao.searchLike(
+                patterns = emptyList(),
+                timeRange = effectiveRange,
+                contentType = effectiveType,
+                appPackage = effectiveApp,
+            )
         }
-        return captureDao.searchLike(patterns, effectiveRange, effectiveType, effectiveApp)
+
+        val matchQuery = keywords.asSequence()
+            .map { it.replace("*", "") }
+            .filter { it.isNotBlank() }
+            .map { ftsToken(it) }
+            .joinToString(" ")
+
+        if (matchQuery.isBlank()) {
+            return flowOf(emptyList())
+        }
+
+        return captureDao.searchFts(
+            matchQuery = matchQuery,
+            timeRange = effectiveRange,
+            contentType = effectiveType,
+            appPackage = effectiveApp,
+        )
+    }
+
+    /**
+     * Maps a single search keyword to an FTS5 MATCH token. Plain tokens
+     * become prefix matches (`hello*`) so that typing a partial word still
+     * matches. Tokens containing FTS5 operators are quoted with double
+     * quotes (which is also a natural way to search literal punctuation).
+     */
+    private fun ftsToken(token: String): String {
+        val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' }
+        return if (isPlainWord) {
+            token + "*"
+        } else {
+            "\"" + token.replace("\"", "\"\"") + "\""
+        }
     }
 }

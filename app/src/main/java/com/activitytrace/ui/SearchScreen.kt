@@ -99,11 +99,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.activitytrace.R
-import com.activitytrace.capture.deserializeToIntent
 import com.activitytrace.model.BlockedApp
 import com.activitytrace.store.ActivityTraceDatabase
-import com.activitytrace.capture.deserializeToIntentSender
-import com.activitytrace.capture.deserializeToPendingIntent
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.QueryParser
 import kotlinx.coroutines.launch
@@ -763,46 +760,17 @@ private fun openItem(context: Context, appPackage: String, metadata: String? = n
             false
         }
     }
-    if (metadata != null) {
-        val intent = metadata.deserializeToIntent()
-        if (intent != null) {
-            try {
-                context.startActivity(intent.apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
-                return true
-            } catch (_: ActivityNotFoundException) {
-            } catch (_: SecurityException) {
-            }
-        }
-        val pi = metadata.deserializeToPendingIntent()
-        if (pi != null) {
-            try {
-                pi.send(context, 0, null)
-                return true
-            } catch (_: PendingIntent.CanceledException) {
-            }
-        }
-        val intentSender = metadata.deserializeToIntentSender()
-        if (intentSender != null) {
-            try {
-                context.startIntentSender(intentSender, null, 0, 0, 0)
-                return true
-            } catch (_: Exception) {
-            }
-        }
-    }
-    var intent = context.packageManager.getLaunchIntentForPackage(appPackage)
-    if (intent != null) {
-        context.startActivity(intent)
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(appPackage)
+    if (launchIntent != null) {
+        context.startActivity(launchIntent)
         return true
     }
-    intent = Intent(Intent.ACTION_MAIN).apply {
+    val intent = Intent(Intent.ACTION_MAIN).apply {
         setPackage(appPackage)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    val ris = context.packageManager.queryIntentActivities(intent, 0)
-    val ri = ris.firstOrNull { it.activityInfo.packageName == appPackage }
+    val ri = context.packageManager.queryIntentActivities(intent, 0)
+        .firstOrNull { it.activityInfo.packageName == appPackage }
     if (ri != null) {
         intent.setClassName(ri.activityInfo.packageName, ri.activityInfo.name)
         context.startActivity(intent)

@@ -57,6 +57,43 @@ interface CaptureDao {
     @RawQuery(observedEntities = [CapturedItem::class])
     fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 
+    fun searchFts(
+        matchQuery: String,
+        timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
+        appPackage: String? = null,
+    ): Flow<List<CapturedItem>> {
+        val conditions = mutableListOf<String>()
+        conditions.add("captured_items_fts MATCH ?")
+        val params = mutableListOf<Any>(matchQuery)
+
+        if (timeRange != null) {
+            conditions.add("captured_items.timestamp BETWEEN ? AND ?")
+            params.add(timeRange.first)
+            params.add(timeRange.second)
+        }
+        if (contentType != null) {
+            conditions.add("captured_items.content_type LIKE ?")
+            params.add("%$contentType%")
+        }
+        if (appPackage != null) {
+            conditions.add("(captured_items.app_package LIKE ? OR captured_items.app_name LIKE ?)")
+            params.add("%$appPackage%")
+            params.add("%$appPackage%")
+        }
+
+        val whereClause = " WHERE ${conditions.joinToString(" AND ")}"
+
+        val sql = """
+            SELECT captured_items.* FROM captured_items
+            JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid
+            $whereClause
+            ORDER BY captured_items.timestamp DESC
+        """.trimIndent()
+
+        return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
     fun searchLike(
         patterns: List<String>,
         timeRange: Pair<Long, Long>? = null,
