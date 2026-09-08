@@ -37,14 +37,14 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `keystore wrapping key is never exported`() {
+    fun `keystore_wrapping_key_is_never_exported`() {
         val store = DatabaseKeyStore(context)
         // Android Keystore keys are non-exportable by design; .encoded must be null.
         assertNull(store.wrappingKeyEncoded())
     }
 
     @Test
-    fun `database key is 256 bits and stable across store instances`() {
+    fun `database_key_is_256_bits_and_stable_across_instances`() {
         val key1 = DatabaseKeyStore(context).getDatabaseKey()
         val key2 = DatabaseKeyStore(context).getDatabaseKey()
         assertEquals(32, key1.size)
@@ -52,7 +52,7 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `secret survives a full open-insert-close-reopen-read cycle`() {
+    fun `secret_survives_full_open_insert_close_reopen_read_cycle`() {
         val key = DatabaseKeyStore(context).getDatabaseKey()
 
         openEncrypted(dbFile, key).use { db ->
@@ -69,7 +69,7 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `encrypted database file does not contain plaintext`() {
+    fun `encrypted_database_file_contains_no_plaintext`() {
         val key = DatabaseKeyStore(context).getDatabaseKey()
 
         openEncrypted(dbFile, key).use { db ->
@@ -85,7 +85,7 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `wrong key cannot open the database`() {
+    fun `wrong_key_cannot_open_the_database`() {
         val key = DatabaseKeyStore(context).getDatabaseKey()
 
         openEncrypted(dbFile, key).use { db ->
@@ -102,7 +102,7 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `failed open leaves the database byte-for-byte unchanged`() {
+    fun `failed_open_leaves_database_byte_for_byte_unchanged`() {
         val key = DatabaseKeyStore(context).getDatabaseKey()
 
         openEncrypted(dbFile, key).use { db ->
@@ -123,7 +123,7 @@ class DatabaseEncryptionTest {
     }
 
     @Test
-    fun `tryOpen returns an openable database and clears recovery state`() {
+    fun `tryOpen_returns_openable_database_and_clears_recovery_state`() {
         RecoveryStateStore(context).record(RecoveryReason.CORRUPTED_DATABASE)
 
         val result = ActivityTraceDatabase.tryOpen(context)

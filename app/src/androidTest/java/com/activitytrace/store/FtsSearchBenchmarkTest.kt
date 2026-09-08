@@ -36,10 +36,10 @@ class FtsSearchBenchmarkTest {
     }
 
     @Test
-    fun `90k row benchmark`() = runBlocking { benchmark(90_000) }
+    fun `benchmark_90k_rows`() = runBlocking { benchmark(90_000) }
 
     @Test
-    fun `900k row benchmark`() = runBlocking { benchmark(900_000) }
+    fun `benchmark_900k_rows`() = runBlocking { benchmark(900_000) }
 
     private suspend fun benchmark(requestedRows: Int) {
         val rows = requestedRowsFromArgs() ?: return
@@ -82,7 +82,7 @@ class FtsSearchBenchmarkTest {
 
     private fun requestedRowsFromArgs(): Int? {
         val raw = System.getProperty("androidx.test.INSTRUMENTATION_ARGUMENT_ftsBenchmarkRows", "0")
-        return raw.toIntOrNull()?.takeIf { it > 0 }
+        return raw?.toIntOrNull()?.takeIf { it > 0 }
     }
 
     private suspend fun insertRows(rows: Int) {

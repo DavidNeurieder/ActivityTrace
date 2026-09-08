@@ -22,7 +22,7 @@ class ContentHashDedupTest {
     }
 
     @Test
-    fun `identical captures deduplicate to one row`() = runBlocking {
+    fun `identical_captures_deduplicate_to_one_row`() = runBlocking {
         val h = ContentHasher.hash("com.dedup", "screen", "hello")
         val firstId = dao.insert(item("hello", "com.dedup", "screen", 1000, h))
         val secondId = dao.insert(item("hello", "com.dedup", "screen", 2000, h))
@@ -33,7 +33,7 @@ class ContentHashDedupTest {
     }
 
     @Test
-    fun `different captures both insert`() = runBlocking {
+    fun `different_captures_both_insert`() = runBlocking {
         dao.insert(item("hello", "com.dedup", "screen", 1000, ContentHasher.hash("com.dedup", "screen", "hello")))
         dao.insert(item("world", "com.dedup", "screen", 2000, ContentHasher.hash("com.dedup", "screen", "world")))
 
@@ -41,7 +41,7 @@ class ContentHashDedupTest {
     }
 
     @Test
-    fun `concurrent identical inserts produce one row`() = runBlocking {
+    fun `concurrent_identical_inserts_produce_one_row`() = runBlocking {
         val h = ContentHasher.hash("com.dedup", "screen", "race")
         coroutineScope {
             repeat(16) {
@@ -55,7 +55,7 @@ class ContentHashDedupTest {
     }
 
     @Test
-    fun `ingestor stores identical content once (past cooldown)`() = runBlocking {
+    fun `ingestor_stores_identical_content_once_after_cooldown`() = runBlocking {
         CaptureIngestor.db = ActivityTraceDatabase.getInstance(ApplicationProvider.getApplicationContext())
         CaptureIngestor.ingest(
             text = "notification body",
@@ -73,7 +73,7 @@ class ContentHashDedupTest {
     }
 
     @Test
-    fun `backfill assigns hashes to rows created before the migration column existed`() = runBlocking {
+    fun `backfill_assigns_hashes_to_pre_migration_rows`() = runBlocking {
         dao.insert(item("legacy text", "com.dedup", "toast", 500, null))
         dao.insert(item("legacy text", "com.dedup", "screen", 600, null))
 

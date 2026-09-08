@@ -20,7 +20,7 @@ class FtsMigrationTest {
     )
 
     @Test
-    fun `MIGRATION_8_9 backfills the FTS index and keeps it in sync`() {
+    fun `MIGRATION_8_9_backfills_the_fts_index_and_keeps_it_in_sync`() {
         helper.createDatabase(TEST_DB, 8).use { db ->
             db.execSQL(
                 "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked, content_hash) " +

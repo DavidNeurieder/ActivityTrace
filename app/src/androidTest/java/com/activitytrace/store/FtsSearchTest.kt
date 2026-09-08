@@ -19,7 +19,7 @@ class FtsSearchTest {
     }
 
     @Test
-    fun `fts matches whole words and prefixes but not substrings`() = runBlocking {
+    fun `fts_matches_words_and_prefixes_but_not_substrings`() = runBlocking {
         insertAll(
             item("kitchen baking adventure", "com.food", "screen", 1),
             item("bake a cake", "com.food", "screen", 2),
@@ -35,7 +35,7 @@ class FtsSearchTest {
     }
 
     @Test
-    fun `fts applies type filter`() = runBlocking {
+    fun `fts_applies_type_filter`() = runBlocking {
         insertAll(
             item("important meeting", "com.test", "screen", 1),
             item("important meeting", "com.test", "notification", 2),
@@ -48,7 +48,7 @@ class FtsSearchTest {
     }
 
     @Test
-    fun `fts applies app package filter`() = runBlocking {
+    fun `fts_applies_app_package_filter`() = runBlocking {
         insertAll(
             item("quarterly report", "com.acme", "screen", 1),
             item("quarterly report", "com.competitor", "screen", 2),
