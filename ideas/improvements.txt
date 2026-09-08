@@ -1,0 +1,1733 @@
+Yes. I’d implement this as a **two-stage security release**, rather than mixing all changes together. The key rule is: **do not change the SQLCipher library and the key-management design in the same patch unless you have to**. That makes failures much harder to diagnose.
+
+ I’m basing the plan below on the repository structure we audited and on current Android/SQLCipher guidance. In particular, SQLCipher’s legacy Android package is deprecated, while `sqlcipher-android` is now the replacement; current SQLCipher 4.18.0 also has Room 3 support.  zetetic.net+1
+
+ # 1\. Target release structure
+
+ I recommend these releases:
+
+```
+v0.x-security-1
+│
+├── P0.1  Correct key management
+├── P0.2  Never delete database on open failure
+├── P0.3  Sensitive Accessibility filtering
+├── P0.4  Safe export behavior
+└── P0.5  Security regression tests
+
+v0.x-security-2
+│
+├── P1.1  Atomic deduplication
+├── P1.2  Accessibility/file processing limits
+├── P1.3  PendingIntent redesign
+├── P1.4  FTS5 search
+└── P1.5  SQLCipher migration
+```
+
+ I would **not** combine FTS5 and SQLCipher migration with the first security release.
+
+---
+
+ # 2\. P0.1 — Fix encryption/key management
+
+ ## Files
+
+ Primary:
+
+```
+app/src/main/java/com/activitytrace/store/EncryptionManager.kt
+app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt
+```
+
+ Tests:
+
+```
+app/src/test/java/com/activitytrace/store/EncryptionManagerTest.kt
+app/src/androidTest/java/com/activitytrace/store/DatabaseEncryptionTest.kt
+```
+
+ Potentially add:
+
+```
+app/src/main/java/com/activitytrace/store/DatabaseKeyStore.kt
+```
+
+ I actually recommend introducing that new class rather than making `EncryptionManager` responsible for everything.
+
+---
+
+ ## Current architecture
+
+ Effectively:
+
+```
+Android Keystore
+      │
+      ├── getEncoded()
+      │
+      └── fails/null
+             │
+             ▼
+       SharedPreferences
+             │
+             ▼
+       SQLCipher password
+```
+
+ That needs to become:
+
+```
+Random SQLCipher key
+        │
+        ▼
+   AES-GCM encrypt
+        │
+        ▼
+Keystore AES wrapping key
+        │
+        ▼
+wrapped key stored locally
+```
+
+ The Keystore key is **never exported**.
+
+---
+
+ ## New `DatabaseKeyStore.kt`
+
+ Conceptually:
+
+```
+class DatabaseKeyStore(
+    private val context: Context
+) {
+    fun getOrCreateDatabaseKey(): ByteArray {
+        val wrapped = preferences.getString(WRAPPED_KEY, null)
+
+        return if (wrapped != null) {
+            unwrap(Base64.decode(wrapped, Base64.NO_WRAP))
+        } else {
+            val databaseKey = ByteArray(32).also {
+                SecureRandom().nextBytes(it)
+            }
+
+            val encrypted = wrap(databaseKey)
+
+            preferences.edit()
+                .putString(
+                    WRAPPED_KEY,
+                    Base64.encodeToString(
+                        encrypted,
+                        Base64.NO_WRAP
+                    )
+                )
+                .commit()
+
+            databaseKey
+        }
+    }
+}
+```
+
+ The important implementation detail is:
+
+```
+private fun getWrappingKey(): SecretKey
+```
+
+ which obtains/creates an AES key inside Android Keystore.
+
+ Then:
+
+```
+Cipher.getInstance("AES/GCM/NoPadding")
+```
+
+ is used to wrap the 32-byte SQLCipher key.
+
+ Persist:
+
+```
+version
+IV
+ciphertext
+authentication tag
+```
+
+ You don't need to invent a custom format. A small versioned binary envelope is sufficient:
+
+```
+[version][IV][ciphertext+tag]
+```
+
+---
+
+ # 3\. Backward compatibility is critical
+
+ This is the tricky part.
+
+ Existing users currently have:
+
+```
+database
+   +
+fallback key in SharedPreferences
+```
+
+ You **cannot simply start using a new key**.
+
+ That would make every existing database unreadable.
+
+ Migration should therefore be:
+
+```
+existing installation
+        │
+        ▼
+read existing fallback key
+        │
+        ▼
+open existing SQLCipher DB
+        │
+        ▼
+generate Keystore wrapping key
+        │
+        ▼
+wrap existing DB key
+        │
+        ▼
+persist wrapped key
+        │
+        ▼
+verify DB opens using wrapped key
+        │
+        ▼
+ONLY THEN remove legacy key
+```
+
+ This is a **key migration**, not a Room schema migration.
+
+ That's important.
+
+---
+
+ ## Proposed API
+
+```
+class DatabaseKeyStore(...) {
+
+    fun getDatabaseKey(): ByteArray {
+        return readWrappedKey()
+            ?: migrateLegacyKey()
+            ?: createNewDatabaseKey()
+    }
+
+    private fun migrateLegacyKey(): ByteArray {
+        val legacy = readLegacyFallbackKey()
+            ?: return null
+
+        val wrapped = wrap(legacy)
+
+        persistWrappedKey(wrapped)
+
+        // Verify before deleting legacy material.
+        check(unwrap(wrapped).contentEquals(legacy))
+
+        deleteLegacyKey()
+
+        return legacy
+    }
+}
+```
+
+ Don't delete the legacy key until the new key can actually be read back.
+
+---
+
+ # 4\. Key migration tests
+
+ ## Unit tests
+
+ `EncryptionManagerTest.kt`
+
+ Test:
+
+```
+✓ creates a 256-bit DB key
+✓ returns same key on second call
+✓ generates a Keystore wrapping key
+✓ wrapping/unwrapping returns identical bytes
+✓ tampered ciphertext fails authentication
+✓ tampered IV fails
+✓ malformed envelope fails
+✓ legacy key migrates
+✓ legacy key is not deleted before verification
+✓ missing legacy key creates a new key
+```
+
+ The most important regression:
+
+```
+@Test
+fun `keystore key is never exported`() {
+    val key = keyStore.getOrCreateWrappingKey()
+
+    assertNull(key.encoded)
+}
+```
+
+ The fact that `.encoded == null` is **expected** for the Keystore key; that's exactly why the old implementation was wrong.
+
+---
+
+ # 5\. Database-level encryption test
+
+ Create:
+
+```
+DatabaseEncryptionTest.kt
+```
+
+ Test:
+
+```
+create DB
+insert secret
+close DB
+reopen DB
+read secret
+```
+
+ Then independently verify the database file doesn't contain the plaintext secret.
+
+ For example:
+
+```
+assertFalse(
+    databaseFile.readBytes()
+        .toString(Charsets.ISO_8859_1)
+        .contains("SECRET_TEST_VALUE")
+)
+```
+
+ This isn't a cryptographic proof, but it's a useful regression test.
+
+ Also test:
+
+```
+wrong key → database cannot open
+correct key → database opens
+```
+
+---
+
+ # 6\. P0.2 — Never delete the database
+
+ ## File
+
+```
+app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt
+```
+
+ Remove the behavior equivalent to:
+
+```
+context.deleteDatabase("activity_trace.db")
+```
+
+ entirely.
+
+ Also search the whole repository for:
+
+```
+deleteDatabase
+fallbackToDestructiveMigration
+delete(
+activity_trace.db
+```
+
+ and make sure no accidental destructive recovery exists elsewhere.
+
+ Android explicitly warns that destructive Room migration permanently deletes user data.  Android Developers
+
+ For ActivityTrace, that should be considered unacceptable.
+
+---
+
+ # 7\. Introduce database recovery states
+
+ Create:
+
+```
+app/src/main/java/com/activitytrace/store/DatabaseOpenResult.kt
+```
+
+ Something like:
+
+```
+sealed interface DatabaseOpenResult {
+    data class Opened(
+        val database: ActivityTraceDatabase
+    ) : DatabaseOpenResult
+
+    data class RecoveryRequired(
+        val reason: RecoveryReason
+    ) : DatabaseOpenResult
+
+    data class Failed(
+        val error: Throwable
+    ) : DatabaseOpenResult
+}
+```
+
+ With:
+
+```
+enum class RecoveryReason {
+    INVALID_KEY,
+    CORRUPTED_DATABASE,
+    MIGRATION_FAILURE,
+    UNKNOWN
+}
+```
+
+ The UI can then show:
+
+ > ActivityTrace couldn't open its encrypted database. Your data has **not been deleted**.
+
+ That's a much safer failure mode.
+
+---
+
+ # 8\. Database recovery behavior
+
+ On failure:
+
+```
+open database
+     │
+     ├── success → normal startup
+     │
+     └── failure
+           │
+           ├── preserve DB
+           ├── preserve key
+           ├── record diagnostic state
+           └── recovery UI
+```
+
+ If you need a forensic copy, rename rather than delete:
+
+```
+activity_trace.db
+→
+activity_trace.db.recovery-20260908
+```
+
+ But **don't rename automatically either** until you've established that the original file remains untouched.
+
+---
+
+ # 9\. Database failure tests
+
+ Create:
+
+```
+DatabaseRecoveryTest.kt
+```
+
+ Tests:
+
+```
+✓ wrong key does not delete DB
+✓ malformed DB does not delete DB
+✓ migration failure does not delete DB
+✓ database file still exists after open failure
+✓ database key still exists after open failure
+✓ recovery state is persisted
+✓ successful recovery clears recovery state
+```
+
+ A particularly important test:
+
+```
+@Test
+fun `database remains byte-for-byte unchanged after failed open`() {
+    val before = databaseFile.readBytes()
+
+    assertFails {
+        openWithWrongKey()
+    }
+
+    val after = databaseFile.readBytes()
+
+    assertContentEquals(before, after)
+}
+```
+
+---
+
+ # 10\. P0.3 — Accessibility privacy boundary
+
+ ## Files
+
+ Primary:
+
+```
+app/src/main/java/com/activitytrace/capture/AccessibilityCaptureService.kt
+app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt
+```
+
+ Add:
+
+```
+app/src/main/java/com/activitytrace/capture/PrivacyFilter.kt
+app/src/main/java/com/activitytrace/capture/SensitiveAppPolicy.kt
+```
+
+ Tests:
+
+```
+app/src/test/java/com/activitytrace/capture/PrivacyFilterTest.kt
+app/src/test/java/com/activitytrace/capture/SensitiveAppPolicyTest.kt
+```
+
+---
+
+ # 11\. Introduce a `PrivacyFilter`
+
+ Don't scatter checks throughout the Accessibility service.
+
+ Use:
+
+```
+class PrivacyFilter(
+    private val sensitiveAppPolicy: SensitiveAppPolicy
+) {
+    fun shouldCapture(
+        packageName: String,
+        node: AccessibilityNodeInfo
+    ): Boolean
+}
+```
+
+ Rules should be explicit.
+
+ First:
+
+```
+if (node.isPassword) return false
+```
+
+ Then:
+
+```
+if (sensitiveAppPolicy.isBlocked(packageName)) {
+    return false
+}
+```
+
+ Also consider:
+
+```
+if (node.className == "android.widget.EditText" &&
+    node.isEditable) {
+    return false
+}
+```
+
+ I would initially choose **privacy over completeness** for editable/password-like fields.
+
+---
+
+ # 12\. Separate node filtering from text extraction
+
+ Instead of:
+
+```
+collectText(node)
+```
+
+ use:
+
+```
+extractor.extract(node)
+```
+
+ with:
+
+```
+data class ExtractionLimits(
+    val maxDepth: Int = 32,
+    val maxNodes: Int = 1_000,
+    val maxCharacters: Int = 100_000
+)
+```
+
+ Then:
+
+```
+class AccessibilityTextExtractor(
+    private val limits: ExtractionLimits
+) {
+    fun extract(root: AccessibilityNodeInfo): String
+}
+```
+
+ This makes it independently testable.
+
+---
+
+ # 13\. Sensitive-app policy
+
+ Create:
+
+```
+class SensitiveAppPolicy(
+    private val repository: BlockedAppRepository
+) {
+    fun isBlocked(packageName: String): Boolean
+}
+```
+
+ Seed a conservative built-in list only where justified.
+
+ More importantly, make it user configurable:
+
+```
+Capture policy
+├── Always capture
+├── Never capture
+└── System default
+```
+
+ Don't hard-code hundreds of package names into the Accessibility service.
+
+---
+
+ # 14\. Accessibility tests
+
+ `PrivacyFilterTest.kt`:
+
+```
+✓ password node rejected
+✓ password node from non-sensitive app rejected
+✓ normal TextView accepted
+✓ editable text rejected
+✓ blocked package rejected
+✓ allowed package accepted
+```
+
+ `AccessibilityTextExtractorTest.kt`:
+
+```
+✓ extracts nested text
+✓ respects max depth
+✓ respects max nodes
+✓ respects max characters
+✓ doesn't recurse indefinitely
+✓ ignores password nodes
+✓ ignores null children
+✓ handles empty tree
+```
+
+ And add a regression fixture representing a realistic login screen.
+
+---
+
+ # 15\. P0.4 — Safe export
+
+ ## Files
+
+```
+app/src/main/java/com/activitytrace/store/DatabaseExporter.kt
+```
+
+ Potentially add:
+
+```
+app/src/main/java/com/activitytrace/store/EncryptedBackupExporter.kt
+app/src/main/java/com/activitytrace/store/BackupFormat.kt
+```
+
+---
+
+ # 16\. Stop treating plaintext export as a normal backup
+
+ Rename the current API:
+
+```
+exportDatabase()
+```
+
+ to something explicit:
+
+```
+exportPlaintextDatabase()
+```
+
+ And introduce:
+
+```
+exportEncryptedBackup()
+```
+
+ The UI should make encrypted export the primary action:
+
+```
+Backup my data
+  ├── Encrypted backup     ← default
+  └── Plaintext database   ← advanced
+```
+
+---
+
+ # 17\. Encrypted backup format
+
+ Use:
+
+```
+ActivityTrace backup
+└── .activitytrace
+```
+
+ Contents:
+
+```
+header
+version
+salt
+nonce
+encrypted payload
+authentication tag
+```
+
+ Payload:
+
+```
+database.sqlite
+metadata.json
+```
+
+ For the first implementation, I'd avoid inventing a complicated container format.
+
+ For example:
+
+```
+data class BackupEnvelope(
+    val version: Int,
+    val nonce: ByteArray,
+    val ciphertext: ByteArray
+)
+```
+
+ Use AES-GCM.
+
+ If portability between devices is required, don't make the backup dependent exclusively on an Android Keystore key. Instead:
+
+```
+user password
+     ↓
+PBKDF2/Argon2
+     ↓
+backup encryption key
+     ↓
+AES-GCM
+```
+
+ If backups are only for restoring to the same Android installation, a Keystore-wrapped backup key is simpler.
+
+---
+
+ # 18\. Plaintext export warning
+
+ Before allowing plaintext export:
+
+```
+This export is NOT encrypted.
+
+It contains your complete ActivityTrace history, including
+captured notifications, screen content and indexed files.
+
+Anyone who can access this file can read that information.
+
+Continue?
+```
+
+ No euphemism such as "standard export."
+
+---
+
+ # 19\. Export tests
+
+ `DatabaseExporterTest.kt`:
+
+```
+✓ encrypted export created
+✓ encrypted export cannot be opened without password/key
+✓ encrypted export restores correctly
+✓ corrupted ciphertext rejected
+✓ modified ciphertext rejected
+✓ plaintext export requires explicit confirmation
+✓ export failure removes partial output
+✓ no plaintext temporary file remains
+```
+
+ Especially test:
+
+```
+export fails halfway
+→
+no usable partial plaintext database remains
+```
+
+---
+
+ # 20\. P0.5 — Security CI
+
+ Add a CI workflow:
+
+```
+.github/workflows/security.yml
+```
+
+ Checks:
+
+```
+1. merged manifest has no INTERNET permission
+2. exported components are reviewed
+3. release build succeeds
+4. unit tests
+5. instrumentation tests
+6. dependency vulnerability scan
+7. secret scanning
+```
+
+ Also make a simple Gradle task that fails if:
+
+```
+android.permission.INTERNET
+```
+
+ appears in the merged release manifest.
+
+ That's an excellent regression guard for this application.
+
+---
+
+ # 21\. P1.1 — Atomic deduplication
+
+ ## Files
+
+```
+app/src/main/java/com/activitytrace/capture/CaptureIngestor.kt
+app/src/main/java/com/activitytrace/store/CaptureDao.kt
+```
+
+ Entity:
+
+```
+app/src/main/java/com/activitytrace/store/CapturedItem.kt
+```
+
+ Add:
+
+```
+@ColumnInfo(name = "content_hash")
+val contentHash: String
+```
+
+ Generate:
+
+```
+SHA-256(
+    packageName +
+    captureType +
+    normalizedText
+)
+```
+
+ I would **not include the exact timestamp** unless you specifically want repeated identical events retained.
+
+---
+
+ # 22\. Database migration
+
+ If current DB version is `N`, make:
+
+```
+N → N+1
+```
+
+ Add:
+
+```
+ALTER TABLE captured_items
+ADD COLUMN content_hash TEXT;
+```
+
+ Then populate hashes for existing rows.
+
+ But SQLite migration cannot conveniently call your Kotlin hashing code inside a Room migration.
+
+ So use a two-phase approach:
+
+ ### Schema migration
+
+```
+N → N+1
+```
+
+ adds nullable:
+
+```
+content_hash
+```
+
+ ### Post-open backfill
+
+ A `WorkManager` job computes hashes in batches.
+
+ Once complete:
+
+```
+content_hash
+```
+
+ can become enforced for **new inserts**, while old data remains compatible.
+
+ Don't attempt a risky destructive table rebuild just to make the column non-null.
+
+ Room's migration model is specifically intended to preserve existing user data through incremental migrations, and migration tests should be part of the release.  Android Developers
+
+---
+
+ # 23\. Deduplication DAO
+
+ Instead of:
+
+```
+if (!dao.exists(...)) {
+    dao.insert(...)
+}
+```
+
+ use:
+
+```
+@Insert(onConflict = OnConflictStrategy.IGNORE)
+suspend fun insert(item: CapturedItem): Long
+```
+
+ with:
+
+```
+@Entity(
+    indices = [
+        Index(
+            value = ["content_hash"],
+            unique = true
+        )
+    ]
+)
+```
+
+ Then:
+
+```
+val id = dao.insert(item)
+
+if (id == -1L) {
+    // duplicate
+}
+```
+
+ Now concurrency is handled by SQLite.
+
+---
+
+ # 24\. Deduplication tests
+
+```
+✓ identical captures deduplicate
+✓ different captures both insert
+✓ concurrent identical inserts produce one row
+✓ old records receive hashes
+✓ hash calculation is deterministic
+✓ changing package changes hash
+✓ normalization behaves consistently
+```
+
+ The concurrency test is particularly important.
+
+---
+
+ # 25\. P1.2 — Accessibility processing limits
+
+ ## Files
+
+```
+AccessibilityCaptureService.kt
+AccessibilityTextExtractor.kt
+```
+
+ Add constants/config:
+
+```
+data class ExtractionLimits(
+    val maxDepth: Int = 32,
+    val maxNodes: Int = 1_000,
+    val maxCharacters: Int = 100_000,
+    val maxEventRatePerSecond: Int = 10
+)
+```
+
+ Add event throttling/debouncing.
+
+ For `TYPE_WINDOW_CONTENT_CHANGED`, don't process every event synchronously.
+
+ Use:
+
+```
+event
+ ↓
+package/window key
+ ↓
+debounce 100–300ms
+ ↓
+extract once
+```
+
+ This will reduce CPU/battery usage dramatically on chat/browser apps.
+
+---
+
+ # 26\. Accessibility tests
+
+ Add instrumentation/performance tests:
+
+```
+✓ 10,000-node synthetic tree completes within limit
+✓ event flood is throttled
+✓ extraction cancellation works
+✓ max text size enforced
+✓ repeated identical trees are deduplicated
+```
+
+---
+
+ # 27\. P1.3 — File indexer limits
+
+ ## File
+
+```
+app/src/main/java/com/activitytrace/capture/FileIndexer.kt
+```
+
+ Add:
+
+```
+data class IndexLimits(
+    val maxFiles: Int = 10_000,
+    val maxTotalBytes: Long = 500L * 1024 * 1024,
+    val maxDepth: Int = 20,
+    val maxFileBytes: Long = 10L * 1024 * 1024,
+    val maxExtractedCharacters: Int = 1_000_000
+)
+```
+
+ The existing per-file limit is good; add **global budgets**.
+
+---
+
+ # 28\. Make indexing resumable
+
+ Instead of:
+
+```
+folder → recursively index everything
+```
+
+ use:
+
+```
+IndexJob
+├── root URI
+├── cursor
+├── files processed
+├── bytes processed
+└── cancellation state
+```
+
+ Persist job progress if indexing can span multiple WorkManager executions.
+
+ Tests:
+
+```
+✓ max files enforced
+✓ max bytes enforced
+✓ max depth enforced
+✓ cancellation works
+✓ restart resumes
+✓ huge directory doesn't hang
+✓ malformed PDF doesn't crash worker
+```
+
+---
+
+ # 29\. P1.3 — Redesign PendingIntent persistence
+
+ ## File
+
+```
+app/src/main/java/com/activitytrace/capture/PendingIntentSerializer.kt
+```
+
+ I'd remove the Parcel-based persistent representation.
+
+ Create:
+
+```
+data class NotificationAction(
+    val packageName: String?,
+    val action: String?,
+    val dataUri: String?,
+    val componentPackage: String?,
+    val componentClass: String?
+)
+```
+
+ Only persist the minimum information actually needed.
+
+ If the product doesn't need notification actions after the notification disappears, **delete the feature entirely**.
+
+ That is my preference.
+
+ Less sensitive data is better.
+
+ Tests:
+
+```
+✓ notification capture doesn't require PendingIntent serialization
+✓ old records can still be displayed
+✓ malformed action doesn't crash
+✓ no Parcel blobs are persisted
+```
+
+---
+
+ # 30\. P1.4 — FTS5
+
+ This is the largest architectural change.
+
+ ## Files
+
+ Likely:
+
+```
+app/src/main/java/com/activitytrace/store/CaptureDao.kt
+app/src/main/java/com/activitytrace/store/ActivityTraceDatabase.kt
+app/src/main/java/com/activitytrace/search/SearchEngine.kt
+```
+
+ Add:
+
+```
+CapturedItemFts
+```
+
+ using SQLite FTS5.
+
+ Conceptually:
+
+```
+CREATE VIRTUAL TABLE captured_items_fts
+USING fts5(
+    text,
+    app_name,
+    content='captured_items',
+    content_rowid='id'
+);
+```
+
+ Then:
+
+```
+SELECT ...
+FROM captured_items
+JOIN captured_items_fts
+  ON captured_items.id = captured_items_fts.rowid
+WHERE captured_items_fts MATCH ?
+```
+
+---
+
+ # 31\. Don't migrate to FTS5 and SQLCipher simultaneously
+
+ This is important.
+
+ Do:
+
+```
+Release A:
+current SQLCipher + new FTS5
+
+Release B:
+current FTS5 + new SQLCipher package
+```
+
+ That way:
+
+```
+search regression
+```
+
+ and
+
+```
+database encryption regression
+```
+
+ cannot masquerade as one another.
+
+---
+
+ # 32\. FTS migration
+
+ Suppose current schema is:
+
+```
+N
+```
+
+ Make:
+
+```
+N → N+1
+```
+
+ create the FTS table.
+
+ Then:
+
+```
+INSERT INTO captured_items_fts(rowid, text, app_name)
+SELECT id, text, app_name
+FROM captured_items;
+```
+
+ For large databases, consider building it in batches after the schema migration instead of blocking first launch.
+
+ Then add triggers:
+
+```
+AFTER INSERT
+AFTER UPDATE
+AFTER DELETE
+```
+
+ or maintain the FTS table explicitly through repository operations.
+
+ I'd prefer explicit repository maintenance if you want predictable behavior.
+
+---
+
+ # 33\. Search tests
+
+ Existing:
+
+```
+QueryParserTest
+SearchEngineTest
+```
+
+ should gain:
+
+```
+✓ exact word
+✓ prefix
+✓ phrase
+✓ multiple terms
+✓ app filter
+✓ date filter
+✓ notification type filter
+✓ ranking
+✓ empty query
+✓ special characters
+✓ Unicode
+✓ large dataset
+```
+
+ Add a benchmark dataset:
+
+```
+100k rows
+500k rows
+1m rows
+```
+
+ and measure:
+
+```
+p50
+p95
+p99
+```
+
+ search latency.
+
+---
+
+ # 34\. P1.5 — SQLCipher migration
+
+ Do this **last**.
+
+ The legacy package is deprecated; Zetetic recommends migrating to `sqlcipher-android`, and their current documentation gives the migration path and package/API changes.  zetetic.net+1
+
+ Current recommended community dependency is:
+
+```
+implementation("net.zetetic:sqlcipher-android:4.18.0")
+implementation("androidx.sqlite:sqlite:2.7.0")
+```
+
+ according to the current SQLCipher documentation.  zetetic.net
+
+---
+
+ # 35\. Important: don't combine SQLCipher migration with Room 3
+
+ The current application is using Room 2.x.
+
+ I'd first:
+
+```
+legacy SQLCipher
+       ↓
+sqlcipher-android
+       ↓
+Room 2.x
+```
+
+ Then separately:
+
+```
+Room 2.x
+       ↓
+Room 3.x
+```
+
+ Current SQLCipher 4.18.0 now supports Room 3, but Room 3 itself introduces a new `androidx.room3` API/package and a different driver architecture.  Android Developers+1
+
+ That is too much change for one release.
+
+---
+
+ # 36\. SQLCipher migration test matrix
+
+ Before shipping:
+
+```
+Fresh install
+Existing database
+Existing database + old fallback key
+Existing database + new wrapped key
+Database with 0 rows
+Database with 10k rows
+Database with 1m rows
+Interrupted upgrade
+App process killed during upgrade
+Device reboot
+Wrong key
+Corrupted database
+Export/import
+```
+
+ The golden test is:
+
+```
+install vOld
+generate realistic DB
+insert fixture
+upgrade to vNew
+open DB
+verify every row
+verify search
+verify capture
+verify export
+```
+
+---
+
+ # 37\. Room migration infrastructure
+
+ Before any more migrations, I'd establish:
+
+```
+app/schemas/
+```
+
+ with every schema version checked into Git.
+
+ Also enable schema export if it isn't already.
+
+ Then add one instrumentation test that validates **the entire migration chain**.
+
+ Android specifically recommends exporting Room schemas and testing migrations, including an all-migrations test.  Android Developers+1
+
+---
+
+ # 38\. Exact implementation order
+
+ Here's the sequence I'd actually use in Git.
+
+ ### PR 1 — `security/keystore-db-key`
+
+```
++ DatabaseKeyStore.kt
++ EncryptionEnvelope.kt
+~ EncryptionManager.kt
++ EncryptionManagerTest.kt
+```
+
+ No database schema changes.
+
+---
+
+ ### PR 2 — `security/no-destructive-db-recovery`
+
+```
+~ ActivityTraceDatabase.kt
++ DatabaseOpenResult.kt
++ DatabaseRecoveryTest.kt
+```
+
+ Remove all automatic deletion.
+
+---
+
+ ### PR 3 — `privacy/accessibility-filter`
+
+```
++ PrivacyFilter.kt
++ SensitiveAppPolicy.kt
++ AccessibilityTextExtractor.kt
+~ AccessibilityCaptureService.kt
+~ CaptureIngestor.kt
++ PrivacyFilterTest.kt
++ AccessibilityTextExtractorTest.kt
+```
+
+---
+
+ ### PR 4 — `security/encrypted-export`
+
+```
++ EncryptedBackupExporter.kt
++ BackupEnvelope.kt
+~ DatabaseExporter.kt
+~ export UI
++ EncryptedBackupExporterTest.kt
+```
+
+ Make plaintext export explicitly advanced.
+
+---
+
+ ### PR 5 — `security/ci`
+
+```
++ .github/workflows/security.yml
++ scripts/check-release-manifest.sh
+```
+
+---
+
+ ### PR 6 — `data/atomic-dedup`
+
+```
+~ CapturedItem.kt
+~ CaptureDao.kt
+~ CaptureIngestor.kt
+~ ActivityTraceDatabase.kt
++ ContentHasher.kt
++ migration N→N+1
++ ContentHasherTest.kt
++ DeduplicationTest.kt
+```
+
+---
+
+ ### PR 7 — `performance/capture-limits`
+
+```
+~ AccessibilityCaptureService.kt
+~ AccessibilityTextExtractor.kt
+~ FileIndexer.kt
++ CaptureLimits.kt
++ performance tests
+```
+
+---
+
+ ### PR 8 — `privacy/remove-pendingintent-parcel`
+
+```
+~ PendingIntentSerializer.kt
+~ ActivityTraceNotificationListener.kt
+~ CapturedItem.kt
++ NotificationAction.kt
++ migration N+1→N+2
+```
+
+---
+
+ ### PR 9 — `search/fts5`
+
+```
+~ CaptureDao.kt
+~ SearchEngine.kt
+~ ActivityTraceDatabase.kt
++ CapturedItemFts.kt
++ migration
++ FTS integration tests
++ search benchmarks
+```
+
+---
+
+ ### PR 10 — `deps/sqlcipher-android`
+
+```
+~ gradle/libs.versions.toml
+~ ActivityTraceDatabase.kt
+~ imports
++ migration/integration tests
+```
+
+ No functional changes to search or capture.
+
+---
+
+ # 39\. Database-version roadmap
+
+ Assuming the current repository version is `N`, I'd use:
+
+```
+N
+│
+├── N+1  content_hash
+│
+├── N+2  notification-action redesign
+│
+├── N+3  FTS5
+│
+└── N+4  future schema changes
+```
+
+ **Key-management migration does not get a Room version.**
+
+ **SQLCipher library migration does not get a Room version unless the database format/schema actually changes.**
+
+ This distinction will save you a lot of future pain.
+
+---
+
+ # 40\. Migration invariant
+
+ For every release:
+
+```
+OLD DATABASE
+     │
+     ▼
+migration
+     │
+     ▼
+NEW DATABASE
+     │
+     ├── same capture count
+     ├── same IDs
+     ├── same timestamps
+     ├── same text
+     ├── same metadata
+     └── searchable
+```
+
+ I'd turn that into an automated assertion.
+
+ For example:
+
+```
+data class DatabaseSnapshot(
+    val count: Int,
+    val ids: Set<Long>,
+    val contentHashes: Set<String>
+)
+```
+
+ Take snapshot before migration and after migration.
+
+ Then assert equality.
+
+---
+
+ # 41\. Release acceptance criteria
+
+ I would not call the P0 work complete until all of these are true:
+
+ ### Encryption
+
+ - [ ] SQLCipher key is random 256-bit material.
+- [ ] Keystore key never leaves Keystore.
+- [ ] Existing fallback keys migrate safely.
+- [ ] Legacy key is deleted only after successful verification.
+- [ ] Wrong key cannot open DB.
+- [ ] Database-open failures never delete data.
+
+ ### Accessibility
+
+ - [ ] Password fields are rejected.
+- [ ] Editable sensitive fields are rejected.
+- [ ] User-configurable blocked packages work.
+- [ ] Maximum node count enforced.
+- [ ] Maximum depth enforced.
+- [ ] Maximum captured text enforced.
+- [ ] Event rate is throttled.
+
+ ### Export
+
+ - [ ] Encrypted backup exists.
+- [ ] Encrypted backup is the default.
+- [ ] Plaintext export has explicit warning.
+- [ ] Failed exports clean up temporary files.
+- [ ] No plaintext database remains in app cache/temp.
+
+ ### Database
+
+ - [ ] All Room migrations tested.
+- [ ] No destructive migration.
+- [ ] Database contents survive upgrade.
+- [ ] Database remains untouched after failed open.
+
+ ### Network
+
+ - [ ] Release merged manifest has no INTERNET permission.
+- [ ] CI prevents accidental addition.
+
+---
+
+ # 42\. P1 acceptance criteria
+
+ Then:
+
+ - [ ] Deduplication is database-enforced.
+- [ ] Concurrent duplicate events produce one row.
+- [ ] File indexing has global resource limits.
+- [ ] Accessibility capture has resource limits.
+- [ ] PendingIntent Parcel blobs are gone.
+- [ ] FTS5 handles 1M+ records acceptably.
+- [ ] Search results remain semantically equivalent.
+- [ ] SQLCipher legacy package is removed.
+- [ ] Existing encrypted databases open after SQLCipher migration.
+- [ ] SQLCipher upgrade has rollback/recovery documentation.
+
+---
+
+ # 43\. One change I'd make to the original audit
+
+ I would **not rush to Room 3** despite the fact that Room 3 is now available. Current documentation describes it as a major transition with new packages and APIs, and SQLCipher only recently added Room 3 support.  Android Developers+1
+
+ For ActivityTrace, the safer path is:
+
+```
+Current Room 2
+      ↓
+fix security
+      ↓
+upgrade Room 2.x
+      ↓
+migrate SQLCipher
+      ↓
+stabilize
+      ↓
+Room 3 later
+```
+
+ That minimizes the number of moving parts in the security-critical release.
+
+---
+
+ # 44\. Recommended final architecture
+
+ After P0/P1, the system should look like this:
+
+```
+                         ┌─────────────────────┐
+                         │      Compose UI     │
+                         └──────────┬──────────┘
+                                    │
+                              ViewModels
+                                    │
+                         ┌──────────▼──────────┐
+                         │   SearchRepository  │
+                         └──────────┬──────────┘
+                                    │
+                                  FTS5
+                                    │
+                         ┌──────────▼──────────┐
+                         │  Encrypted Room DB  │
+                         │      SQLCipher      │
+                         └──────────▲──────────┘
+                                    │
+                           CaptureRepository
+                                    ▲
+                                    │
+                         ┌──────────┴──────────┐
+                         │     PrivacyFilter   │
+                         └──────────▲──────────┘
+                                    │
+                  ┌─────────────────┼──────────────────┐
+                  │                 │                  │
+            Notifications      Accessibility         Files
+                  │                 │                  │
+                  └─────────────────┼──────────────────┘
+                                    │
+                              ContentHasher
+                                    │
+                              Deduplication
+                                    │
+                              Database insert
+
+                  Android Keystore
+                         │
+                   AES wrapping key
+                         │
+                         ▼
+                  wrapped DB key
+                         │
+                         ▼
+                    SQLCipher
+```
+
+ The important security property is:
+
+ > **Untrusted/sensitive external content passes through the privacy filter before it becomes durable application data.**
+
+ And the important reliability property is:
+
+ > **No database-opening failure is ever allowed to destroy user history.**
+
+ Those two principles should become architectural invariants rather than individual fixes.
+
+ ## The first three PRs I'd implement
+
+ If you want to start coding immediately, I would do exactly this:
+
+ 1. **`security/keystore-db-key`** — fix the encryption/key hierarchy and migrate existing fallback keys.
+2. **`security/no-destructive-db-recovery`** — eliminate database deletion and add recovery-state handling.
+3. **`privacy/accessibility-filter`** — introduce `PrivacyFilter`, password/editable-field rejection, sensitive-app policies, and bounded tree traversal.
+
+ Those three changes address the highest-risk failure modes without touching search or the SQLCipher dependency, giving you a clean, testable security baseline before the larger P1 work.  Android Developers+1
+
+  Sources

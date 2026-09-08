@@ -25,14 +25,31 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): ActivityTraceDatabase {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
+                INSTANCE ?: buildDatabase(context.applicationContext, EncryptionManager.getOrCreateKey(context))
+                    .also { INSTANCE = it }
             }
         }
 
-        private fun buildDatabase(context: Context): ActivityTraceDatabase {
-            val passphrase = EncryptionManager.getOrCreateKey(context)
+        fun tryOpen(context: Context): DatabaseOpenResult =
+            tryOpen(context) { EncryptionManager.getOrCreateKey(context) }
+
+        internal fun tryOpen(context: Context, keyProvider: () -> ByteArray): DatabaseOpenResult {
+            val applicationContext = context.applicationContext
+            val passphrase = try {
+                keyProvider()
+            } catch (error: Throwable) {
+                val reason = RecoveryReason.INVALID_KEY
+                RecoveryStateStore(applicationContext).record(reason)
+                return DatabaseOpenResult.RecoveryRequired(reason)
+            }
+            val stateStore = RecoveryStateStore(applicationContext)
+            val database = buildDatabase(applicationContext, passphrase)
+            return DatabaseOpener(database, stateStore).open()
+        }
+
+        private fun buildDatabase(context: Context, passphrase: ByteArray): ActivityTraceDatabase {
             val factory = SupportFactory(passphrase)
-            val db = Room.databaseBuilder(
+            return Room.databaseBuilder(
                 context.applicationContext,
                 ActivityTraceDatabase::class.java,
                 "activity_trace.db"
@@ -41,32 +58,6 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                 .addCallback(SEED_DEFAULTS_CALLBACK)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
-            try {
-                db.openHelper.writableDatabase
-            } catch (e: Exception) {
-                if (isEncryptionFailure(e)) {
-                    context.deleteDatabase("activity_trace.db")
-                    EncryptionManager.getOrCreateKey(context)
-                }
-                throw e
-            }
-            return db
-        }
-
-        private fun isEncryptionFailure(e: Throwable): Boolean {
-            var current: Throwable? = e
-            while (current != null) {
-                val message = current.message
-                if (current is android.database.sqlite.SQLiteException && message != null &&
-                    (message.contains("not a database", ignoreCase = true) ||
-                        message.contains("file is encrypted", ignoreCase = true) ||
-                        message.contains("error code 26", ignoreCase = true))
-                ) {
-                    return true
-                }
-                current = current.cause
-            }
-            return false
         }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
