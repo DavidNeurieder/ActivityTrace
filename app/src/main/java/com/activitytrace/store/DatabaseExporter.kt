@@ -56,25 +56,33 @@ object DatabaseExporter {
         }
     }
 
-    internal suspend fun writeBytesToDownloads(
+    /**
+     * Streams an already-encapsulated backup file to Downloads, so a large
+     * backup is never buffered whole in memory.
+     */
+    internal suspend fun exportFileToDownloads(
         context: Context,
-        bytes: ByteArray,
+        file: File,
         displayName: String,
         mimeType: String,
     ) = withContext(Dispatchers.IO) {
         if (Build.VERSION.SDK_INT >= 29) {
-            exportBytesViaMediaStore(context, bytes, displayName, mimeType)
+            exportViaMediaStore(context, displayName, mimeType) { output ->
+                FileInputStream(file).use { it.copyTo(output) }
+            }
         } else {
-            exportBytesViaLegacyApi(bytes, displayName)
+            exportViaLegacyApi(displayName) { output ->
+                FileInputStream(file).use { it.copyTo(output) }
+            }
         }
     }
 
     @RequiresApi(29)
-    private fun exportBytesViaMediaStore(
+    private fun exportViaMediaStore(
         context: Context,
-        bytes: ByteArray,
         displayName: String,
         mimeType: String,
+        write: (java.io.OutputStream) -> Unit,
     ) {
         val contentValues = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, displayName)
@@ -90,7 +98,7 @@ object DatabaseExporter {
         ) ?: throw RuntimeException("Failed to create MediaStore entry")
 
         context.contentResolver.openOutputStream(uri)?.use { output ->
-            output.write(bytes)
+            write(output)
         } ?: throw RuntimeException("Failed to open output stream")
 
         if (Build.VERSION.SDK_INT >= 30) {
@@ -99,14 +107,17 @@ object DatabaseExporter {
         }
     }
 
-    private fun exportBytesViaLegacyApi(bytes: ByteArray, displayName: String) {
+    private fun exportViaLegacyApi(
+        displayName: String,
+        write: (java.io.OutputStream) -> Unit,
+    ) {
         val exportDir = Environment.getExternalStoragePublicDirectory(
             Environment.DIRECTORY_DOWNLOADS,
         ) ?: throw RuntimeException("Failed to get external storage directory")
 
         val appDir = File(exportDir, "ActivityTrace")
         appDir.mkdirs()
-        File(appDir, displayName).writeBytes(bytes)
+        File(appDir, displayName).outputStream().use { write(it) }
     }
 
     @RequiresApi(29)

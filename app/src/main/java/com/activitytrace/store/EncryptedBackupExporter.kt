@@ -9,6 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
+import java.util.zip.ZipOutputStream
 
 object EncryptedBackupExporter {
 
@@ -23,24 +25,37 @@ object EncryptedBackupExporter {
             val tempDir = File(context.cacheDir, "encrypted_export")
             try {
                 tempDir.mkdirs()
-                val plaintextSqlite = File(tempDir, "plain.sqlite")
+
+                val stagingSqlite = File(tempDir, "plain.sqlite")
                 val roomDb = ActivityTraceDatabase.getInstance(context)
                 val database = roomDb.openHelper.writableDatabase
-                DatabaseExporter.exportToPlainSqlite(database, plaintextSqlite)
-                val databaseBytes = plaintextSqlite.readBytes()
+                val escapedPath = stagingSqlite.absolutePath.replace("'", "''")
+                database.execSQL(
+                    "ATTACH DATABASE '$escapedPath' AS plain KEY ''",
+                )
+                database.query("SELECT sqlcipher_export('plain')").use { it.moveToFirst() }
+                database.execSQL("DETACH DATABASE plain")
 
                 val metadata = JSONObject().apply {
                     put("schema_version", ActivityTraceDatabase.CURRENT_VERSION)
                     put("exported_at", System.currentTimeMillis())
                 }.toString()
 
-                val payload = BackupPayload.zip(databaseBytes, metadata)
-                plaintextSqlite.delete()
-                val encrypted = BackupCrypto.encrypt(payload, password)
+                val envelope = File(tempDir, "backup.envelope")
+                envelope.outputStream().use { envelopeOut ->
+                    val cipherOut = BackupCrypto.openEncryptStream(envelopeOut, password)
+                    val zip = ZipOutputStream(cipherOut)
+                    FileInputStream(stagingSqlite).use { staging ->
+                        BackupPayload.writeEntries(staging, metadata, zip)
+                    }
+                    zip.close()
+                    envelopeOut.flush()
+                }
+                stagingSqlite.delete()
 
-                DatabaseExporter.writeBytesToDownloads(
+                DatabaseExporter.exportFileToDownloads(
                     context,
-                    encrypted,
+                    envelope,
                     BACKUP_FILE_NAME,
                     "application/octet-stream",
                 )
@@ -68,17 +83,40 @@ object EncryptedBackupExporter {
         val tempDir = File(context.cacheDir, "encrypted_import")
         tempDir.mkdirs()
         val backupFile = File(tempDir, "backup.activitytrace")
+        val decryptedPayload = File(tempDir, "payload.zip")
+        val restoredSqlite = File(tempDir, "restored.sqlite")
         try {
             context.contentResolver.openInputStream(backupUri)?.use { input ->
-                backupFile.outputStream().use { output -> input.copyTo(output) }
+                backupFile.outputStream().use { output ->
+                    input.copyTo(
+                        BoundedOutputStream(output, BackupLimits.MAX_ENCRYPTED_BACKUP_BYTES),
+                        BackupEnvelope.IO_CHUNK,
+                    )
+                }
             } ?: throw RuntimeException("Failed to open backup file")
 
             onProgress(ExportStatus.Progress(context.getString(R.string.progress_reading_backup)))
-            val payload = BackupCrypto.decrypt(backupFile.readBytes(), password)
-            val (databaseBytes, _) = BackupPayload.unzip(payload)
+            backupFile.inputStream().use { input ->
+                decryptedPayload.outputStream().use { output ->
+                    BackupCrypto.decryptTo(
+                        input,
+                        output,
+                        password,
+                        BackupLimits.MAX_CIPHERTEXT_BYTES,
+                    )
+                }
+            }
+            decryptedPayload.inputStream().use { input ->
+                restoredSqlite.outputStream().use { output ->
+                    BackupPayload.unzipDatabase(
+                        input,
+                        BackupLimits.MAX_DATABASE_ENTRY_BYTES,
+                        BackupLimits.MAX_METADATA_ENTRY_BYTES,
+                        BoundedOutputStream(output, BackupLimits.MAX_DATABASE_ENTRY_BYTES),
+                    )
+                }
+            }
 
-            val restoredSqlite = File(tempDir, "restored.sqlite")
-            restoredSqlite.writeBytes(databaseBytes)
             onProgress(ExportStatus.Progress(context.getString(R.string.progress_merging_backup)))
             val items = BackupImporter.readItemsFromSqlite(restoredSqlite)
             BackupImporter.importItems(items, dao)
