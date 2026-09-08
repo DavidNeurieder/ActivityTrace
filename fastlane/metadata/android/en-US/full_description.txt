@@ -11,7 +11,7 @@
 <ul>
 <li><b>Find what you saw</b> — one searchable timeline of notifications, screen content and files</li>
 <li><b>Search naturally</b> — type &quot;yesterday&quot;, &quot;last week&quot; or plain keywords</li>
-<li><b>Filter precisely</b> — by app (<i>in:signal</i>) or content type (<i>type:notification</i>), with prefix, wildcard matching and highlighted results</li>
+<li><b>Filter precisely</b> — by app (<i>in:signal</i>) or content type (<i>type:notification</i>), with whole-word matching and highlighted results</li>
 <li><b>You control retention</b> — choose how long data is kept and block individual apps</li>
 <li><b>See when and where</b> — statistics about captured activity over time</li>
 <li><b>Encrypted at rest</b> — SQLCipher AES-256-CBC + Android Keystore</li>

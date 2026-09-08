@@ -59,6 +59,7 @@ class SettingsScreenTest {
             "ActivityTrace/activity_trace.csv",
         ).delete()
         File(context.cacheDir, "export_temp").deleteRecursively()
+        ActivityTraceDatabase.resetForTesting()
     }
 
     @Test

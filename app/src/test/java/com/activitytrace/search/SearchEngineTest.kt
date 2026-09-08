@@ -34,45 +34,45 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search wraps keyword in prefix token for fts`() = runTest {
+    fun `search wraps keywords in full-word tokens for fts`() = runTest {
         searchEngine.search("hello world").collect { }
 
-        verify { captureDao.searchFts("hello* world*", null, null, null) }
+        verify { captureDao.searchFts("hello world", null, null, null) }
     }
 
     @Test
-    fun `search with single keyword makes a prefix token`() = runTest {
+    fun `search with single keyword makes a full-word token`() = runTest {
         searchEngine.search("hello").collect { }
 
-        verify { captureDao.searchFts("hello*", null, null, null) }
+        verify { captureDao.searchFts("hello", null, null, null) }
     }
 
     @Test
-    fun `search with wildcard drops star and makes prefix token`() = runTest {
+    fun `search with wildcard drops star and makes full-word token`() = runTest {
         searchEngine.search("hello*").collect { }
 
-        verify { captureDao.searchFts("hello*", null, null, null) }
+        verify { captureDao.searchFts("hello", null, null, null) }
     }
 
     @Test
-    fun `search with leading wildcard drops star and makes prefix token`() = runTest {
+    fun `search with leading wildcard drops star and makes full-word token`() = runTest {
         searchEngine.search("*hello").collect { }
 
-        verify { captureDao.searchFts("hello*", null, null, null) }
+        verify { captureDao.searchFts("hello", null, null, null) }
     }
 
     @Test
-    fun `search with surrounding wildcards drops stars and makes prefix token`() = runTest {
+    fun `search with surrounding wildcards drops stars and makes full-word token`() = runTest {
         searchEngine.search("*hello*").collect { }
 
-        verify { captureDao.searchFts("hello*", null, null, null) }
+        verify { captureDao.searchFts("hello", null, null, null) }
     }
 
     @Test
     fun `search with time range passes it to fts dao`() = runTest {
         searchEngine.search("hello today").collect { }
 
-        verify { captureDao.searchFts("hello*", any(), null, null) }
+        verify { captureDao.searchFts("hello", any(), null, null) }
     }
 
     @Test
@@ -87,28 +87,28 @@ class SearchEngineTest {
     fun `search strips time keywords from match query`() = runTest {
         searchEngine.search("today tomorrow").collect { }
 
-        verify { captureDao.searchFts("tomorrow*", any(), null, null) }
+        verify { captureDao.searchFts("tomorrow", any(), null, null) }
     }
 
     @Test
     fun `search with type filter passes contentType to fts dao`() = runTest {
         searchEngine.search("type:notification hello").collect { }
 
-        verify { captureDao.searchFts("hello*", null, "notification", null) }
+        verify { captureDao.searchFts("hello", null, "notification", null) }
     }
 
     @Test
     fun `search with in filter passes appPackage to fts dao`() = runTest {
         searchEngine.search("in:signal meeting").collect { }
 
-        verify { captureDao.searchFts("meeting*", null, null, "signal") }
+        verify { captureDao.searchFts("meeting", null, null, "signal") }
     }
 
     @Test
     fun `search with combined type and in filters and keyword`() = runTest {
         searchEngine.search("in:com.example type:screen notes").collect { }
 
-        verify { captureDao.searchFts("notes*", null, "screen", "com.example") }
+        verify { captureDao.searchFts("notes", null, "screen", "com.example") }
     }
 
     @Test

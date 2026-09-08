@@ -19,18 +19,18 @@ class FtsSearchTest {
     }
 
     @Test
-    fun `fts_matches_words_and_prefixes_but_not_substrings`() = runBlocking {
+    fun `fts_matches_full_words_but_not_prefixes_or_substrings`() = runBlocking {
         insertAll(
             item("kitchen baking adventure", "com.food", "screen", 1),
             item("bake a cake", "com.food", "screen", 2),
             item("shaking a cocktail", "com.bar", "screen", 3),
         )
 
-        val results = dao.searchFts(matchQuery = "bake*").first()
+        val results = dao.searchFts(matchQuery = "bake").first()
         val texts = results.map { it.text }
 
-        assertTrue("expected bake docs to match", texts.contains("bake a cake"))
-        assertTrue("expected prefix baking to match", texts.contains("kitchen baking adventure"))
+        assertTrue("expected exact bake docs to match", texts.contains("bake a cake"))
+        assertTrue("expected prefix baking not to match", !texts.contains("kitchen baking adventure"))
         assertTrue("expected shaking not to match as substring", !texts.contains("shaking a cocktail"))
     }
 
@@ -41,7 +41,7 @@ class FtsSearchTest {
             item("important meeting", "com.test", "notification", 2),
         )
 
-        val results = dao.searchFts(matchQuery = "meeting*", contentType = "notification").first()
+        val results = dao.searchFts(matchQuery = "meeting", contentType = "notification").first()
 
         assertEquals(listOf("important meeting"), results.map { it.text })
         assertEquals(listOf("notification"), results.map { it.contentType })
@@ -54,7 +54,7 @@ class FtsSearchTest {
             item("quarterly report", "com.competitor", "screen", 2),
         )
 
-        val results = dao.searchFts(matchQuery = "report*", appPackage = "com.acme").first()
+        val results = dao.searchFts(matchQuery = "report", appPackage = "com.acme").first()
 
         assertEquals(listOf("com.acme"), results.map { it.appPackage })
     }

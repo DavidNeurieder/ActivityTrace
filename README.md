@@ -62,7 +62,7 @@ Use ordinary language or precise filters to narrow results:
 - `type:notification`
 - `tracking number`
 
-Prefix and wildcard matching (`test` matches `testing`, `*error` matches `fatal error`) and result highlighting are built in.
+Keywords and filters can be combined (`tracking number type:notification yesterday`). Search matches whole words (a full word always finds it; a partial word returns no hits). Result highlighting is built in.
 
 ## Private by design
 

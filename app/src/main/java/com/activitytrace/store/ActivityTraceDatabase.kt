@@ -1,6 +1,7 @@
 package com.activitytrace.store
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -28,6 +29,14 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context.applicationContext, EncryptionManager.getOrCreateKey(context))
                     .also { INSTANCE = it }
+            }
+        }
+
+        @VisibleForTesting
+        fun resetForTesting() {
+            synchronized(this) {
+                INSTANCE?.close()
+                INSTANCE = null
             }
         }
 

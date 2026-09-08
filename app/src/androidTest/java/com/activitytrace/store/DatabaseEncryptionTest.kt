@@ -48,7 +48,7 @@ class DatabaseEncryptionTest {
         val key1 = DatabaseKeyStore(context).getDatabaseKey()
         val key2 = DatabaseKeyStore(context).getDatabaseKey()
         assertEquals(32, key1.size)
-        assertEquals(key1, key2)
+        assertArrayEquals(key1, key2)
     }
 
     @Test

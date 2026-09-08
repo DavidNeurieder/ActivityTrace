@@ -65,15 +65,15 @@ class SearchEngine(private val captureDao: CaptureDao) {
     }
 
     /**
-     * Maps a single search keyword to an FTS5 MATCH token. Plain tokens
-     * become prefix matches (`hello*`) so that typing a partial word still
-     * matches. Tokens containing FTS5 operators are quoted with double
-     * quotes (which is also a natural way to search literal punctuation).
+     * Maps a single search keyword to an FTS5 MATCH token. Plain tokens are
+     * matched as full words (`hello`). Tokens containing FTS5 operators are
+     * quoted with double quotes (which is also a natural way to search literal
+     * punctuation).
      */
     private fun ftsToken(token: String): String {
         val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' }
         return if (isPlainWord) {
-            token + "*"
+            token
         } else {
             "\"" + token.replace("\"", "\"\"") + "\""
         }
