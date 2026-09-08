@@ -20,7 +20,7 @@ object DatabaseExporter {
 
     private const val TAG = "DatabaseExporter"
 
-    suspend fun export(context: Context): ExportStatus = withContext(Dispatchers.IO) {
+    suspend fun exportPlaintextDatabase(context: Context): ExportStatus = withContext(Dispatchers.IO) {
         val tempFile = File(context.cacheDir, "export_temp/activity_trace.sqlite")
         try {
             tempFile.parentFile?.mkdirs()
@@ -54,6 +54,59 @@ object DatabaseExporter {
         } else {
             exportViaLegacyApi(file)
         }
+    }
+
+    internal suspend fun writeBytesToDownloads(
+        context: Context,
+        bytes: ByteArray,
+        displayName: String,
+        mimeType: String,
+    ) = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            exportBytesViaMediaStore(context, bytes, displayName, mimeType)
+        } else {
+            exportBytesViaLegacyApi(bytes, displayName)
+        }
+    }
+
+    @RequiresApi(29)
+    private fun exportBytesViaMediaStore(
+        context: Context,
+        bytes: ByteArray,
+        displayName: String,
+        mimeType: String,
+    ) {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+            put(MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(MediaStore.Downloads.RELATIVE_PATH, "Download/ActivityTrace")
+            if (Build.VERSION.SDK_INT >= 30) {
+                put("is_pending", 1)
+            }
+        }
+        val uri = context.contentResolver.insert(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            contentValues,
+        ) ?: throw RuntimeException("Failed to create MediaStore entry")
+
+        context.contentResolver.openOutputStream(uri)?.use { output ->
+            output.write(bytes)
+        } ?: throw RuntimeException("Failed to open output stream")
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            val finalValues = ContentValues().apply { put("is_pending", 0) }
+            context.contentResolver.update(uri, finalValues, null, null)
+        }
+    }
+
+    private fun exportBytesViaLegacyApi(bytes: ByteArray, displayName: String) {
+        val exportDir = Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOWNLOADS,
+        ) ?: throw RuntimeException("Failed to get external storage directory")
+
+        val appDir = File(exportDir, "ActivityTrace")
+        appDir.mkdirs()
+        File(appDir, displayName).writeBytes(bytes)
     }
 
     @RequiresApi(29)

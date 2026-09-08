@@ -30,6 +30,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +65,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.R
@@ -72,6 +77,7 @@ import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.BackupImporter
 import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
+import com.activitytrace.store.EncryptedBackupExporter
 import com.activitytrace.store.ExportStatus
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.CoroutineScope
@@ -495,6 +501,20 @@ private fun DataSection(
         }
     }
 
+    var backupPassword by remember { mutableStateOf("") }
+    var restoreUri by remember { mutableStateOf<Uri?>(null) }
+    var restorePassword by remember { mutableStateOf("") }
+    var showPlaintextConfirm by remember { mutableStateOf(false) }
+
+    val encryptedRestoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? ->
+        if (uri != null) {
+            restorePassword = ""
+            restoreUri = uri
+        }
+    }
+
     Text(
         text = stringResource(R.string.data_title),
         style = MaterialTheme.typography.titleMedium,
@@ -515,23 +535,75 @@ private fun DataSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.backup_encrypted_title),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.backup_encrypted_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = backupPassword,
+                onValueChange = { backupPassword = it },
+                label = { Text(stringResource(R.string.backup_password_label)) },
+                placeholder = { Text(stringResource(R.string.backup_password_hint)) },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
                     scope.launch {
                         onExportStatus(null)
-                        val result = DatabaseExporter.export(context)
-                        onExportStatus(
-                            if (result is ExportStatus.Success) ExportStatus.Success(context.getString(R.string.database_exported))
-                            else result
-                        )
+                        val result = EncryptedBackupExporter.export(context, backupPassword.toCharArray())
+                        onExportStatus(result)
                     }
                 },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.backup_encrypted_action))
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    encryptedRestoreLauncher.launch(
+                        arrayOf("application/octet-stream"),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.restore_encrypted_action))
+            }
+            Spacer(Modifier.height(8.dp))
+            Divider()
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.advanced_title),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.plaintext_backup_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { showPlaintextConfirm = true },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.backup_to_sqlite))
             }
             Spacer(Modifier.height(8.dp))
-            Button(
+            OutlinedButton(
                 onClick = {
                     importLauncher.launch(
                         arrayOf("application/vnd.sqlite3", "application/octet-stream"),
@@ -608,6 +680,88 @@ private fun DataSection(
                 )
             }
         }
+    }
+
+    if (showPlaintextConfirm) {
+        AlertDialog(
+            onDismissRequest = { showPlaintextConfirm = false },
+            title = { Text(stringResource(R.string.backup_to_sqlite)) },
+            text = { Text(stringResource(R.string.plaintext_export_warning)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPlaintextConfirm = false
+                        scope.launch {
+                            onExportStatus(null)
+                            val result = DatabaseExporter.exportPlaintextDatabase(context)
+                            onExportStatus(
+                                if (result is ExportStatus.Success) ExportStatus.Success(context.getString(R.string.database_exported))
+                                else result
+                            )
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.plaintext_export_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPlaintextConfirm = false }) {
+                    Text(stringResource(R.string.plaintext_export_cancel))
+                }
+            },
+        )
+    }
+
+    restoreUri?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { restoreUri = null },
+            title = { Text(stringResource(R.string.restore_encrypted_action)) },
+            text = {
+                OutlinedTextField(
+                    value = restorePassword,
+                    onValueChange = { restorePassword = it },
+                    label = { Text(stringResource(R.string.restore_password_hint)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val password = restorePassword.toCharArray()
+                        restoreUri = null
+                        scope.launch {
+                            onExportStatus(null)
+                            try {
+                                val db = ActivityTraceDatabase.getInstance(context)
+                                val count = EncryptedBackupExporter.import(context, uri, password, db.captureDao())
+                                if (count > 0) {
+                                    val msg = context.resources.getQuantityString(R.plurals.imported_count, count, count)
+                                    onExportStatus(ExportStatus.Success(msg))
+                                } else {
+                                    onExportStatus(ExportStatus.Info(context.getString(R.string.no_new_items)))
+                                }
+                            } catch (_: Exception) {
+                                onExportStatus(
+                                    ExportStatus.Error(
+                                        context.getString(R.string.encrypted_backup_restore_failed),
+                                    )
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.restore_encrypted_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { restoreUri = null }) {
+                    Text(stringResource(R.string.plaintext_export_cancel))
+                }
+            },
+        )
     }
 }
 

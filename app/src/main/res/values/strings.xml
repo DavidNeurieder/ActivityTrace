@@ -66,12 +66,34 @@
     <string name="last_scan">Last scan: %s</string>
     <string name="data_title">Data</string>
     <string name="backup_restore_title">Backup &amp; Restore</string>
-    <string name="backup_description">Full backup of captured items as a plain SQLite database. Only .sqlite files exported by this app can be restored.</string>
+    <string name="backup_description">Keep your history safe. Encrypted backups use a password of your choice and can be restored on this or another device.</string>
+    <string name="backup_encrypted_title">Encrypted backup</string>
+    <string name="backup_encrypted_description">A password-protected backup of your full history. Choose a password you will remember; without it the backup cannot be opened.</string>
+    <string name="backup_password_label">Backup password</string>
+    <string name="backup_password_hint">Enter a password for this backup</string>
+    <string name="backup_password_required">Enter a backup password first</string>
+    <string name="backup_encrypted_action">Backup encrypted</string>
+    <string name="restore_encrypted_action">Restore encrypted backup</string>
+    <string name="restore_password_hint">Password of the backup</string>
+    <string name="encrypted_backup_exported">Encrypted backup created</string>
+    <string name="encrypted_backup_restore_failed">Restore failed. Wrong password or corrupted backup.</string>
+    <string name="progress_merging_backup">Merging with existing data…</string>
+    <string name="advanced_title">Advanced</string>
+    <string name="plaintext_backup_description">Full backup of captured items as a plain SQLite database. Only .sqlite files exported by this app can be restored.</string>
     <string name="database_exported">Database exported</string>
     <string name="export_failed">Export failed</string>
     <string name="export_failed_log_created">Export failed, logfile created</string>
     <string name="backup_to_sqlite">Backup to SQLite</string>
     <string name="restore_from_backup">Restore from backup</string>
+    <string name="plaintext_export_warning">This export is NOT encrypted.
+
+It contains your complete ActivityTrace history, including captured notifications, screen content and indexed files.
+
+Anyone who can access this file can read that information.
+
+Continue?</string>
+    <string name="plaintext_export_confirm">Export plain SQLite</string>
+    <string name="plaintext_export_cancel">Cancel</string>
     <string name="export_formats_title">Export Formats</string>
     <string name="export_formats_description">Readable extracts of your data for external use. These cannot be re-imported.</string>
     <string name="exported_as_json">Exported as JSON</string>

@@ -24,20 +24,22 @@ object BackupImporter {
             val backupItems = readItemsFromSqlite(tempFile)
 
             onProgress(ExportStatus.Progress("Merging with existing data\u2026"))
-            val existingKeys = dao.getAllItemKeys().toSet()
-            val newItems = backupItems.filter { item ->
-                CaptureDao.ItemKey(item.text, item.timestamp, item.appPackage) !in existingKeys
-            }.map { it.copy(id = 0) }
-
-            if (newItems.isEmpty()) return@withContext 0
-
-            onProgress(ExportStatus.Progress("Importing ${newItems.size} items\u2026"))
-            dao.insertAll(newItems)
-            newItems.size
+            importItems(backupItems, dao)
         } finally {
             tempFile.delete()
             tempFile.parentFile?.deleteRecursively()
         }
+    }
+
+    internal suspend fun importItems(items: List<CapturedItem>, dao: CaptureDao): Int {
+        if (items.isEmpty()) return 0
+        val existingKeys = dao.getAllItemKeys().toSet()
+        val newItems = items.filter { item ->
+            CaptureDao.ItemKey(item.text, item.timestamp, item.appPackage) !in existingKeys
+        }.map { it.copy(id = 0) }
+        if (newItems.isEmpty()) return 0
+        dao.insertAll(newItems)
+        return newItems.size
     }
 
     internal fun readItemsFromSqlite(file: File): List<CapturedItem> {
@@ -67,7 +69,7 @@ object BackupImporter {
         }
     }
 
-    private fun copyToTempFile(context: Context, uri: Uri): File {
+    internal fun copyToTempFile(context: Context, uri: Uri): File {
         val tempDir = File(context.cacheDir, "import_temp")
         tempDir.mkdirs()
         val tempFile = File(tempDir, "backup.sqlite")

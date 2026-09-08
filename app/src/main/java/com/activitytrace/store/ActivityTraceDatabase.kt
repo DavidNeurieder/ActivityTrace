@@ -12,7 +12,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [CapturedItem::class, BlockedApp::class],
-    version = 7,
+    version = ActivityTraceDatabase.CURRENT_VERSION,
     exportSchema = true,
 )
 abstract class ActivityTraceDatabase : RoomDatabase() {
@@ -20,6 +20,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun blockedAppDao(): BlockedAppDao
 
     companion object {
+        const val CURRENT_VERSION = 7
         @Volatile
         private var INSTANCE: ActivityTraceDatabase? = null
 

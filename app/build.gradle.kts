@@ -1,3 +1,5 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -82,6 +84,42 @@ android {
             excludes += "/META-INF/NOTICE*"
             excludes += "/assets/dexopt/*"
         }
+    }
+}
+
+tasks.register("verifyNoInternetPermissionInRelease") {
+    group = "verification"
+    description = "Fails if the merged release manifest declares android.permission.INTERNET"
+    dependsOn("assembleRelease")
+
+    doLast {
+        val sdkDir = project.rootProject.file("local.properties").takeIf { it.exists() }
+            ?.readLines()
+            ?.firstOrNull { it.startsWith("sdk.dir=") }
+            ?.substringAfter("=")
+            ?.trim('"')
+            ?: System.getenv("ANDROID_HOME")
+            ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: error("ANDROID_HOME is not set and no local.properties sdk.dir was found")
+        val aapt = File(sdkDir, "build-tools")
+            .listFiles()?.filter { it.isDirectory }
+            ?.map { File(it, "aapt") }
+            ?.filter { it.exists() }
+            ?.maxByOrNull { it.parentFile.name }
+            ?: error("aapt not found under $sdkDir/build-tools")
+        val apk = File(projectDir, "build/outputs/apk/release")
+            .listFiles { f -> f.extension == "apk" }
+            ?.firstOrNull()
+            ?: error("no release APK found in app/build/outputs/apk/release")
+        val output = ByteArrayOutputStream()
+        exec {
+            commandLine(aapt.absolutePath, "dump", "permissions", apk.absolutePath)
+            standardOutput = output
+        }
+        if (output.toString().contains("android.permission.INTERNET")) {
+            throw GradleException("release manifest declares android.permission.INTERNET — review whether the app needs network access")
+        }
+        logger.lifecycle("Release manifest OK: no android.permission.INTERNET")
     }
 }
 

@@ -164,7 +164,7 @@ class SettingsScreenTest {
 
         assert(DataExporter.exportToCsv(context, dao) is ExportStatus.Success) { "CSV export should succeed" }
 
-        val dbResult = DatabaseExporter.export(context)
+        val dbResult = DatabaseExporter.exportPlaintextDatabase(context)
         assert(dbResult is ExportStatus.Success) { "Database export should succeed, got: ${(dbResult as? ExportStatus.Error)?.message}" }
 
         val backupFile = File(context.cacheDir, "import_roundtrip_test/backup.sqlite").also {

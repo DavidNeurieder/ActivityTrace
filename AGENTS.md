@@ -55,6 +55,14 @@ python3 build_and_test.py   # automate full CI workflow
 - `isDebuggable = false` for release builds ✓
 - Note: `reproducibleBuildEnabled` requires AGP 8.5+; current AGP 8.2.2 uses R8 deterministic mode instead
 
+## Security CI (P0.5)
+- `.github/workflows/security.yml`: rebuilds release + unit/lint/instrumented/vuln/secret checks on push/PR
+- `scripts/check-release-manifest.sh`: fails if the release APK declares `android.permission.INTERNET` (must NOT be added; app is fully offline)
+- `scripts/check-exported-components.sh`: lists `exported` components from the release APK for human review (`NotificationWidget` exported=true is required for the app widget)
+- Gradle task `:app:verifyNoInternetPermissionInRelease` — same guard, name does not collide with AGP's own `checkReleaseManifest` task
+- `.github/dependabot.yml`: weekly scans for Gradle + GitHub Actions
+- No INTERNET permission in the manifest; do not add it (no network features)
+
 ## Development notes
 - Run lint: `./gradlew lint`
 - Run tests: `./gradlew test`
