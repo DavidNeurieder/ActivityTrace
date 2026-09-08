@@ -167,3 +167,14 @@ Contributions are welcome.
 ```
 
 Prerequisites: JDK 17, Android SDK 36. See [`AGENTS.md`](AGENTS.md) for architecture details.
+
+SQLCipher upgrades and database-recovery behavior: see [`docs/sqlcipher-upgrade.md`](docs/sqlcipher-upgrade.md).
+
+### FTS search benchmarks
+
+Opt-in instrumented benchmark covering large databases (100k / 1m rows):
+
+```bash
+./gradlew connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.ftsBenchmarkRows=1000000
+```

@@ -30,6 +30,7 @@ Thumbs.db
 
 # docs
 /old_docs
+/ideas
 
 # python 
 /__pycache__
