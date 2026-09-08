@@ -14,15 +14,18 @@ import android.content.Context
  */
 object EncryptionManager {
 
-    private val keyStores = mutableMapOf<String, DatabaseKeyStore>()
+    @Volatile
+    private var keyStore: DatabaseKeyStore? = null
 
     fun getOrCreateKey(context: Context): ByteArray {
         return getKeyStore(context).getDatabaseKey()
     }
 
     private fun getKeyStore(context: Context): DatabaseKeyStore {
-        val appContext = context.applicationContext
-        val key = appContext.packageName
-        return keyStores.getOrPut(key) { DatabaseKeyStore(appContext) }
+        val existing = keyStore
+        if (existing != null) return existing
+        return synchronized(this) {
+            keyStore ?: DatabaseKeyStore(context.applicationContext).also { keyStore = it }
+        }
     }
 }

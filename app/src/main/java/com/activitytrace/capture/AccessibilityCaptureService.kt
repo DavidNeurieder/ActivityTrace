@@ -2,6 +2,7 @@ package com.activitytrace.capture
 
 import android.accessibilityservice.AccessibilityService
 import android.app.Notification
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,13 +45,17 @@ class AccessibilityCaptureService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        val pkg = event.packageName?.toString() ?: "unknown"
+        val pkg = event.packageName?.toString() ?: PrivacyFilter.UNKNOWN_PACKAGE
         if (pkg == packageName) return
         if (!rateLimiter.tryAcquire()) return
 
         val sourceNode = event.source?.let { AccessibilityNodeInfoNode(it) }
         try {
-            if (!privacyFilter.shouldCapture(pkg, sourceNode)) return
+            val decision = privacyFilter.evaluate(pkg, sourceNode)
+            if (decision != PrivacyDecision.ALLOW) {
+                Log.d(TAG, "Blocked accessibility capture (pkg=$pkg, decision=$decision)")
+                return
+            }
 
             when (event.eventType) {
                 AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> {
@@ -138,5 +143,9 @@ class AccessibilityCaptureService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         scope.cancel()
+    }
+
+    companion object {
+        private const val TAG = "AccessibilityCaptureService"
     }
 }

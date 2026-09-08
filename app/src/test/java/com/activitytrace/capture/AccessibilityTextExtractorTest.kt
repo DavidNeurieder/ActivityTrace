@@ -116,6 +116,30 @@ class AccessibilityTextExtractorTest {
     }
 
     @Test
+    fun `password and editable fields pruned alongside normal siblings`() {
+        val tree = FakeNode(
+            text = "Root",
+            children = listOf(
+                FakeNode(text = "Public label"),
+                FakeNode(
+                    className = "android.widget.EditText",
+                    isEditable = true,
+                    isPassword = true,
+                    text = "password-value",
+                ),
+                FakeNode(
+                    className = "android.widget.EditText",
+                    isEditable = true,
+                    text = "draft-value",
+                ),
+                FakeNode(contentDescription = "Public hint"),
+            ),
+        )
+
+        assertEquals("Root Public label Public hint", extractor.extract(tree))
+    }
+
+    @Test
     fun `ignores null children`() {
         var tree: FakeNode? = FakeNode(text = "A")
         tree = FakeNode(text = "B", children = listOf(tree!!, FakeNode(text = "C")))

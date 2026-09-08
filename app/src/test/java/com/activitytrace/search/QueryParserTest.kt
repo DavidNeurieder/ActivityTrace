@@ -204,4 +204,38 @@ class QueryParserTest {
         val (start, end) = result.timeRange!!
         assertTrue("start $start should be < end $end", start < end)
     }
+
+    @Test
+    fun `query longer than budget is truncated`() {
+        val longInput = "hello " + "x".repeat(QueryParser.MAX_QUERY_LENGTH * 2)
+        val result = QueryParser.parse(longInput)
+        assertTrue(result.keywords.contains("hello"))
+        assertTrue(
+            "input should be truncated to at most ${QueryParser.MAX_QUERY_LENGTH} chars",
+            result.keywords.joinToString(" ").length <= QueryParser.MAX_QUERY_LENGTH,
+        )
+    }
+
+    @Test
+    fun `more terms than budget keeps only the first terms`() {
+        val result = QueryParser.parse((1..200).joinToString(" "))
+        assertEquals(QueryParser.MAX_TERMS, result.keywords.size)
+        assertEquals("1", result.keywords.first())
+        assertEquals(QueryParser.MAX_TERMS.toString(), result.keywords.last())
+    }
+
+    @Test
+    fun `filters survive a length-bounded query`() {
+        val result = QueryParser.parse("type:notification today " + "z".repeat(QueryParser.MAX_QUERY_LENGTH * 2))
+        assertEquals("notification", result.typeFilter)
+        assertNotNull(result.timeRange)
+        assertTrue(result.keywords.all { it.all { c -> c == 'z' } })
+    }
+
+    @Test
+    fun `exact budget length input parses fully`() {
+        val exact = "hello " + "x".repeat(QueryParser.MAX_QUERY_LENGTH - 6)
+        val result = QueryParser.parse(exact)
+        assertTrue(result.keywords.contains("hello"))
+    }
 }

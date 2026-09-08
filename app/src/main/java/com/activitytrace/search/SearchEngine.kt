@@ -4,6 +4,7 @@ import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import java.util.Locale
 
 class SearchEngine(private val captureDao: CaptureDao) {
 
@@ -66,16 +67,22 @@ class SearchEngine(private val captureDao: CaptureDao) {
 
     /**
      * Maps a single search keyword to an FTS5 MATCH token. Plain tokens are
-     * matched as full words (`hello`). Tokens containing FTS5 operators are
-     * quoted with double quotes (which is also a natural way to search literal
-     * punctuation).
+     * matched as full words (`hello`). Tokens containing FTS5 operators or
+     * operator keywords (AND, OR, NOT, NEAR) are quoted with double quotes —
+     * quoting is also a natural way to search literal punctuation and keeps
+     * operator words (`or`) from being parsed as operators.
      */
     private fun ftsToken(token: String): String {
-        val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' }
+        val lower = token.lowercase(Locale.ROOT)
+        val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' } && lower !in FTS_OPERATORS
         return if (isPlainWord) {
             token
         } else {
             "\"" + token.replace("\"", "\"\"") + "\""
         }
+    }
+
+    private companion object {
+        val FTS_OPERATORS = setOf("and", "or", "not", "near")
     }
 }

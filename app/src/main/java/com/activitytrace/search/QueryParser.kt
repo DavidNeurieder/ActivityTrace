@@ -13,6 +13,13 @@ data class ParsedQuery(
 )
 
 object QueryParser {
+
+    /** Longest query the parser will accept; anything beyond this is truncated. */
+    const val MAX_QUERY_LENGTH: Int = 512
+
+    /** Maximum number of search keywords retained for FTS matching. */
+    const val MAX_TERMS: Int = 32
+
     private val contentTypeSynonyms = mapOf(
         "notification" to "notification", "notif" to "notification",
         "notifications" to "notification",
@@ -39,7 +46,8 @@ object QueryParser {
 
     fun parse(input: String): ParsedQuery {
         if (input.isBlank()) return ParsedQuery(keywords = emptyList())
-        val lower = input.lowercase(Locale.ROOT)
+        val boundedInput = input.take(MAX_QUERY_LENGTH)
+        val lower = boundedInput.lowercase(Locale.ROOT)
         val words = lower.split(Regex("\\s+")).filter { it.isNotEmpty() }
 
         val keywords = mutableListOf<String>()
@@ -101,7 +109,7 @@ object QueryParser {
         }
 
         return ParsedQuery(
-            keywords = keywords,
+            keywords = keywords.take(MAX_TERMS),
             appFilter = appFilter,
             typeFilter = typeFilter,
             timeRange = timeRange,

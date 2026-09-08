@@ -61,7 +61,7 @@ class SearchViewModel(
     private fun getCaptureDao(): CaptureDao? {
         return try {
             ActivityTraceDatabase.getInstance(getApplication()).captureDao()
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             Log.e(TAG, "Failed to get captureDao", e)
             null
         }

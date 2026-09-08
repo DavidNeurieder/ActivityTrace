@@ -21,11 +21,13 @@ class RecoveryStateStore(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     fun record(reason: RecoveryReason) {
-        preferences.edit().putString(KEY_REASON, reason.name).apply()
+        val committed = preferences.edit().putString(KEY_REASON, reason.name).commit()
+        check(committed) { "Failed to persist recovery state" }
     }
 
     fun clear() {
-        preferences.edit().clear().apply()
+        val committed = preferences.edit().clear().commit()
+        check(committed) { "Failed to clear recovery state" }
     }
 
     fun current(): RecoveryReason? =

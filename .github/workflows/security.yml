@@ -27,6 +27,12 @@ jobs:
       - name: Release manifest declares no INTERNET permission
         run: ./scripts/check-release-manifest.sh
 
+      - name: Release manifest forbids cleartext, debuggable, and backup holes
+        run: ./scripts/check-security-manifest.sh
+
+      - name: No unencrypted export artifacts outside cleaned staging paths
+        run: ./scripts/check-no-plaintext-storage.sh
+
       - name: List exported components for review
         run: ./scripts/check-exported-components.sh
 
