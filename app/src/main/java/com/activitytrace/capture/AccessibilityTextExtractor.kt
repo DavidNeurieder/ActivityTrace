@@ -42,6 +42,7 @@ data class ExtractionLimits(
     val maxDepth: Int = 32,
     val maxNodes: Int = 1_000,
     val maxCharacters: Int = 100_000,
+    val maxEventRatePerSecond: Int = 10,
 )
 
 class AccessibilityTextExtractor(

@@ -16,6 +16,8 @@ class AccessibilityCaptureService : AccessibilityService() {
     private val privacyFilter = PrivacyFilter(
         SensitiveAppPolicy { CaptureIngestor.isBlocked(it) },
     )
+    private val debouncer = CaptureLimits.EventDebouncer()
+    private val rateLimiter = CaptureLimits.EventRateLimiter()
 
     private fun collectEventText(event: AccessibilityEvent, sourceNode: AccessibilityTextNode?): String {
         val source = sourceNode
@@ -44,6 +46,7 @@ class AccessibilityCaptureService : AccessibilityService() {
         if (event == null) return
         val pkg = event.packageName?.toString() ?: "unknown"
         if (pkg == packageName) return
+        if (!rateLimiter.tryAcquire()) return
 
         val sourceNode = event.source?.let { AccessibilityNodeInfoNode(it) }
         try {
@@ -111,6 +114,8 @@ class AccessibilityCaptureService : AccessibilityService() {
                     }
                 }
                 AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                    val windowKey = "$pkg|${event.className}"
+                    if (!debouncer.allow(windowKey)) return
                     if (isToastEvent(event)) {
                         val collected = collectEventText(event, sourceNode)
                         if (collected.isBlank()) return

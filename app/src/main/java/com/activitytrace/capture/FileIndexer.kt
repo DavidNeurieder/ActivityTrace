@@ -7,11 +7,11 @@ import androidx.documentfile.provider.DocumentFile
 import com.activitytrace.store.CaptureDao
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 
 object FileIndexer {
     private const val TAG = "FileIndexer"
-    private const val MAX_FILE_SIZE = 10 * 1024 * 1024L
-    private const val MAX_TEXT_CHARS = 1_000_000
 
     private val extensionToMime = mapOf(
         "pdf" to "application/pdf",
@@ -60,53 +60,67 @@ object FileIndexer {
         "svg" to "image/svg+xml",
     )
 
-    suspend fun indexDirectory(context: Context, treeUri: Uri, dao: CaptureDao): Int {
+    suspend fun indexDirectory(
+        context: Context,
+        treeUri: Uri,
+        dao: CaptureDao,
+        limits: IndexLimits = IndexLimits(),
+    ): Int {
         val dir = DocumentFile.fromTreeUri(context, treeUri) ?: return 0
-        val total = indexDocumentFile(context, dir, dao)
-        Log.d(TAG, "Indexed $total files from $treeUri")
-        return total
+        val budget = IndexBudget(limits)
+        indexDocumentFile(context, dir, dao, limits, budget, 0)
+        Log.d(TAG, "Indexed ${budget.filesIndexed} files from $treeUri")
+        return budget.filesIndexed
     }
 
-    private suspend fun indexDocumentFile(context: Context, file: DocumentFile, dao: CaptureDao): Int {
+    internal suspend fun indexDocumentFile(
+        context: Context,
+        file: DocumentFile,
+        dao: CaptureDao,
+        limits: IndexLimits,
+        budget: IndexBudget,
+        depth: Int,
+    ) {
+        currentCoroutineContext().ensureActive()
+        if (depth > limits.maxDepth) return
         if (file.isDirectory) {
-            var count = 0
+            if (budget.exhausted) return
             val children = file.listFiles()
             Log.d(TAG, "Scanning directory '${file.name}' (${children.size} children)")
             for (child in children) {
-                count += indexDocumentFile(context, child, dao)
+                if (budget.exhausted) break
+                indexDocumentFile(context, child, dao, limits, budget, depth + 1)
             }
-            return count
+            return
         }
 
         val uri = file.uri.toString()
         val fileName = file.name ?: uri.substringAfterLast("/")
         if (dao.countByMetadata(uri) > 0) {
             Log.d(TAG, "Skipping (already indexed): $fileName")
-            return 0
+            return
         }
 
         val mimeType = resolveMimeType(file)
         if (mimeType == null) {
             Log.d(TAG, "Skipping (unsupported type): $fileName")
-            return 0
+            return
         }
 
         val fileSize = file.length()
-        if (fileSize > 0 && fileSize > MAX_FILE_SIZE) {
-            Log.d(TAG, "Skipping (${fileSize / 1024 / 1024} MB exceeds limit): $fileName")
-            return 0
-        }
+        if (!budget.canAccept(fileSize, limits)) return
 
-        val text = extractText(context, file, mimeType) ?: run {
+        val text = extractText(context, file, mimeType, limits.maxExtractedCharacters) ?: run {
             Log.d(TAG, "Skipping (no text extracted): $fileName")
-            return 0
+            return
         }
         if (text.isBlank()) {
             Log.d(TAG, "Skipping (blank): $fileName")
-            return 0
+            return
         }
 
         Log.d(TAG, "Indexing: $fileName ($mimeType, ${text.length} chars)")
+        budget.accept(fileSize)
         CaptureIngestor.ingest(
             text = text,
             appPackage = "local",
@@ -115,7 +129,6 @@ object FileIndexer {
             category = mimeType,
             metadata = uri,
         )
-        return 1
     }
 
     private fun resolveMimeType(file: DocumentFile): String? {
@@ -130,9 +143,9 @@ object FileIndexer {
         return extensionToMime[ext]
     }
 
-    private fun extractText(context: Context, file: DocumentFile, mimeType: String): String? = try {
+    private fun extractText(context: Context, file: DocumentFile, mimeType: String, maxChars: Int): String? = try {
         when {
-            mimeType.startsWith("text/") -> extractPlainText(context, file.uri)
+            mimeType.startsWith("text/") -> extractPlainText(context, file.uri, maxChars)
             mimeType == "application/pdf" -> extractPdfText(context, file.uri)
             mimeType.startsWith("image/") -> file.name
             else -> null
@@ -141,15 +154,15 @@ object FileIndexer {
         null
     }
 
-    private fun extractPlainText(context: Context, uri: Uri): String? = try {
+    private fun extractPlainText(context: Context, uri: Uri, maxChars: Int): String? = try {
         context.contentResolver.openInputStream(uri)?.use { stream ->
             stream.bufferedReader().use { reader ->
-                val sb = StringBuilder(minOf(MAX_TEXT_CHARS, 8192))
+                val sb = StringBuilder(minOf(maxChars, 8192))
                 val buf = CharArray(4096)
                 var total = 0
                 var n: Int
-                while (reader.read(buf).also { n = it } != -1 && total < MAX_TEXT_CHARS) {
-                    val toAppend = minOf(n, MAX_TEXT_CHARS - total)
+                while (reader.read(buf).also { n = it } != -1 && total < maxChars) {
+                    val toAppend = minOf(n, maxChars - total)
                     sb.append(buf, 0, toAppend)
                     total += toAppend
                 }
@@ -168,5 +181,26 @@ object FileIndexer {
         }
     } catch (_: Throwable) {
         null
+    }
+}
+
+class IndexBudget(private val limits: IndexLimits) {
+    var filesIndexed: Int = 0
+        private set
+    var bytesIndexed: Long = 0L
+        private set
+
+    val exhausted: Boolean
+        get() = filesIndexed >= limits.maxFiles || bytesIndexed >= limits.maxTotalBytes
+
+    fun canAccept(fileSize: Long, limits: IndexLimits): Boolean {
+        if (exhausted) return false
+        if (fileSize > 0 && fileSize > limits.maxFileBytes) return false
+        return bytesIndexed + fileSize <= limits.maxTotalBytes
+    }
+
+    fun accept(fileSize: Long) {
+        filesIndexed++
+        bytesIndexed += fileSize
     }
 }
