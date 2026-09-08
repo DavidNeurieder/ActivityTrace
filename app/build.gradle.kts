@@ -127,6 +127,18 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+configurations.all {
+    // sqlcipher-android pulls androidx.sqlite 2.6.2+ transitively, which is
+    // built against Kotlin 2.x metadata and is incompatible with the pinned
+    // Kotlin 1.9.22. Force androidx.sqlite to the Kotlin-1.9-compatible 2.4.0.
+    resolutionStrategy {
+        force(
+            "androidx.sqlite:sqlite:2.4.0",
+            "androidx.sqlite:sqlite-ktx:2.4.0",
+        )
+    }
+}
+
 dependencies {
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)

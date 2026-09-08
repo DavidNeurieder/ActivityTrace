@@ -16,6 +16,7 @@ class ActivityTraceApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         try {
+            System.loadLibrary("sqlcipher")
             CaptureIngestor.init(this)
             RetentionCleanupWorker.scheduleDaily(this)
             ContentHashBackfillWorker.schedule(this)
@@ -23,8 +24,8 @@ class ActivityTraceApplication : Application() {
             val db = ActivityTraceDatabase.getInstance(this)
             captureDao = db.captureDao()
             searchEngine = SearchEngine(captureDao!!)
-        } catch (_: Exception) {
-            // DB or keystore unavailable; search will be unavailable until app restart
+        } catch (_: Throwable) {
+            // DB, keystore, or native lib unavailable; search will be unavailable until app restart
         }
     }
 

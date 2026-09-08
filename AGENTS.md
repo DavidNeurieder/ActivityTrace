@@ -27,7 +27,7 @@ python3 build_and_test.py   # automate full CI workflow
 - Compose BOM 2024.01.00 (Material 3, dynamic color)
 - Room 2.6.1 + KSP for codegen
 - WorkManager 2.9.0 (scheduled retention cleanup)
-- SQLCipher 4.5.4 (net.zetetic:android-database-sqlcipher)
+- SQLCipher 4.17.0 (net.zetetic:sqlcipher-android; androidx.sqlite forced to 2.4.0 for Kotlin 1.9 compatibility)
 - FTS5 table created via Room callback (not Room annotation, due to KSP resolution order)
 - Search uses SQL LIKE `%keyword%` (substring match, no FTS5); FTS5 table retained for content sync triggers
 
@@ -76,5 +76,5 @@ python3 build_and_test.py   # automate full CI workflow
 - `MigrationTestHelper` (from `androidx.room:room-testing`) requires an Instrumentation; under Robolectric use `ShadowInstrumentation.getInstrumentation()` — `RuntimeEnvironment` has no such accessor
 - Migration tests must exercise the real migration through Room's open path (see `ActivityTraceDatabaseMigrationTest`), because Room validates the full schema incl. index names after every migration (the dedup-index v6→7 bug was an index-name mismatch)
 - When bumping the schema version: bump `version`, add `MIGRATION_x_y` to the builder's `.addMigrations(...)`, build to export the new JSON, and update/add a MigrationTestHelper test
-- SQLCipher native libs do NOT load under Robolectric (`UnsatisfiedLinkError: no sqlcipher in java.library.path`). Unit tests must not touch `net.sqlcipher` open/create paths; test the recovery/key logic via a seam (`DatabaseOpener`, `DatabaseKeyStore.WrappingKeyProvider`) and push real SQLCipher assertions (plaintext-not-in-file, wrong-key-preserves-bytes, `.encoded == null`) to instrumented tests (`DatabaseEncryptionTest`)
+- SQLCipher native libs do NOT load under Robolectric (`UnsatisfiedLinkError: no sqlcipher in java.library.path`). Unit tests must not touch `net.zetetic` open/create paths; test the recovery/key logic via a seam (`DatabaseOpener`, `DatabaseKeyStore.WrappingKeyProvider`) and push real SQLCipher assertions (plaintext-not-in-file, wrong-key-preserves-bytes, `.encoded == null`) to instrumented tests (`DatabaseEncryptionTest`). `System.loadLibrary("sqlcipher")` is called in `ActivityTraceApplication.onCreate`; `UnsatisfiedLinkError` under Robolectric is absorbed by the `catch (Throwable)` there.
 - Database-opening failures are never destructive: `ActivityTraceDatabase.tryOpen()` classifies failures (`DatabaseOpenResult` / `RecoveryReason`), persists recovery state, and never deletes the DB or key. No `deleteDatabase` anywhere

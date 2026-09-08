@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.activitytrace.model.BlockedApp
 import com.activitytrace.model.CapturedItem
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [CapturedItem::class, BlockedApp::class],
@@ -49,7 +49,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context, passphrase: ByteArray): ActivityTraceDatabase {
-            val factory = SupportFactory(passphrase)
+            val factory = SupportOpenHelperFactory(passphrase)
             return Room.databaseBuilder(
                 context.applicationContext,
                 ActivityTraceDatabase::class.java,
