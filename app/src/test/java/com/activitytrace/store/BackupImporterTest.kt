@@ -75,7 +75,7 @@ class BackupImporterTest {
             CaptureDao.ItemKey("item_0", 1000L, "com.test"),
             CaptureDao.ItemKey("item_1", 2000L, "com.test"),
         )
-        coEvery { dao.insertAll(any()) } returns Unit
+        coEvery { dao.insertAll(any()) } returns listOf(1L)
 
         val backupUri = createBackupUri(3)
 
@@ -93,7 +93,7 @@ class BackupImporterTest {
             CaptureDao.ItemKey("item_1", 2000L, "com.test"),
             CaptureDao.ItemKey("item_2", 3000L, "com.test"),
         )
-        coEvery { dao.insertAll(any()) } returns Unit
+        coEvery { dao.insertAll(any()) } returns listOf(1L)
 
         val backupUri = createBackupUri(3)
 

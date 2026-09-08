@@ -4,6 +4,7 @@ import android.app.Application
 import com.activitytrace.capture.CaptureIngestor
 import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.ContentHashBackfillWorker
 import com.activitytrace.store.RetentionCleanupWorker
 
 class ActivityTraceApplication : Application() {
@@ -17,6 +18,7 @@ class ActivityTraceApplication : Application() {
         try {
             CaptureIngestor.init(this)
             RetentionCleanupWorker.scheduleDaily(this)
+            ContentHashBackfillWorker.schedule(this)
             restoreFileIndexingSchedule()
             val db = ActivityTraceDatabase.getInstance(this)
             captureDao = db.captureDao()

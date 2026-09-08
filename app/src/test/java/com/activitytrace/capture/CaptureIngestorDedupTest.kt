@@ -19,13 +19,12 @@ import org.robolectric.annotation.Config
 class CaptureIngestorDedupTest {
 
     @Test
-    fun `ingest skips insert when a recent duplicate exists`() = runTest {
+    fun `ingest skips insert when database rejects the duplicate`() = runTest {
         val dao = mockk<CaptureDao>()
         val database = databaseWith(dao)
         CaptureIngestor.db = database
 
-        coEvery { dao.countRecentDuplicate("com.test", "screen", "hello", any()) } returns 1
-        coEvery { dao.insert(any()) } returns Unit
+        coEvery { dao.insert(any()) } returns -1L
 
         CaptureIngestor.ingest(
             text = "hello",
@@ -33,17 +32,16 @@ class CaptureIngestorDedupTest {
             contentType = "screen",
         )
 
-        coVerify(exactly = 0) { dao.insert(any()) }
+        coVerify(exactly = 1) { dao.insert(any()) }
     }
 
     @Test
-    fun `ingest inserts when no recent duplicate exists`() = runTest {
+    fun `ingest inserts when no duplicate exists`() = runTest {
         val dao = mockk<CaptureDao>()
         val database = databaseWith(dao)
         CaptureIngestor.db = database
 
-        coEvery { dao.countRecentDuplicate("com.test", "toast", "world", any()) } returns 0
-        coEvery { dao.insert(any()) } returns Unit
+        coEvery { dao.insert(any()) } returns 1L
 
         CaptureIngestor.ingest(
             text = "world",
@@ -55,16 +53,32 @@ class CaptureIngestorDedupTest {
             dao.insert(match { item ->
                 item.text == "world" &&
                     item.appPackage == "com.test" &&
-                    item.contentType == "toast"
+                    item.contentType == "toast" &&
+                    item.contentHash != null
             })
         }
     }
 
     @Test
-    fun `dedupWindowFor returns expected windows`() {
-        assertEquals(60_000L, CaptureIngestor.dedupWindowFor("screen"))
-        assertEquals(5_000L, CaptureIngestor.dedupWindowFor("toast"))
-        assertEquals(5_000L, CaptureIngestor.dedupWindowFor("notification"))
+    fun `ingest computes the content hash from package, type and text`() = runTest {
+        val dao = mockk<CaptureDao>()
+        val database = databaseWith(dao)
+        CaptureIngestor.db = database
+
+        val captured = mutableListOf<com.activitytrace.model.CapturedItem>()
+        coEvery { dao.insert(capture(captured)) } returns 1L
+
+        CaptureIngestor.ingest(
+            text = "Message",
+            appPackage = "com.test",
+            contentType = "notification",
+        )
+
+        val item = captured.single()
+        assertEquals(
+            com.activitytrace.store.ContentHasher.hash("com.test", "notification", "Message"),
+            item.contentHash,
+        )
     }
 
     private fun databaseWith(dao: CaptureDao): ActivityTraceDatabase {

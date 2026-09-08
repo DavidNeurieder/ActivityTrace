@@ -20,7 +20,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun blockedAppDao(): BlockedAppDao
 
     companion object {
-        const val CURRENT_VERSION = 7
+        const val CURRENT_VERSION = 8
         @Volatile
         private var INSTANCE: ActivityTraceDatabase? = null
 
@@ -57,7 +57,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             )
                 .openHelperFactory(factory)
                 .addCallback(SEED_DEFAULTS_CALLBACK)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 .build()
         }
 
@@ -180,6 +180,18 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     """
                     CREATE INDEX IF NOT EXISTS index_captured_items_app_package_content_type_text_timestamp
                     ON captured_items(app_package, content_type, text, timestamp)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        internal val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE captured_items ADD COLUMN content_hash TEXT")
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS index_captured_items_content_hash
+                    ON captured_items(content_hash)
                     """.trimIndent()
                 )
             }

@@ -7,7 +7,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "captured_items",
-    indices = [Index(value = ["app_package", "content_type", "text", "timestamp"])],
+    indices = [
+        Index(value = ["app_package", "content_type", "text", "timestamp"]),
+        Index(value = ["content_hash"], unique = true),
+    ],
 )
 data class CapturedItem(
     @PrimaryKey(autoGenerate = true)
@@ -26,4 +29,6 @@ data class CapturedItem(
     val isBookmarked: Boolean = false,
     @ColumnInfo(name = "image_blob")
     val imageBlob: ByteArray? = null,
+    @ColumnInfo(name = "content_hash")
+    val contentHash: String? = null,
 )

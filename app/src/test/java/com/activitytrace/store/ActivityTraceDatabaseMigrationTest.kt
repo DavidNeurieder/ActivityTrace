@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.testing.MigrationTestHelper
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -106,8 +107,42 @@ class ActivityTraceDatabaseMigrationTest {
             }
     }
 
+    @Test
+    fun `MIGRATION_7_8 adds content_hash and a unique index without data loss`() {
+        helper.createDatabase(TEST_DB_7_8, 7).use { db ->
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked) VALUES ('hello', 'com.test', 'screen', 1000, 0)"
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB_7_8, 8, true, ActivityTraceDatabase.MIGRATION_7_8)
+            .use { db ->
+                val rowCursor = db.query("SELECT COUNT(*) FROM captured_items")
+                rowCursor.moveToFirst()
+                assertEquals(1, rowCursor.getInt(0))
+                rowCursor.close()
+
+                val indexCursor = db.query(
+                    "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_content_hash'"
+                )
+                indexCursor.moveToFirst()
+                assertEquals(
+                    "index_captured_items_content_hash",
+                    indexCursor.getString(0),
+                )
+                indexCursor.close()
+
+                val sqlCursor = db.query(
+                    "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_content_hash' AND sql LIKE '%UNIQUE%'"
+                )
+                assertTrue(sqlCursor.moveToFirst())
+                sqlCursor.close()
+            }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test-6-7.db"
+        const val TEST_DB_7_8 = "migration-test-7-8.db"
     }
 
     private fun createV5Database(): File {

@@ -7,6 +7,7 @@ import android.util.Log
 import com.activitytrace.model.BlockedApp
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.ActivityTraceDatabase
+import com.activitytrace.store.ContentHasher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,15 +16,6 @@ object CaptureIngestor {
     internal var db: ActivityTraceDatabase? = null
     private const val TAG = "CaptureIngestor"
     private const val DEDUP_COOLDOWN_MS = 2000L
-    private const val NOTIFICATION_DEDUP_WINDOW_MS = 5_000L
-    private const val TOAST_DEDUP_WINDOW_MS = 5_000L
-    private const val SCREEN_DEDUP_WINDOW_MS = 60_000L
-
-    internal fun dedupWindowFor(contentType: String): Long = when (contentType) {
-        "screen" -> SCREEN_DEDUP_WINDOW_MS
-        "toast" -> TOAST_DEDUP_WINDOW_MS
-        else -> NOTIFICATION_DEDUP_WINDOW_MS
-    }
 
     private val recentHashes = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean {
@@ -104,10 +96,8 @@ object CaptureIngestor {
 
         try {
             val dao = db?.captureDao()
-            val since = now - dedupWindowFor(contentType)
-            if (dao != null && dao.countRecentDuplicate(appPackage, contentType, text, since) > 0) return
-
-            dao?.insert(
+            val hash = ContentHasher.hash(appPackage, contentType, text)
+            val id = dao?.insert(
                 CapturedItem(
                     text = text,
                     appPackage = appPackage,
@@ -117,8 +107,10 @@ object CaptureIngestor {
                     timestamp = timestamp ?: System.currentTimeMillis(),
                     metadata = metadata,
                     imageBlob = imageBlob,
+                    contentHash = hash,
                 )
-            )
+            ) ?: return@ingest
+            if (id == -1L) return@ingest
         } catch (e: Exception) {
             Log.e(TAG, "Failed to ingest item (type=$contentType, pkg=$appPackage)", e)
         }

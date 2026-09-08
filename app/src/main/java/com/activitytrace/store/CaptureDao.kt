@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CaptureDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: CapturedItem)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(item: CapturedItem): Long
 
     @Delete
     suspend fun delete(item: CapturedItem)
@@ -33,8 +33,8 @@ interface CaptureDao {
     @Query("SELECT * FROM captured_items WHERE content_type = :contentType ORDER BY timestamp DESC LIMIT 100")
     fun recentItemsFiltered(contentType: String): Flow<List<CapturedItem>>
 
-    @Insert
-    suspend fun insertAll(items: List<CapturedItem>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(items: List<CapturedItem>): List<Long>
 
     @Query("SELECT text, timestamp, app_package FROM captured_items")
     suspend fun getAllItemKeys(): List<ItemKey>
@@ -118,8 +118,18 @@ interface CaptureDao {
     @Query("SELECT COUNT(*) FROM captured_items WHERE timestamp > :since")
     suspend fun countSince(since: Long): Int
 
-    @Query("SELECT COUNT(*) FROM captured_items WHERE app_package = :appPackage AND content_type = :contentType AND text = :text AND timestamp >= :since")
-    suspend fun countRecentDuplicate(appPackage: String, contentType: String, text: String, since: Long): Int
+    @Query("SELECT id, text, app_package, content_type FROM captured_items WHERE content_hash IS NULL ORDER BY id LIMIT :limit")
+    suspend fun getNullHashBatch(limit: Int): List<HashBatchRow>
+
+    @Query("UPDATE captured_items SET content_hash = :hash WHERE id = :id AND content_hash IS NULL")
+    suspend fun setContentHash(id: Long, hash: String): Int
+
+    data class HashBatchRow(
+        val id: Long,
+        val text: String,
+        @ColumnInfo(name = "app_package") val appPackage: String,
+        @ColumnInfo(name = "content_type") val contentType: String,
+    )
 
     @Query("SELECT app_package, COUNT(*) as count FROM captured_items WHERE (:contentType IS NULL OR content_type = :contentType) GROUP BY app_package ORDER BY count DESC LIMIT 15")
     suspend fun topApps(contentType: String?): List<AppCount>

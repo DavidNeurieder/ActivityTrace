@@ -5,7 +5,6 @@ import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.coJustRun
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -35,7 +34,7 @@ class EncryptedBackupImporterTest {
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
         coEvery { dao.getAllItemKeys() } returns emptyList()
-        coJustRun { dao.insertAll(any()) }
+        coEvery { dao.insertAll(any()) } returns listOf(1L)
     }
 
     @After
