@@ -58,4 +58,5 @@ data class IndexLimits(
     val maxDepth: Int = 20,
     val maxFileBytes: Long = 10L * 1024 * 1024,
     val maxExtractedCharacters: Int = 1_000_000,
+    val maxPdfPages: Int = 500,
 )

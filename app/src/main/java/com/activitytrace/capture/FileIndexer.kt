@@ -7,8 +7,11 @@ import androidx.documentfile.provider.DocumentFile
 import com.activitytrace.store.CaptureDao
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
-import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import java.io.IOException
 
 object FileIndexer {
     private const val TAG = "FileIndexer"
@@ -110,25 +113,30 @@ object FileIndexer {
         val fileSize = file.length()
         if (!budget.canAccept(fileSize, limits)) return
 
-        val text = extractText(context, file, mimeType, limits.maxExtractedCharacters) ?: run {
-            Log.d(TAG, "Skipping (no text extracted): $fileName")
-            return
+        when (val result = extractText(context, file, mimeType, limits)) {
+            is ExtractionResult.Success -> {
+                val text = result.text
+                if (text.isBlank()) {
+                    Log.d(TAG, "Skipping (blank): $fileName")
+                    return
+                }
+                Log.d(TAG, "Indexing: $fileName ($mimeType, ${text.length} chars)")
+                budget.accept(fileSize)
+                CaptureIngestor.ingest(
+                    text = text,
+                    appPackage = "local",
+                    appName = fileName,
+                    contentType = "page",
+                    category = mimeType,
+                    metadata = uri,
+                )
+            }
+            ExtractionResult.Unsupported -> Log.d(TAG, "Skipping (unsupported): $fileName")
+            ExtractionResult.TooLarge -> Log.d(TAG, "Skipping (extraction too large): $fileName")
+            ExtractionResult.Invalid -> Log.d(TAG, "Skipping (invalid content): $fileName")
+            ExtractionResult.Cancelled -> return
+            is ExtractionResult.Failed -> Log.w(TAG, "Skipping (extraction failed): $fileName", result.cause)
         }
-        if (text.isBlank()) {
-            Log.d(TAG, "Skipping (blank): $fileName")
-            return
-        }
-
-        Log.d(TAG, "Indexing: $fileName ($mimeType, ${text.length} chars)")
-        budget.accept(fileSize)
-        CaptureIngestor.ingest(
-            text = text,
-            appPackage = "local",
-            appName = fileName,
-            contentType = "page",
-            category = mimeType,
-            metadata = uri,
-        )
     }
 
     private fun resolveMimeType(file: DocumentFile): String? {
@@ -143,44 +151,111 @@ object FileIndexer {
         return extensionToMime[ext]
     }
 
-    private fun extractText(context: Context, file: DocumentFile, mimeType: String, maxChars: Int): String? = try {
-        when {
-            mimeType.startsWith("text/") -> extractPlainText(context, file.uri, maxChars)
-            mimeType == "application/pdf" -> extractPdfText(context, file.uri)
-            mimeType.startsWith("image/") -> file.name
-            else -> null
+    private suspend fun extractText(
+        context: Context,
+        file: DocumentFile,
+        mimeType: String,
+        limits: IndexLimits,
+    ): ExtractionResult {
+        if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+        return try {
+            when {
+                mimeType.startsWith("text/") -> extractPlainText(context, file.uri, limits.maxExtractedCharacters)
+                mimeType == "application/pdf" -> extractPdfText(context, file.uri, limits)
+                mimeType.startsWith("image/") -> ExtractionResult.Success(file.name ?: "")
+                else -> ExtractionResult.Unsupported
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            ExtractionResult.Invalid
+        } catch (e: IllegalArgumentException) {
+            ExtractionResult.Invalid
+        } catch (e: Exception) {
+            ExtractionResult.Failed(e)
         }
-    } catch (_: Throwable) {
-        null
     }
 
-    private fun extractPlainText(context: Context, uri: Uri, maxChars: Int): String? = try {
-        context.contentResolver.openInputStream(uri)?.use { stream ->
+    internal suspend fun extractPlainText(context: Context, uri: Uri, maxChars: Int): ExtractionResult = try {
+        val stream = context.contentResolver.openInputStream(uri)
+        if (stream == null) {
+            ExtractionResult.Invalid
+        } else {
             stream.bufferedReader().use { reader ->
                 val sb = StringBuilder(minOf(maxChars, 8192))
                 val buf = CharArray(4096)
                 var total = 0
                 var n: Int
+                var cancelled = false
                 while (reader.read(buf).also { n = it } != -1 && total < maxChars) {
+                    if (!currentCoroutineContext().isActive) {
+                        cancelled = true
+                        break
+                    }
                     val toAppend = minOf(n, maxChars - total)
                     sb.append(buf, 0, toAppend)
                     total += toAppend
                 }
-                sb.toString()
+                if (cancelled) ExtractionResult.Cancelled else ExtractionResult.Success(sb.toString())
             }
         }
-    } catch (_: Throwable) {
-        null
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: IOException) {
+        ExtractionResult.Invalid
+    } catch (e: IllegalArgumentException) {
+        ExtractionResult.Invalid
     }
 
-    private fun extractPdfText(context: Context, uri: Uri): String? = try {
-        context.contentResolver.openInputStream(uri)?.use { stream ->
-            PDDocument.load(stream).use { doc ->
-                PDFTextStripper().getText(doc)
+    internal suspend fun extractPdfText(
+        context: Context,
+        uri: Uri,
+        limits: IndexLimits,
+    ): ExtractionResult {
+        if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+        return try {
+            val stream = context.contentResolver.openInputStream(uri) ?: return ExtractionResult.Invalid
+            stream.use { input ->
+                PDDocument.load(input).use { doc ->
+                    if (!doc.isEncrypted) {
+                        extractPdfPages(doc, limits)
+                    } else {
+                        ExtractionResult.Unsupported
+                    }
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            ExtractionResult.Invalid
+        } catch (e: IllegalArgumentException) {
+            ExtractionResult.Invalid
         }
-    } catch (_: Throwable) {
-        null
+    }
+
+    private suspend fun extractPdfPages(doc: PDDocument, limits: IndexLimits): ExtractionResult {
+        val pageCount = doc.numberOfPages
+        if (pageCount > limits.maxPdfPages) return ExtractionResult.TooLarge
+        if (pageCount <= 0) return ExtractionResult.Success("")
+
+        val stripper = PDFTextStripper()
+        val sb = StringBuilder(minOf(limits.maxExtractedCharacters, 8192))
+        var total = 0
+        for (page in 1..pageCount) {
+            if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+            stripper.setStartPage(page)
+            stripper.setEndPage(page)
+            val text = stripper.getText(doc)
+            val remaining = limits.maxExtractedCharacters - total
+            if (text.length >= remaining) {
+                sb.append(text, 0, remaining)
+                total += remaining
+                break
+            }
+            sb.append(text)
+            total += text.length
+        }
+        return ExtractionResult.Success(sb.toString())
     }
 }
 

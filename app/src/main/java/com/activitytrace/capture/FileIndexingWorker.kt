@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import android.util.Log
 import com.activitytrace.store.ActivityTraceDatabase
+import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
 
 class FileIndexingWorker(
@@ -30,6 +31,8 @@ class FileIndexingWorker(
             try {
                 val uri = Uri.parse(uriString)
                 FileIndexer.indexDirectory(applicationContext, uri, dao)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to index $uriString", e)
             }
