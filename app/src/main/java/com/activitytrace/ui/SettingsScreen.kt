@@ -92,12 +92,15 @@ import kotlinx.coroutines.launch
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import java.util.Locale
+import com.activitytrace.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToBlockedApps: () -> Unit = {},
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeModeChanged: (ThemeMode) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -136,6 +139,11 @@ fun SettingsScreen(
             BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
             Spacer(Modifier.height(24.dp))
             PrivacySection()
+            Spacer(Modifier.height(24.dp))
+            AppearanceSection(
+                themeMode = themeMode,
+                onThemeModeChanged = onThemeModeChanged,
+            )
             Spacer(Modifier.height(24.dp))
             RetentionSection(
                 selectedDays = retentionDays,
@@ -330,6 +338,68 @@ private fun PrivacySection() {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun AppearanceSection(
+    themeMode: ThemeMode,
+    onThemeModeChanged: (ThemeMode) -> Unit,
+) {
+    val options = listOf(
+        ThemeMode.SYSTEM to stringResource(R.string.theme_system_default),
+        ThemeMode.LIGHT to stringResource(R.string.theme_light),
+        ThemeMode.DARK to stringResource(R.string.theme_dark),
+        ThemeMode.OLED to stringResource(R.string.theme_oled_black),
+    )
+
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.first { it.first == themeMode }.second
+
+    Text(
+        text = stringResource(R.string.appearance_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = selectedLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { expanded = true }
+                        .semantics { testTag = "theme_dropdown" },
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    options.forEach { (mode, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                onThemeModeChanged(mode)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }

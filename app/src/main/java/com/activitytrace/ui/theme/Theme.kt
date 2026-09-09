@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK, OLED }
+
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF1B6B4A),
     onPrimary = Color.White,
@@ -25,17 +27,36 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = Color(0xFFA3F7C5),
 )
 
+private val OledColorScheme = darkColorScheme(
+    primary = Color(0xFF68DB92),
+    onPrimary = Color(0xFF00391E),
+    primaryContainer = Color(0xFF00522E),
+    onPrimaryContainer = Color(0xFFA3F7C5),
+    background = Color.Black,
+    onBackground = Color(0xFFE6E1E5),
+    surface = Color.Black,
+    onSurface = Color(0xFFE6E1E5),
+    surfaceVariant = Color(0xFF0A0A0A),
+    onSurfaceVariant = Color(0xFFCAC4D0),
+    outline = Color(0xFF938F99),
+)
+
 @Composable
 fun ActivityTraceTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK, ThemeMode.OLED -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+    val dynamicColor = themeMode != ThemeMode.OLED && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+        themeMode == ThemeMode.OLED -> OledColorScheme
+        dynamicColor && darkTheme -> dynamicDarkColorScheme(LocalContext.current)
+        dynamicColor && !darkTheme -> dynamicLightColorScheme(LocalContext.current)
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

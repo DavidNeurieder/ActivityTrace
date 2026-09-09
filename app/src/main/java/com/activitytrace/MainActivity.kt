@@ -26,6 +26,7 @@ import com.activitytrace.ui.SearchViewModel
 import com.activitytrace.ui.SettingsScreen
 import com.activitytrace.ui.BlockedAppsScreen
 import com.activitytrace.ui.theme.ActivityTraceTheme
+import com.activitytrace.ui.theme.ThemeMode
 
 class MainActivity : ComponentActivity() {
     private enum class Screen { Search, Settings, BlockedApps }
@@ -38,7 +39,16 @@ class MainActivity : ComponentActivity() {
         val searchEngine = app.searchEngine
 
         setContent {
-            ActivityTraceTheme {
+            val prefs = getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
+            var themeMode by remember {
+                mutableStateOf(
+                    ThemeMode.valueOf(
+                        prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+                    )
+                )
+            }
+
+            ActivityTraceTheme(themeMode = themeMode) {
                     if (searchEngine == null) {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -63,7 +73,6 @@ class MainActivity : ComponentActivity() {
                     SearchViewModel.Factory(searchEngine, app)
                 )[SearchViewModel::class.java]
 
-                val prefs = getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
                 var onboarded by remember { mutableStateOf(prefs.getBoolean("onboarded", false)) }
                 var screen by remember { mutableStateOf(Screen.Search) }
 
@@ -78,6 +87,11 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(
                                 onBack = { screen = Screen.Search },
                                 onNavigateToBlockedApps = { screen = Screen.BlockedApps },
+                                themeMode = themeMode,
+                                onThemeModeChanged = { mode ->
+                                    themeMode = mode
+                                    prefs.edit().putString("theme_mode", mode.name).apply()
+                                },
                             )
                         }
                         Screen.BlockedApps -> {

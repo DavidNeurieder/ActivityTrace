@@ -66,6 +66,11 @@
     <string name="privacy_sensitive_body">Screen capture uses Android\'s accessibility service and excludes supported password, credit card and other sensitive fields automatically, the same way system keyboards do. For additional protection, use Blocked apps.</string>
     <string name="privacy_data_scope_title">What gets captured?</string>
     <string name="privacy_data_scope_body">Text you type and notifications you receive may be captured. Everything stays on this device in an encrypted database and is never sent anywhere.</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="theme_system_default">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_oled_black">OLED Black</string>
     <string name="retention_title">Retention period</string>
     <string name="retention_7d">7 days</string>
     <string name="retention_30d">30 days</string>
