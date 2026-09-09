@@ -15,7 +15,7 @@ class ThemeModeTest {
 
     @Test
     fun fromPreferenceFallsBackToSystemForUnknownValue() {
-        assertEquals(ThemeMode.SYSTEM, ThemeMode.fromPreference("INVALID"))
+        assertEquals(ThemeMode.SYSTEM, ThemeMode.fromPreference("garbage"))
         assertEquals(ThemeMode.SYSTEM, ThemeMode.fromPreference("olED"))
         assertEquals(ThemeMode.SYSTEM, ThemeMode.fromPreference(""))
     }
