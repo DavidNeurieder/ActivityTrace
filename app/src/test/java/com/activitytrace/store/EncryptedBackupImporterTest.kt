@@ -32,6 +32,8 @@ class EncryptedBackupImporterTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
+        coEvery { dao.getNullHashBatch(any()) } returns emptyList()
+        coEvery { dao.setContentHash(any(), any()) } returns 1
         coEvery { dao.insertAll(any()) } returns listOf(1L)
     }
 

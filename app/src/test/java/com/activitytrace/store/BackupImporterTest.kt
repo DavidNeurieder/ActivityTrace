@@ -68,9 +68,16 @@ class BackupImporterTest {
         assertEquals("meta", items[1].metadata)
     }
 
+    private fun mockDao(dao: CaptureDao) {
+        coEvery { dao.getNullHashBatch(any()) } returns emptyList()
+        coEvery { dao.setContentHash(any(), any()) } returns 1
+        coEvery { dao.insertAll(any()) } returns listOf(1L)
+    }
+
     @Test
     fun `importFromBackup streams items with content hash and deduplicates at DB level`() = runTest {
         val dao = mockk<CaptureDao>()
+        mockDao(dao)
         coEvery { dao.insertAll(any()) } returns listOf(1L, 2L, 3L)
 
         val backupUri = createBackupUri(3)
@@ -85,6 +92,7 @@ class BackupImporterTest {
     @Test
     fun `importFromBackup returns correct count when some items are duplicates`() = runTest {
         val dao = mockk<CaptureDao>()
+        mockDao(dao)
         coEvery { dao.insertAll(any()) } returns listOf(1L, -1L, 3L)
 
         val backupUri = createBackupUri(3)

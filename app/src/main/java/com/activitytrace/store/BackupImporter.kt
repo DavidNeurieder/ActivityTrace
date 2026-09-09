@@ -45,9 +45,13 @@ object BackupImporter {
      * on [CapturedItem] deduplicates silently; [CaptureDao.insertAll] returns
      * `-1` for each ignored duplicate, so the count of newly inserted rows is
      * exact.
+     *
+     * Before streaming, backfills any existing rows that have a NULL
+     * [CapturedItem.contentHash] so the unique index can match them.
      */
     internal suspend fun importStreaming(backupDbFile: File, dao: CaptureDao): Int =
         withContext(Dispatchers.IO) {
+            backfillContentHashes(dao)
             val db = SQLiteDatabase.openDatabase(
                 backupDbFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY,
             )
@@ -169,5 +173,18 @@ object BackupImporter {
             }
         } ?: throw RuntimeException("Failed to open backup file")
         return tempFile
+    }
+
+    internal const val BACKFILL_BATCH_SIZE = 500
+
+    internal suspend fun backfillContentHashes(dao: CaptureDao) {
+        while (true) {
+            val batch = dao.getNullHashBatch(BACKFILL_BATCH_SIZE)
+            if (batch.isEmpty()) break
+            for (row in batch) {
+                val hash = ContentHasher.hash(row.appPackage, row.contentType, row.text)
+                dao.setContentHash(row.id, hash)
+            }
+        }
     }
 }
