@@ -373,16 +373,17 @@ private fun AppearanceSection(
                     trailingIcon = {
                         Icon(
                             Icons.Default.ArrowDropDown,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.theme_select),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { testTag = "theme_dropdown" },
                 )
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .clickable { expanded = true }
-                        .semantics { testTag = "theme_dropdown" },
+                        .clickable { expanded = true },
                 )
                 DropdownMenu(
                     expanded = expanded,

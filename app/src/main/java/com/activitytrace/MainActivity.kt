@@ -42,8 +42,8 @@ class MainActivity : ComponentActivity() {
             val prefs = getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
             var themeMode by remember {
                 mutableStateOf(
-                    ThemeMode.valueOf(
-                        prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+                    ThemeMode.fromPreference(
+                        prefs.getString("theme_mode", null)
                     )
                 )
             }

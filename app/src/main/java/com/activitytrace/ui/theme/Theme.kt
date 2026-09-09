@@ -11,7 +11,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK, OLED }
+enum class ThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK,
+    OLED;
+
+    companion object {
+        fun fromPreference(value: String?): ThemeMode =
+            entries.firstOrNull { it.name == value } ?: SYSTEM
+    }
+}
 
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF1B6B4A),
