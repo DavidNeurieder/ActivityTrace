@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.search.SearchPage
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -32,6 +33,14 @@ class SearchViewModelTest {
     private lateinit var dispatcher: TestDispatcher
     private lateinit var viewModel: SearchViewModel
 
+    private fun item(id: Long, text: String = "text $id") = CapturedItem(
+        id = id,
+        text = text,
+        appPackage = "com.x",
+        contentType = "notification",
+        timestamp = id,
+    )
+
     @Before
     fun setUp() {
         dispatcher = UnconfinedTestDispatcher()
@@ -42,8 +51,9 @@ class SearchViewModelTest {
         every { prefs.getBoolean("bookmarked_filter", false) } returns false
         every { prefs.getBoolean("show_stats", false) } returns false
         every { prefs.edit() } returns editor
-        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(emptyList())
-        viewModel = SearchViewModel(searchEngine, app)
+        every { searchEngine.recentPaged(any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        every { searchEngine.searchPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        viewModel = SearchViewModel(searchEngine, app, debounceMillis = 0)
     }
 
     @After
@@ -55,34 +65,36 @@ class SearchViewModelTest {
     fun `initial state is empty`() {
         assert(viewModel.query.value == "")
         assert(viewModel.results.value.isEmpty())
+        assert(viewModel.loadedCount.value == 0)
+        assert(!viewModel.hasMore.value)
     }
 
     @Test
     fun `restores query from SharedPreferences`() {
         every { prefs.getString("search_query", "") } returns "saved"
-        every { searchEngine.search("saved", any(), any(), any()) } returns flowOf(emptyList())
-        val vm = SearchViewModel(searchEngine, app)
+        every { searchEngine.searchPaged("saved", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        val vm = SearchViewModel(searchEngine, app, debounceMillis = 0)
         assert(vm.query.value == "saved")
     }
 
     @Test
     fun `restores contentTypeFilter from SharedPreferences`() {
         every { prefs.getString("content_type_filter", null) } returns "notification"
-        val vm = SearchViewModel(searchEngine, app)
+        val vm = SearchViewModel(searchEngine, app, debounceMillis = 0)
         assert(vm.contentTypeFilter.value == "notification")
     }
 
     @Test
     fun `blank query shows recentItems`() {
-        every { searchEngine.search("hello", any(), any(), any()) } returns flowOf(emptyList())
-        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(
-            listOf(CapturedItem(text = "x", appPackage = "com.x", contentType = "text", timestamp = 1L))
-        )
+        val recent = listOf(item(1, "x"))
+        every { searchEngine.recentPaged(any(), any(), any(), any(), any()) } returns flowOf(SearchPage(recent, true))
         viewModel.onQueryChange("hello")
         viewModel.onQueryChange("")
         val result = viewModel.results.value
         assert(result.size == 1)
         assert(result[0].text == "x")
+        assert(viewModel.loadedCount.value == 1)
+        assert(!viewModel.hasMore.value)
     }
 
     @Test
@@ -108,19 +120,74 @@ class SearchViewModelTest {
 
     @Test
     fun `onSearch collects flow from search engine`() {
-        val items = listOf(
-            CapturedItem(text = "test", appPackage = "com.test", contentType = "text", timestamp = 1000L)
-        )
-        every { searchEngine.search("test", any(), any(), any()) } returns flowOf(items)
+        val items = listOf(item(1, "test"), item(2, "test two"))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
 
         viewModel.onQueryChange("test")
         assert(viewModel.results.value == items)
+        assert(viewModel.loadedCount.value == 2)
     }
 
     @Test
     fun `search with whitespace only clears results`() {
         viewModel.onQueryChange("   ")
         assert(viewModel.results.value.isEmpty())
+    }
+
+    @Test
+    fun `a full page reports has more`() {
+        val items = (1..50).map { item(it.toLong()) }
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, isLastPage = false))
+
+        viewModel.onQueryChange("test")
+        assert(viewModel.results.value.size == 50)
+        assert(viewModel.hasMore.value)
+        assert(viewModel.loadedCount.value == 50)
+    }
+
+    @Test
+    fun `loadMore appends the following page and disables hasMore on the tail`() {
+        val first = (1..50).map { item(it.toLong(), "first") }
+        val second = listOf(item(51, "tail"))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 0) } returns flowOf(SearchPage(first, false))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 50) } returns flowOf(SearchPage(second, true))
+
+        viewModel.onQueryChange("test")
+        viewModel.loadMore()
+
+        assert(viewModel.results.value.size == 51)
+        assert(viewModel.results.value.last().text == "tail")
+        assert(!viewModel.hasMore.value)
+        assert(viewModel.loadedCount.value == 51)
+    }
+
+    @Test
+    fun `loadMore is ignored when hasMore is false`() {
+        val items = listOf(item(1))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
+        viewModel.onQueryChange("test")
+        viewModel.loadMore()
+
+        verify(exactly = 1) { searchEngine.searchPaged(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `changing the query resets pagination to the first page`() {
+        val firstPage = (1..50).map { item(it.toLong(), "a") }
+        val secondPage = listOf(item(51, "b"))
+        val resetPage = listOf(item(1, "c"))
+        every { searchEngine.searchPaged("query", any(), any(), any(), any(), 0) } returns flowOf(SearchPage(firstPage, false))
+        every { searchEngine.searchPaged("query", any(), any(), any(), any(), 50) } returns flowOf(SearchPage(secondPage, true))
+        every { searchEngine.searchPaged("query", "notification", any(), any(), any(), 0) } returns flowOf(SearchPage(resetPage, true))
+
+        viewModel.onQueryChange("query")
+        viewModel.loadMore()
+        assert(viewModel.results.value.size == 51)
+
+        viewModel.setContentTypeFilter("notification")
+        assert(viewModel.results.value == resetPage)
+        assert(viewModel.loadedCount.value == 1)
+        assert(!viewModel.hasMore.value)
     }
 
     @Test
@@ -146,7 +213,7 @@ class SearchViewModelTest {
     @Test
     fun `restores showStats from SharedPreferences`() {
         every { prefs.getBoolean("show_stats", false) } returns true
-        val vm = SearchViewModel(searchEngine, app)
+        val vm = SearchViewModel(searchEngine, app, debounceMillis = 0)
         assert(vm.showStats.value)
     }
 
@@ -155,5 +222,46 @@ class SearchViewModelTest {
         viewModel.setShowStats(true)
         verify { editor.putBoolean("show_stats", true) }
         verify { editor.apply() }
+    }
+
+    @Test
+    fun `search is not executed until the debounce window elapses`() {
+        val items = listOf(item(1, "debounced"))
+        every { searchEngine.searchPaged("hello", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
+        val vm = SearchViewModel(searchEngine, app, debounceMillis = 300)
+
+        vm.onQueryChange("hello")
+        assert(vm.results.value.isEmpty())
+
+        dispatcher.scheduler.advanceTimeBy(299)
+        dispatcher.scheduler.runCurrent()
+        assert(vm.results.value.isEmpty())
+
+        verify(exactly = 0) { searchEngine.searchPaged("hello", any(), any(), any(), any(), any()) }
+
+        dispatcher.scheduler.advanceTimeBy(2)
+        dispatcher.scheduler.runCurrent()
+
+        assert(vm.results.value == items)
+        verify(exactly = 1) { searchEngine.searchPaged("hello", any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `typing during the debounce window runs only the last query`() {
+        val items = listOf(item(1, "final"))
+        every { searchEngine.searchPaged("final", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
+        val vm = SearchViewModel(searchEngine, app, debounceMillis = 300)
+
+        vm.onQueryChange("f")
+        vm.onQueryChange("fi")
+        vm.onQueryChange("final")
+
+        dispatcher.scheduler.advanceTimeBy(301)
+        dispatcher.scheduler.runCurrent()
+
+        verify(exactly = 1) { searchEngine.searchPaged("final", any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { searchEngine.searchPaged("f", any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { searchEngine.searchPaged("fi", any(), any(), any(), any(), any()) }
+        assert(vm.results.value == items)
     }
 }

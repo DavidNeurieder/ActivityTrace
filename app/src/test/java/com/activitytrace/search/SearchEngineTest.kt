@@ -2,6 +2,7 @@ package com.activitytrace.search
 
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.CaptureDao
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
@@ -131,5 +132,72 @@ class SearchEngineTest {
         searchEngine.search("*").collect { result.add(it) }
 
         assert(result[0].isEmpty())
+    }
+
+    @Test
+    fun `recentPaged uses like paged with page size and offset`() = runTest {
+        searchEngine.recentPaged(null, null, null, pageSize = 50, offset = 25).collect { }
+
+        verify { captureDao.searchLikePaged(emptyList<String>(), null, null, null, 50L, 25L) }
+    }
+
+    @Test
+    fun `searchPaged uses fts paged with page size and offset`() = runTest {
+        searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 25).collect { }
+
+        verify { captureDao.searchFtsPaged("hello", null, null, null, 50L, 25L) }
+    }
+
+    @Test
+    fun `searchPaged with filters and no keywords uses like paged`() = runTest {
+        searchEngine.searchPaged("type:notification", null, null, null, pageSize = 50, offset = 0).collect { }
+
+        verify { captureDao.searchLikePaged(emptyList<String>(), null, "notification", null, 50L, 0L) }
+    }
+
+    @Test
+    fun `searchPaged with all wildcards returns an empty last page`() = runTest {
+        val pages = mutableListOf<SearchPage>()
+        searchEngine.searchPaged("***", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
+        val page = pages.single()
+        assert(page.items.isEmpty())
+        assert(page.isLastPage)
+
+        verify(exactly = 0) { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `searchPaged marks a short page as the last page`() = runTest {
+        val items = listOf(
+            CapturedItem(text = "found", appPackage = "com.x", contentType = "text", timestamp = 1L)
+        )
+        every { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(items)
+
+        val pages = mutableListOf<SearchPage>()
+        searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
+
+        assert(pages.single().items == items)
+        assert(pages.single().isLastPage)
+    }
+
+    @Test
+    fun `searchPaged keeps has more when the page is full`() = runTest {
+        val items = (1..50).map {
+            CapturedItem(text = "full $it", appPackage = "com.x", contentType = "text", timestamp = it.toLong())
+        }
+        every { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(items)
+
+        val pages = mutableListOf<SearchPage>()
+        searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
+
+        assert(!pages.single().isLastPage)
+    }
+
+    @Test
+    fun `recentPaged surfaces filters to the like dao`() = runTest {
+        val range = 1000L to 2000L
+        searchEngine.recentPaged("notification", "signal", range, pageSize = 50, offset = 50).collect { }
+
+        verify { captureDao.searchLikePaged(emptyList<String>(), range, "notification", "signal", 50L, 50L) }
     }
 }

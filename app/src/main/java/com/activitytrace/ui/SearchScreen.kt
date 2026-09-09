@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.AlertDialog
@@ -123,6 +124,9 @@ fun SearchScreen(
     val showStats by viewModel.showStats.collectAsState()
     val appFilter by viewModel.appFilter.collectAsState()
     val dateFilter by viewModel.dateFilter.collectAsState()
+    val loadedCount by viewModel.loadedCount.collectAsState()
+    val hasMore by viewModel.hasMore.collectAsState()
+    val loadingMore by viewModel.loadingMore.collectAsState()
     val keywords = remember(query) {
         if (query.isBlank()) emptyList() else QueryParser.parse(query).keywords
     }
@@ -234,7 +238,11 @@ fun SearchScreen(
                 )
             } else {
                 if (results.isNotEmpty()) {
-                    val resultCountText = context.resources.getQuantityString(R.plurals.result_count, results.size, results.size)
+                    val resultCountText = if (hasMore) {
+                        context.resources.getQuantityString(R.plurals.result_count_capped, loadedCount, loadedCount)
+                    } else {
+                        context.resources.getQuantityString(R.plurals.result_count, loadedCount, loadedCount)
+                    }
                     Text(
                         text = resultCountText,
                         style = MaterialTheme.typography.bodySmall,
@@ -284,6 +292,15 @@ fun SearchScreen(
                                         keywords = keywords,
                                     )
                                 }
+                            }
+                        }
+                        if (hasMore) {
+                            item(key = "load-more") {
+                                LoadMoreRow(
+                                    loading = loadingMore,
+                                    onClick = { viewModel.loadMore() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
                             }
                         }
                     }
@@ -631,6 +648,32 @@ private fun ResultCard(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun LoadMoreRow(
+    loading: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = !loading,
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(stringResource(R.string.load_more))
+        }
     }
 }
 

@@ -5,11 +5,13 @@ import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.os.Environment
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.ActivityTraceDatabase
@@ -68,6 +70,32 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun showsCaptureStatusCard() {
+        composeTestRule.onNodeWithText("Capture").assertExists()
+        composeTestRule.onNodeWithText("Screen activity").assertExists()
+        composeTestRule.onNodeWithText("Notifications").assertExists()
+    }
+
+    @Test
+    fun captureCardShowsBlockedAppsCount() {
+        composeTestRule.onNode(hasText("apps blocked from capture", substring = true)).assertExists()
+    }
+
+    @Test
+    fun showsPrivacySection() {
+        composeTestRule.onNodeWithText("Privacy").assertExists()
+        composeTestRule.onNodeWithText("What gets captured?").assertExists()
+    }
+
+    @Test
+    fun showsPrivacySensitiveContentDescription() {
+        composeTestRule.onNodeWithText("Sensitive content").assertExists()
+        composeTestRule.onNode(
+            hasText("Everything stays on this device in an encrypted database and is never sent anywhere.", substring = true)
+        ).assertExists()
+    }
+
+    @Test
     fun showsNotificationAccessRow() {
         composeTestRule.onNodeWithText("Notification access").assertExists()
     }
@@ -95,7 +123,7 @@ class SettingsScreenTest {
     @Test
     fun showsRetentionOptions() {
         composeTestRule.onNodeWithText("7 days").assertExists()
-        composeTestRule.onNodeWithTag("retention_dropdown").performClick()
+        composeTestRule.onNodeWithTag("retention_dropdown").performScrollTo().performClick()
         composeTestRule.onNodeWithText("Always").assertExists()
         composeTestRule.onNodeWithText("30 days").assertExists()
         composeTestRule.onNodeWithText("90 days").assertExists()

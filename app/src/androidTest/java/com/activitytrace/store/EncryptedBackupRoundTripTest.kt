@@ -10,6 +10,7 @@ import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.activitytrace.model.CapturedItem
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -27,6 +28,40 @@ class EncryptedBackupRoundTripTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
+    }
+
+    @After
+    fun tearDown() {
+        // Encrypted exports accumulate in Downloads across runs and make the
+        // MediaStore unique-file resolver fail ("Failed to build unique file"),
+        // so purge everything this test can produce.
+        purgeDownloads("activity_trace_backup")
+        purgeDownloads("export_error_")
+        File(context.cacheDir, "encrypted_import").deleteRecursively()
+        File(context.cacheDir, "encrypted_export").deleteRecursively()
+    }
+
+    private fun purgeDownloads(prefix: String) {
+        val projection = arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME)
+        context.contentResolver.query(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME))
+                if (name != null && name.startsWith(prefix)) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                    context.contentResolver.delete(
+                        ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id),
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
     }
 
     private fun latestBackupUri(): Uri? {
@@ -135,13 +170,56 @@ class EncryptedBackupRoundTripTest {
         assertTrue("export must succeed on device, was $status", status is ExportStatus.Success)
 
         val uri = requireNotNull(latestBackupUri()) { "backup file not found in MediaStore" }
-        var securityFailure = false
-        try {
-            EncryptedBackupExporter.import(context, uri, "wrong-password".toCharArray(), dao)
-        } catch (e: java.security.GeneralSecurityException) {
-            securityFailure = true
-        }
-        assertTrue("wrong password must be rejected with GeneralSecurityException", securityFailure)
+        val result = EncryptedBackupExporter.import(context, uri, "wrong-password".toCharArray(), dao)
+        assertTrue(
+            "wrong password must yield InvalidBackup, was $result",
+            result is RestoreResult.InvalidBackup,
+        )
+    }
+
+    @Test
+    fun failed_restore_leaves_existing_rows_intact() = runTest {
+        val dao = ActivityTraceDatabase.getInstance(context).captureDao()
+        val keeper = "keeper_row_${System.nanoTime()}"
+        dao.insert(
+            CapturedItem(
+                text = keeper,
+                appPackage = "com.example",
+                contentType = "notification",
+                timestamp = System.currentTimeMillis(),
+            ),
+        )
+        val status = EncryptedBackupExporter.export(context, password)
+        assertTrue("export must succeed on device, was $status", status is ExportStatus.Success)
+        val uri = requireNotNull(latestBackupUri()) { "backup file not found in MediaStore" }
+
+        val tamperedPassword = charArrayOf(*password).also { it[0] = (it[0].code xor 0x01).toChar() }
+        val result = EncryptedBackupExporter.import(context, uri, tamperedPassword, dao)
+
+        assertTrue("tampered restore must fail, was $result", result is RestoreResult.InvalidBackup)
+        val rows = dao.getAllItems()
+        assertTrue(
+            "existing rows must survive a failed restore",
+            rows.any { it.text == keeper },
+        )
+    }
+
+    @Test
+    fun failed_restore_leaves_no_temporary_files_on_disk() = runTest {
+        val dao = ActivityTraceDatabase.getInstance(context).captureDao()
+        val status = EncryptedBackupExporter.export(context, password)
+        assertTrue("export must succeed on device, was $status", status is ExportStatus.Success)
+        val uri = requireNotNull(latestBackupUri()) { "backup file not found in MediaStore" }
+
+        EncryptedBackupExporter.import(context, uri, "wrong-password".toCharArray(), dao)
+
+        assertTrue(
+            "import temp dir must be removed after a failed restore",
+            !File(context.cacheDir, "encrypted_import").exists(),
+        )
+        val stray = context.cacheDir.walkTopDown().filter { it.isFile && it.extension == "sqlite" }
+            .toList()
+        assertTrue("no plaintext sqlite files may remain after a failed restore, found: $stray", stray.isEmpty())
     }
 
     @Test

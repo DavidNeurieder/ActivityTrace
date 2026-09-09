@@ -2,9 +2,12 @@ package com.activitytrace.store
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import androidx.room.migration.Migration
 import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -140,9 +143,46 @@ class ActivityTraceDatabaseMigrationTest {
             }
     }
 
+    @Test
+    fun `a failing migration leaves the original database fully usable`() {
+        helper.createDatabase(TEST_DB_FAIL, 8).use { db ->
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked) VALUES ('keep me', 'com.test', 'screen', 1000, 0)"
+            )
+            db.execSQL("INSERT INTO blocked_apps(app_package) VALUES ('com.keep.app')")
+        }
+
+        val failingMigration = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("THIS IS NOT VALID SQL")
+            }
+        }
+
+        assertThrows(Exception::class.java) {
+            helper.runMigrationsAndValidate(TEST_DB_FAIL, 9, true, failingMigration)
+        }
+
+        SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(TEST_DB_FAIL).absolutePath, null).use { db ->
+            assertEquals("still version 8", 8, db.version)
+            val rowCursor = db.rawQuery("SELECT COUNT(*) FROM captured_items", null)
+            rowCursor.moveToFirst()
+            assertEquals("pre-migration rows must survive the failure", 1, rowCursor.getInt(0))
+            rowCursor.close()
+
+            val blockedCursor = db.rawQuery(
+                "SELECT COUNT(*) FROM blocked_apps WHERE app_package = 'com.keep.app'",
+                null,
+            )
+            blockedCursor.moveToFirst()
+            assertEquals(1, blockedCursor.getInt(0))
+            blockedCursor.close()
+        }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test-6-7.db"
         const val TEST_DB_7_8 = "migration-test-7-8.db"
+        const val TEST_DB_FAIL = "migration-test-failing.db"
     }
 
     private fun createV5Database(): File {

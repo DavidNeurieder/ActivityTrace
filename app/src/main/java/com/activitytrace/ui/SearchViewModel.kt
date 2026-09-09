@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.search.SearchPage
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -29,6 +31,7 @@ import java.util.Calendar
 class SearchViewModel(
     private val searchEngine: SearchEngine,
     application: Application,
+    private val debounceMillis: Long = DEBOUNCE_MILLIS_DEFAULT,
 ) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("activity_trace", Context.MODE_PRIVATE)
@@ -39,6 +42,17 @@ class SearchViewModel(
 
     private val _results = MutableStateFlow<List<CapturedItem>>(emptyList())
     val results = _results.asStateFlow()
+
+    private val _loadedCount = MutableStateFlow(0)
+    val loadedCount = _loadedCount.asStateFlow()
+
+    private val _hasMore = MutableStateFlow(false)
+    val hasMore = _hasMore.asStateFlow()
+
+    private val _loadingMore = MutableStateFlow(false)
+    val loadingMore = _loadingMore.asStateFlow()
+
+    private val _offset = MutableStateFlow(0)
 
     private val _contentTypeFilter = MutableStateFlow<String?>(prefs.getString("content_type_filter", null))
     val contentTypeFilter = _contentTypeFilter.asStateFlow()
@@ -78,39 +92,67 @@ class SearchViewModel(
                 }
         }
 
+        val baseInputs = combine(
+            _query, _contentTypeFilter, _bookmarkedOnly,
+            _appFilter, _dateFilter,
+        ) { q, type, bookmarked, app, date ->
+            FilterState(q, type, bookmarked, app, date, 0)
+        }
+        val searchInputs = combine(baseInputs, _offset) { state, offset ->
+            state.copy(offset = offset)
+        }
+        val debouncedInputs = if (debounceMillis > 0) {
+            searchInputs.debounce(debounceMillis)
+        } else {
+            searchInputs
+        }
+
         viewModelScope.launch {
-            combine(
-                _query, _contentTypeFilter, _bookmarkedOnly,
-                _appFilter, _dateFilter,
-            ) { q, type, bookmarked, app, date ->
-                FilterState(q, type, bookmarked, app, date)
-            }
+            debouncedInputs
                 .flatMapLatest { state ->
                     if (state.bookmarked) {
                         val dao = getCaptureDao()
-                        if (dao != null) dao.bookmarkedItems()
-                        else flowOf(emptyList())
+                        if (dao != null) dao.bookmarkedItems().map { SearchPage(it, true) }
+                        else flowOf(SearchPage(emptyList(), true))
                     } else if (state.query.isBlank()) {
-                        searchEngine.recentItems(
+                        searchEngine.recentPaged(
                             contentType = state.contentType,
                             appPackage = state.appPackage,
                             dateRange = state.dateRange,
+                            pageSize = PAGE_SIZE,
+                            offset = state.offset,
                         )
                     } else {
-                        searchEngine.search(
+                        searchEngine.searchPaged(
                             rawQuery = state.query,
                             contentType = state.contentType,
                             appPackage = state.appPackage,
                             dateRange = state.dateRange,
+                            pageSize = PAGE_SIZE,
+                            offset = state.offset,
                         )
                     }
                 }
                 .catch { e ->
                     Log.e(TAG, "Search failed", e)
-                    emit(emptyList())
+                    emit(SearchPage(emptyList(), true))
                 }
-                .collect { items ->
-                    _results.value = items
+                .collect { page ->
+                    if (page.items.isEmpty() && _offset.value > 0) {
+                        _hasMore.value = false
+                    } else if (page.items.isEmpty()) {
+                        _results.value = emptyList()
+                        _loadedCount.value = 0
+                        _hasMore.value = false
+                    } else if (_offset.value == 0) {
+                        _results.value = page.items
+                        _loadedCount.value = page.items.size
+                    } else {
+                        _results.value = _results.value + page.items
+                        _loadedCount.value = _loadedCount.value + page.items.size
+                    }
+                    _hasMore.value = !page.isLastPage && page.items.isNotEmpty()
+                    _loadingMore.value = false
                 }
         }
 
@@ -140,11 +182,13 @@ class SearchViewModel(
     }
 
     fun onQueryChange(text: String) {
+        resetOffsetForNewSearch()
         _query.value = text
         _queryToPersist.value = text
     }
 
     fun setContentTypeFilter(type: String?) {
+        resetOffsetForNewSearch()
         _contentTypeFilter.value = type
         if (type != "bookmarked") {
             _bookmarkedOnly.value = false
@@ -154,6 +198,7 @@ class SearchViewModel(
     }
 
     fun setBookmarkedFilter(enabled: Boolean) {
+        resetOffsetForNewSearch()
         _bookmarkedOnly.value = enabled
         _contentTypeFilter.value = null
         prefs.edit().putBoolean("bookmarked_filter", enabled).apply()
@@ -176,11 +221,26 @@ class SearchViewModel(
     }
 
     fun setAppFilter(appPackage: String?) {
+        resetOffsetForNewSearch()
         _appFilter.value = appPackage
     }
 
     fun setDateFilter(dateRange: Pair<Long, Long>?) {
+        resetOffsetForNewSearch()
         _dateFilter.value = dateRange
+    }
+
+    fun loadMore() {
+        if (_hasMore.value && !_loadingMore.value) {
+            _loadingMore.value = true
+            _offset.value += PAGE_SIZE
+        }
+    }
+
+    private fun resetOffsetForNewSearch() {
+        if (_offset.value != 0) {
+            _offset.value = 0
+        }
     }
 
     fun quickDateFilterToday() {
@@ -238,9 +298,12 @@ class SearchViewModel(
         val bookmarked: Boolean,
         val appPackage: String?,
         val dateRange: Pair<Long, Long>?,
+        val offset: Int,
     )
 
     companion object {
         private const val TAG = "SearchViewModel"
+        private const val PAGE_SIZE = 50
+        private const val DEBOUNCE_MILLIS_DEFAULT = 300L
     }
 }

@@ -1,6 +1,7 @@
 package com.activitytrace.store
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import android.net.Uri
 import android.util.Log
 import com.activitytrace.R
@@ -10,6 +11,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
+import java.security.GeneralSecurityException
 import java.util.zip.ZipOutputStream
 
 object EncryptedBackupExporter {
@@ -41,17 +44,30 @@ object EncryptedBackupExporter {
                     put("exported_at", System.currentTimeMillis())
                 }.toString()
 
+                val payloadZip = File(tempDir, "payload.zip")
+                payloadZip.outputStream().use { payloadOut ->
+                    val bounded = BoundedOutputStream(payloadOut, BackupLimits.MAX_PAYLOAD_BYTES)
+                    ZipOutputStream(bounded).use { zip ->
+                        FileInputStream(stagingSqlite).use { staging ->
+                            BackupPayload.writeEntries(staging, metadata, zip)
+                        }
+                    }
+                }
+
                 val envelope = File(tempDir, "backup.envelope")
                 envelope.outputStream().use { envelopeOut ->
-                    val cipherOut = BackupCrypto.openEncryptStream(envelopeOut, password)
-                    val zip = ZipOutputStream(cipherOut)
-                    FileInputStream(stagingSqlite).use { staging ->
-                        BackupPayload.writeEntries(staging, metadata, zip)
+                    FileInputStream(payloadZip).use { payload ->
+                        BackupCrypto.openEncryptStream(
+                            envelopeOut,
+                            password,
+                            payloadZip.length(),
+                        ).use { cipherOut ->
+                            payload.copyTo(cipherOut, BackupEnvelope.IO_CHUNK)
+                        }
                     }
-                    zip.close()
-                    envelopeOut.flush()
                 }
                 stagingSqlite.delete()
+                payloadZip.delete()
 
                 DatabaseExporter.exportFileToDownloads(
                     context,
@@ -75,17 +91,19 @@ object EncryptedBackupExporter {
         password: CharArray,
         dao: CaptureDao,
         onProgress: (ExportStatus) -> Unit = {},
-    ): Int = withContext(Dispatchers.IO) {
+    ): RestoreResult = withContext(Dispatchers.IO) {
         if (password.isEmpty()) {
-            throw IllegalArgumentException(context.getString(R.string.backup_password_required))
+            return@withContext RestoreResult.InvalidBackup(
+                context.getString(R.string.backup_password_required),
+            )
         }
-        onProgress(ExportStatus.Progress(context.getString(R.string.progress_copying_backup)))
         val tempDir = File(context.cacheDir, "encrypted_import")
-        tempDir.mkdirs()
         val backupFile = File(tempDir, "backup.activitytrace")
         val decryptedPayload = File(tempDir, "payload.zip")
         val restoredSqlite = File(tempDir, "restored.sqlite")
         try {
+            tempDir.mkdirs()
+            onProgress(ExportStatus.Progress(context.getString(R.string.progress_copying_backup)))
             context.contentResolver.openInputStream(backupUri)?.use { input ->
                 backupFile.outputStream().use { output ->
                     input.copyTo(
@@ -93,7 +111,7 @@ object EncryptedBackupExporter {
                         BackupEnvelope.IO_CHUNK,
                     )
                 }
-            } ?: throw RuntimeException("Failed to open backup file")
+            } ?: throw IOException("Failed to open backup file")
 
             onProgress(ExportStatus.Progress(context.getString(R.string.progress_reading_backup)))
             backupFile.inputStream().use { input ->
@@ -119,7 +137,21 @@ object EncryptedBackupExporter {
 
             onProgress(ExportStatus.Progress(context.getString(R.string.progress_merging_backup)))
             val items = BackupImporter.readItemsFromSqlite(restoredSqlite)
-            BackupImporter.importItems(items, dao)
+            val imported = BackupImporter.importItems(items, dao)
+            RestoreResult.Success(imported)
+        } catch (e: GeneralSecurityException) {
+            RestoreResult.InvalidBackup(context.getString(R.string.restore_invalid_backup))
+        } catch (e: BackupTooLargeException) {
+            RestoreResult.InvalidBackup(context.getString(R.string.restore_backup_too_large))
+        } catch (e: SQLiteException) {
+            RestoreResult.InvalidBackup(context.getString(R.string.restore_backup_database_unreadable))
+        } catch (e: IllegalArgumentException) {
+            RestoreResult.InvalidBackup(context.getString(R.string.restore_invalid_backup))
+        } catch (e: IOException) {
+            RestoreResult.Failed(context.getString(R.string.restore_failed), e)
+        } catch (e: Exception) {
+            ExportErrorLogger.saveErrorLog(context, "encrypted database restore", e)
+            RestoreResult.Failed(context.getString(R.string.restore_failed), e)
         } finally {
             tempDir.deleteRecursively()
         }

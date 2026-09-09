@@ -238,4 +238,75 @@ class QueryParserTest {
         val result = QueryParser.parse(exact)
         assertTrue(result.keywords.contains("hello"))
     }
+
+    @Test
+    fun `bare in prefix sets no app filter`() {
+        val result = QueryParser.parse("in:")
+        assertNull(result.appFilter)
+        assertTrue(result.keywords.isEmpty())
+    }
+
+    @Test
+    fun `bare type prefix sets no type filter`() {
+        val result = QueryParser.parse("type:")
+        assertNull(result.typeFilter)
+        assertTrue(result.keywords.isEmpty())
+    }
+
+    @Test
+    fun `wildcard characters become keywords`() {
+        val result = QueryParser.parse("***")
+        assertEquals(listOf("***"), result.keywords)
+    }
+
+    @Test
+    fun `triple quotes become a keyword`() {
+        val result = QueryParser.parse("\"\"\"")
+        assertEquals(listOf("\"\"\""), result.keywords)
+    }
+
+    @Test
+    fun `unclosed quote yields keyword tokens`() {
+        val result = QueryParser.parse("\"unclosed quote")
+        assertEquals(listOf("\"unclosed", "quote"), result.keywords)
+    }
+
+    @Test
+    fun `lone quote becomes a keyword`() {
+        val result = QueryParser.parse("\"")
+        assertEquals(listOf("\""), result.keywords)
+    }
+
+    @Test
+    fun `parentheses become keywords`() {
+        val result = QueryParser.parse("(paren) foo")
+        assertEquals(listOf("(paren)", "foo"), result.keywords)
+    }
+
+    @Test
+    fun `in filter combined with yesterday`() {
+        val result = QueryParser.parse("in:signal yesterday")
+        assertEquals("signal", result.appFilter)
+        assertTrue(result.keywords.isEmpty())
+        assertNotNull(result.timeRange)
+    }
+
+    @Test
+    fun `type file with keyword`() {
+        val result = QueryParser.parse("type:file invoice")
+        assertEquals("page", result.typeFilter)
+        assertEquals(listOf("invoice"), result.keywords)
+    }
+
+    @Test
+    fun `double quotes around words are kept as keyword text`() {
+        val result = QueryParser.parse("\"tracking number\"")
+        assertEquals(listOf("\"tracking", "number\""), result.keywords)
+    }
+
+    @Test
+    fun `mixed operator words stay keywords`() {
+        val result = QueryParser.parse("and or not near")
+        assertEquals(listOf("and", "or", "not", "near"), result.keywords)
+    }
 }

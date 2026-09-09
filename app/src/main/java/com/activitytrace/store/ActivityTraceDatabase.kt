@@ -22,6 +22,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
 
     companion object {
         const val CURRENT_VERSION = 9
+        const val DB_NAME = "activity_trace.db"
         @Volatile
         private var INSTANCE: ActivityTraceDatabase? = null
 
@@ -57,12 +58,16 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             return DatabaseOpener(database, stateStore).open()
         }
 
-        private fun buildDatabase(context: Context, passphrase: ByteArray): ActivityTraceDatabase {
+        internal fun buildDatabase(
+            context: Context,
+            passphrase: ByteArray,
+            dbName: String = DB_NAME,
+        ): ActivityTraceDatabase {
             val factory = SupportOpenHelperFactory(passphrase)
             return Room.databaseBuilder(
                 context.applicationContext,
                 ActivityTraceDatabase::class.java,
-                "activity_trace.db"
+                dbName
             )
                 .openHelperFactory(factory)
                 .addCallback(SEED_DEFAULTS_CALLBACK)

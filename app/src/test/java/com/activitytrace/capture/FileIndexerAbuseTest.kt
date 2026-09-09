@@ -154,10 +154,14 @@ class FileIndexerAbuseTest {
         val file = pdfFile("wordy.pdf", pdfBytes(pageCount = 3, text = pageText))
         val limits = IndexLimits(maxExtractedCharacters = 10_000)
 
-        val result = FileIndexer.extractPdfText(context, file.uri, limits)
+        val result = FileIndexer.extractPdfText(context, file.uri, ExtractionBudget.from(limits))
 
-        assertTrue(result is ExtractionResult.Success)
-        val text = (result as ExtractionResult.Success).text
+        assertTrue(
+            "expected success or truncation, was $result",
+            result is ExtractionResult.Success || result is ExtractionResult.Truncated,
+        )
+        val text = (result as? ExtractionResult.Success)?.text
+            ?: (result as ExtractionResult.Truncated).text
         assertTrue(text.length <= limits.maxExtractedCharacters)
         assertTrue(text.isNotEmpty())
     }
@@ -167,7 +171,7 @@ class FileIndexerAbuseTest {
         val file = pdfFile("locked.pdf", encryptedPdfBytes())
         val budget = IndexBudget(IndexLimits())
 
-        val result = FileIndexer.extractPdfText(context, file.uri, IndexLimits())
+        val result = FileIndexer.extractPdfText(context, file.uri, ExtractionBudget.from(IndexLimits()))
 
         assertTrue(result == ExtractionResult.Unsupported || result == ExtractionResult.Invalid)
 

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -41,11 +42,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +59,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -79,9 +83,11 @@ import com.activitytrace.store.DataExporter
 import com.activitytrace.store.DatabaseExporter
 import com.activitytrace.store.EncryptedBackupExporter
 import com.activitytrace.store.ExportStatus
+import com.activitytrace.store.RestoreResult
 import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -123,9 +129,13 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
+            CaptureStatusSection(context)
+            Spacer(Modifier.height(24.dp))
             PermissionsSection(context)
             Spacer(Modifier.height(24.dp))
             BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
+            Spacer(Modifier.height(24.dp))
+            PrivacySection()
             Spacer(Modifier.height(24.dp))
             RetentionSection(
                 selectedDays = retentionDays,
@@ -145,6 +155,185 @@ fun SettingsScreen(
     }
 }
 
+private fun isNotificationListenerGranted(context: Context): Boolean = try {
+    NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+} catch (_: Exception) {
+    false
+}
+
+private fun isAccessibilityServiceGranted(context: Context): Boolean = try {
+    val enabledServices = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+    )
+    val serviceName = "${context.packageName}/${AccessibilityCaptureService::class.java.name}"
+    enabledServices?.split(":")?.any { it.trim() == serviceName } == true
+} catch (_: Exception) {
+    false
+}
+
+@Composable
+private fun CaptureStatusSection(context: Context) {
+    var notificationGranted by remember { mutableStateOf(false) }
+    var accessibilityGranted by remember { mutableStateOf(false) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            notificationGranted = isNotificationListenerGranted(context)
+            accessibilityGranted = isAccessibilityServiceGranted(context)
+        }
+    }
+
+    val blockedAppsFlow = remember {
+        runCatching { ActivityTraceDatabase.getInstance(context).blockedAppDao().blockedAppsFlow() }
+            .getOrNull() ?: emptyFlow()
+    }
+    val blockedApps by blockedAppsFlow.collectAsState(initial = emptyList())
+    val capturePartial = !(notificationGranted && accessibilityGranted)
+
+    Text(
+        text = stringResource(R.string.capture_status_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            StatusRow(
+                label = stringResource(R.string.capture_screen_activity),
+                enabled = accessibilityGranted,
+                onClick = {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                },
+            )
+            Spacer(Modifier.height(4.dp))
+            StatusRow(
+                label = stringResource(R.string.capture_notifications),
+                enabled = notificationGranted,
+                onClick = {
+                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                },
+            )
+            Spacer(Modifier.height(12.dp))
+            Divider()
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = pluralStringResource(
+                    R.plurals.capture_blocked_count,
+                    blockedApps.size,
+                    blockedApps.size,
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (capturePartial) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.capture_partial_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (!notificationGranted) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.enable_notifications))
+                    }
+                }
+                if (!accessibilityGranted) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.enable_accessibility))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusRow(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.size(10.dp),
+            shape = CircleShape,
+            color = if (enabled) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.error,
+        ) {}
+        Spacer(Modifier.width(10.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            text = if (enabled) stringResource(R.string.capture_enabled)
+                   else stringResource(R.string.capture_disabled),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun PrivacySection() {
+    Text(
+        text = stringResource(R.string.privacy_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.privacy_sensitive_title),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.privacy_sensitive_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Divider()
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.privacy_data_scope_title),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.privacy_data_scope_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PermissionsSection(context: Context) {
     var notificationGranted by remember { mutableStateOf(false) }
@@ -153,17 +342,8 @@ private fun PermissionsSection(context: Context) {
 
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
-            notificationGranted = enabledPackages.contains(context.packageName)
-
-            val enabledServices = Settings.Secure.getString(
-                context.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-            )
-            val serviceName =
-                "${context.packageName}/${AccessibilityCaptureService::class.java.name}"
-            accessibilityGranted =
-                enabledServices?.split(":")?.any { it.trim() == serviceName } == true
+            notificationGranted = isNotificationListenerGranted(context)
+            accessibilityGranted = isAccessibilityServiceGranted(context)
         }
     }
 
@@ -734,21 +914,29 @@ private fun DataSection(
                         restoreUri = null
                         scope.launch {
                             onExportStatus(null)
-                            try {
-                                val db = ActivityTraceDatabase.getInstance(context)
-                                val count = EncryptedBackupExporter.import(context, uri, password, db.captureDao())
-                                if (count > 0) {
-                                    val msg = context.resources.getQuantityString(R.plurals.imported_count, count, count)
-                                    onExportStatus(ExportStatus.Success(msg))
-                                } else {
-                                    onExportStatus(ExportStatus.Info(context.getString(R.string.no_new_items)))
-                                }
-                            } catch (_: Exception) {
-                                onExportStatus(
-                                    ExportStatus.Error(
-                                        context.getString(R.string.encrypted_backup_restore_failed),
-                                    )
+                            val db = ActivityTraceDatabase.getInstance(context)
+                            when (
+                                val result = EncryptedBackupExporter.import(
+                                    context, uri, password, db.captureDao(),
                                 )
+                            ) {
+                                is RestoreResult.Success ->
+                                    if (result.importedCount > 0) {
+                                        val msg = context.resources.getQuantityString(
+                                            R.plurals.imported_count,
+                                            result.importedCount,
+                                            result.importedCount,
+                                        )
+                                        onExportStatus(ExportStatus.Success(msg))
+                                    } else {
+                                        onExportStatus(ExportStatus.Info(context.getString(R.string.no_new_items)))
+                                    }
+
+                                is RestoreResult.InvalidBackup ->
+                                    onExportStatus(ExportStatus.Error(result.reason))
+
+                                is RestoreResult.Failed ->
+                                    onExportStatus(ExportStatus.Error(result.reason))
                             }
                         }
                     },

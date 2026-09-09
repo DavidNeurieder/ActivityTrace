@@ -116,14 +116,16 @@ class BackupCryptoTest {
     }
 
     @Test
-    fun `header records kdf parameters for future decoding`() {
-        val backup = BackupCrypto.encrypt(ByteArray(0), password)
+    fun `header records kdf parameters and payload length for future decoding`() {
+        val payload = "some payload".toByteArray(Charsets.UTF_8)
+        val backup = BackupCrypto.encrypt(payload, password)
         val header = BackupHeader.readFrom(ByteArrayInputStream(backup))
         assertEquals(BackupEnvelope.VERSION.toInt(), header.version.toInt())
         assertEquals(BackupEnvelope.KDF_PBKDF2_SHA256_ID.toInt(), header.kdfId.toInt())
         assertEquals(BackupEnvelope.SALT_LENGTH, header.salt.size)
         assertEquals(BackupEnvelope.NONCE_LENGTH, header.nonce.size)
         assertEquals(BackupEnvelope.PBKDF2_ITERATIONS, header.iterations)
+        assertEquals(payload.size.toLong(), header.payloadLength)
     }
 
     @Test
@@ -164,11 +166,86 @@ class BackupCryptoTest {
     fun `streaming encryption round-trips a large payload without buffering`() {
         val payload = ByteArray(1 shl 20) { (it % 251).toByte() }
         val encrypted = ByteArrayOutputStream()
-        BackupCrypto.encryptTo(ByteArrayInputStream(payload), encrypted, password)
+        BackupCrypto.encryptTo(ByteArrayInputStream(payload), encrypted, password, payload.size.toLong())
         assertArrayEquals(payload, BackupCrypto.decrypt(encrypted.toByteArray(), password))
     }
 
-    private fun craftedHeader(iterations: Int = BackupEnvelope.PBKDF2_ITERATIONS, kdfId: Byte = BackupEnvelope.KDF_PBKDF2_SHA256_ID): ByteArray {
+    @Test
+    fun `payload length beyond the limit is rejected from the header`() {
+        val header = craftedHeader(payloadLength = BackupLimits.MAX_PAYLOAD_BYTES + 1)
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupHeader.readFrom(ByteArrayInputStream(header))
+        }
+    }
+
+    @Test
+    fun `negative payload length is rejected from a v3 header`() {
+        val header = craftedHeader(payloadLength = -1)
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupHeader.readFrom(ByteArrayInputStream(header))
+        }
+    }
+
+    @Test
+    fun `truncated header is rejected`() {
+        val header = craftedHeader()
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupHeader.readFrom(ByteArrayInputStream(header.copyOfRange(0, 10)))
+        }
+    }
+
+    @Test
+    fun `legacy v2 header is still readable and reports no payload length`() {
+        val backup = BackupCrypto.encrypt("legacy support".toByteArray(Charsets.UTF_8), password)
+        val legacy = backup.copyOfRange(0, BackupEnvelope.HEADER_BYTES)
+            .also { it[BackupEnvelope.MAGIC.length] = BackupEnvelope.LEGACY_VERSION }
+        val body = backup.copyOfRange(BackupEnvelope.HEADER_BYTES, backup.size)
+
+        val header = BackupHeader.readFrom(ByteArrayInputStream(legacy + body))
+        assertEquals(BackupEnvelope.LEGACY_VERSION.toInt(), header.version.toInt())
+        assertEquals(-1L, header.payloadLength)
+    }
+
+    @Test
+    fun `legacy v2 backups decrypt with the current reader`() {
+        val payload = "legacy round trip".toByteArray(Charsets.UTF_8)
+        val ciphertext = ByteArrayOutputStream().use { out ->
+            val salt = ByteArray(BackupEnvelope.SALT_LENGTH) { it.toByte() }
+            val nonce = ByteArray(BackupEnvelope.NONCE_LENGTH) { (it + 7).toByte() }
+            val spec = javax.crypto.spec.PBEKeySpec(
+                password,
+                salt,
+                BackupEnvelope.PBKDF2_ITERATIONS,
+                BackupEnvelope.KEY_LENGTH_BITS,
+            )
+            val key = javax.crypto.SecretKeyFactory.getInstance(BackupEnvelope.KDF_TRANSFORM)
+                .generateSecret(spec)
+            val cipher = javax.crypto.Cipher.getInstance(BackupEnvelope.CIPHER_TRANSFORM)
+            cipher.init(
+                javax.crypto.Cipher.ENCRYPT_MODE,
+                javax.crypto.spec.SecretKeySpec(key.encoded, "AES"),
+                javax.crypto.spec.GCMParameterSpec(BackupEnvelope.GCM_TAG_BITS, nonce),
+            )
+            out.write(BackupEnvelope.MAGIC.toByteArray(Charsets.US_ASCII))
+            out.write(BackupEnvelope.LEGACY_VERSION.toInt())
+            out.write(BackupEnvelope.KDF_PBKDF2_SHA256_ID.toInt())
+            out.write(salt)
+            out.write(java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.BIG_ENDIAN)
+                .putInt(BackupEnvelope.PBKDF2_ITERATIONS).array())
+            out.write(nonce)
+            out.write(cipher.doFinal(payload))
+            spec.clearPassword()
+            out.toByteArray()
+        }
+
+        assertArrayEquals(payload, BackupCrypto.decrypt(ciphertext, password))
+    }
+
+    private fun craftedHeader(
+        iterations: Int = BackupEnvelope.PBKDF2_ITERATIONS,
+        kdfId: Byte = BackupEnvelope.KDF_PBKDF2_SHA256_ID,
+        payloadLength: Long = 0,
+    ): ByteArray {
         val out = ByteArrayOutputStream()
         out.write(BackupEnvelope.MAGIC.toByteArray(Charsets.US_ASCII))
         out.write(BackupEnvelope.VERSION.toInt())
@@ -176,6 +253,7 @@ class BackupCryptoTest {
         out.write(ByteArray(BackupEnvelope.SALT_LENGTH))
         out.write(java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.BIG_ENDIAN).putInt(iterations).array())
         out.write(ByteArray(BackupEnvelope.NONCE_LENGTH))
+        out.write(java.nio.ByteBuffer.allocate(8).order(java.nio.ByteOrder.BIG_ENDIAN).putLong(payloadLength).array())
         return out.toByteArray()
     }
 }

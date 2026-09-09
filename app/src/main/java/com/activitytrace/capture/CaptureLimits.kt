@@ -59,4 +59,7 @@ data class IndexLimits(
     val maxFileBytes: Long = 10L * 1024 * 1024,
     val maxExtractedCharacters: Int = 1_000_000,
     val maxPdfPages: Int = 500,
+    val maxExtractionMillis: Long = 30_000L,
+    val maxArchiveEntries: Int = 1_000,
+    val maxArchiveExpandedBytes: Long = 256L * 1024 * 1024,
 )

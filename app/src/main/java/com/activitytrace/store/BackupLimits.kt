@@ -18,6 +18,13 @@ object BackupLimits {
     /** Bounds the decrypted (GCM) ciphertext. */
     const val MAX_CIPHERTEXT_BYTES: Long = 256L * 1024 * 1024
 
+    /**
+     * Bounds the plaintext payload recorded in a v3 header. Kept one GCM tag
+     * below [MAX_CIPHERTEXT_BYTES] so an export that fills the payload budget
+     * still decrypts within the ciphertext budget.
+     */
+    const val MAX_PAYLOAD_BYTES: Long = MAX_CIPHERTEXT_BYTES - BackupEnvelope.GCM_TAG_BYTES
+
     /** Bounds the unzipped `database.sqlite` entry. */
     const val MAX_DATABASE_ENTRY_BYTES: Long = 256L * 1024 * 1024
 

@@ -63,6 +63,17 @@ interface CaptureDao {
         contentType: String? = null,
         appPackage: String? = null,
     ): Flow<List<CapturedItem>> {
+        return searchFtsPaged(matchQuery, timeRange, contentType, appPackage, limit = Long.MAX_VALUE, offset = 0)
+    }
+
+    fun searchFtsPaged(
+        matchQuery: String,
+        timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
+        appPackage: String? = null,
+        limit: Long,
+        offset: Long,
+    ): Flow<List<CapturedItem>> {
         val conditions = mutableListOf<String>()
         conditions.add("captured_items_fts MATCH ?")
         val params = mutableListOf<Any>(matchQuery)
@@ -83,12 +94,15 @@ interface CaptureDao {
         }
 
         val whereClause = " WHERE ${conditions.joinToString(" AND ")}"
+        params.add(limit)
+        params.add(offset)
 
         val sql = """
             SELECT captured_items.* FROM captured_items
             JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid
             $whereClause
             ORDER BY captured_items.timestamp DESC
+            LIMIT ? OFFSET ?
         """.trimIndent()
 
         return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
@@ -99,6 +113,17 @@ interface CaptureDao {
         timeRange: Pair<Long, Long>? = null,
         contentType: String? = null,
         appPackage: String? = null,
+    ): Flow<List<CapturedItem>> {
+        return searchLikePaged(patterns, timeRange, contentType, appPackage, limit = Long.MAX_VALUE, offset = 0)
+    }
+
+    fun searchLikePaged(
+        patterns: List<String>,
+        timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
+        appPackage: String? = null,
+        limit: Long,
+        offset: Long,
     ): Flow<List<CapturedItem>> {
         val conditions = mutableListOf<String>()
         val params = mutableListOf<Any>()
@@ -128,10 +153,13 @@ interface CaptureDao {
         }
 
         val whereClause = if (conditions.isNotEmpty()) " WHERE ${conditions.joinToString(" AND ")}" else ""
+        params.add(limit)
+        params.add(offset)
 
         val sql = """
             SELECT * FROM captured_items$whereClause
             ORDER BY timestamp DESC
+            LIMIT ? OFFSET ?
         """.trimIndent()
 
         return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))

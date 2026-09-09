@@ -4,12 +4,16 @@ import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchEngine
+import com.activitytrace.search.SearchPage
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -33,10 +37,18 @@ class SearchScreenTest {
 
     private fun createViewModel(items: List<CapturedItem> = emptyList()): SearchViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        every { searchEngine.recentItems(any(), any(), any()) } returns flowOf(items)
-        every { searchEngine.search(any(), any(), any(), any()) } returns flowOf(emptyList())
-        return SearchViewModel(searchEngine, app)
+        every { searchEngine.recentPaged(any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
+        every { searchEngine.searchPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        return SearchViewModel(searchEngine, app, debounceMillis = 0)
     }
+
+    private fun item(id: Long, text: String) = CapturedItem(
+        id = id,
+        text = text,
+        appPackage = "com.test",
+        contentType = "notification",
+        timestamp = System.currentTimeMillis(),
+    )
 
     @Test
     fun displaysResults() {
@@ -49,7 +61,7 @@ class SearchScreenTest {
                 timestamp = 1000L,
             )
         )
-        every { searchEngine.search("test", any(), any(), any()) } returns flowOf(items)
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -100,7 +112,7 @@ class SearchScreenTest {
     @Test
     fun showsNoResultsText() {
         val viewModel = createViewModel()
-        every { searchEngine.search("xyz", any(), any(), any()) } returns flowOf(emptyList())
+        every { searchEngine.searchPaged("xyz", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -207,5 +219,32 @@ class SearchScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("2 results").assertExists()
+    }
+
+    @Test
+    fun showsLoadMoreButtonWhenMoreResultsExist() {
+        val viewModel = createViewModel()
+        val firstPage = (1..50).map { item(it.toLong(), "item $it") }
+        val tailPage = listOf(item(51L, "item 51"))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 0) } returns flowOf(SearchPage(firstPage, false))
+        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 50) } returns flowOf(SearchPage(tailPage, true))
+
+        composeTestRule.setContent {
+            MaterialTheme {
+                SearchScreen(viewModel, onNavigateToSettings = {})
+            }
+        }
+
+        viewModel.onQueryChange("test")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("50+ results").assertExists()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasText("Load more"))
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        verify { searchEngine.searchPaged("test", any(), any(), any(), any(), 50) }
+        composeTestRule.onNodeWithText("51 results").assertExists()
     }
 }

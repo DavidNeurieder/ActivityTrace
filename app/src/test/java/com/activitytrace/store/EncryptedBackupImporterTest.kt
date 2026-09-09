@@ -19,7 +19,6 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.security.GeneralSecurityException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = android.app.Application::class)
@@ -63,9 +62,10 @@ class EncryptedBackupImporterTest {
     fun `encrypted import restores items from the backup`() = runTest {
         stubBackupBytes(encryptedBackupBytes())
 
-        val count = EncryptedBackupExporter.import(context, backupUri, password, dao)
+        val result = EncryptedBackupExporter.import(context, backupUri, password, dao)
 
-        assertEquals(1, count)
+        assertTrue("expected success, was $result", result is RestoreResult.Success)
+        assertEquals(1, (result as RestoreResult.Success).importedCount)
         coVerify { dao.insertAll(any()) }
     }
 
@@ -75,23 +75,20 @@ class EncryptedBackupImporterTest {
         coEvery { dao.getAllItemKeys() } returns
             listOf(CaptureDao.ItemKey("secret note", 1000, "com.example"))
 
-        val count = EncryptedBackupExporter.import(context, backupUri, password, dao)
+        val result = EncryptedBackupExporter.import(context, backupUri, password, dao)
 
-        assertEquals(0, count)
+        assertTrue("expected success with 0 imports, was $result", result is RestoreResult.Success)
+        assertEquals(0, (result as RestoreResult.Success).importedCount)
         coVerify(exactly = 0) { dao.insertAll(any()) }
     }
 
     @Test
-    fun `encrypted import with wrong password fails and does not insert`() = runTest {
+    fun `encrypted import with wrong password is an invalid backup and does not insert`() = runTest {
         stubBackupBytes(encryptedBackupBytes())
 
-        var thrown = false
-        try {
-            EncryptedBackupExporter.import(context, backupUri, "wrong".toCharArray(), dao)
-        } catch (e: GeneralSecurityException) {
-            thrown = true
-        }
-        assertTrue("expected a GeneralSecurityException for the wrong password", thrown)
+        val result = EncryptedBackupExporter.import(context, backupUri, "wrong".toCharArray(), dao)
+
+        assertTrue("expected InvalidBackup, was $result", result is RestoreResult.InvalidBackup)
         coVerify(exactly = 0) { dao.insertAll(any()) }
     }
 
@@ -102,10 +99,7 @@ class EncryptedBackupImporterTest {
         tempDir.resolve("plain.sqlite").writeBytes(byteArrayOf(0x01))
         stubBackupBytes(encryptedBackupBytes())
 
-        try {
-            EncryptedBackupExporter.import(context, backupUri, "wrong".toCharArray(), dao)
-        } catch (_: GeneralSecurityException) {
-        }
+        EncryptedBackupExporter.import(context, backupUri, "wrong".toCharArray(), dao)
 
         assertTrue("temp dir must be removed after failed restore", !tempDir.exists())
     }
@@ -125,13 +119,9 @@ class EncryptedBackupImporterTest {
         encrypted[encrypted.size - 1] = (encrypted.last().toInt() xor 0x01).toByte()
         stubBackupBytes(encrypted)
 
-        var thrown = false
-        try {
-            EncryptedBackupExporter.import(context, backupUri, password, dao)
-        } catch (e: GeneralSecurityException) {
-            thrown = true
-        }
-        assertTrue("corrupted backup must be rejected", thrown)
+        val result = EncryptedBackupExporter.import(context, backupUri, password, dao)
+
+        assertTrue("corrupted backup must be rejected, was $result", result is RestoreResult.InvalidBackup)
     }
 
     @Test

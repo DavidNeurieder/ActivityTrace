@@ -113,7 +113,7 @@ object FileIndexer {
         val fileSize = file.length()
         if (!budget.canAccept(fileSize, limits)) return
 
-        when (val result = extractText(context, file, mimeType, limits)) {
+        when (val result = extractText(context, file, mimeType, ExtractionBudget.from(limits))) {
             is ExtractionResult.Success -> {
                 val text = result.text
                 if (text.isBlank()) {
@@ -131,10 +131,28 @@ object FileIndexer {
                     metadata = uri,
                 )
             }
+            is ExtractionResult.Truncated -> {
+                val text = result.text
+                if (text.isBlank()) {
+                    Log.d(TAG, "Skipping (blank): $fileName")
+                    return
+                }
+                Log.d(TAG, "Indexing (truncated): $fileName ($mimeType, ${text.length} chars)")
+                budget.accept(fileSize)
+                CaptureIngestor.ingest(
+                    text = text,
+                    appPackage = "local",
+                    appName = fileName,
+                    contentType = "page",
+                    category = mimeType,
+                    metadata = uri,
+                )
+            }
             ExtractionResult.Unsupported -> Log.d(TAG, "Skipping (unsupported): $fileName")
             ExtractionResult.TooLarge -> Log.d(TAG, "Skipping (extraction too large): $fileName")
             ExtractionResult.Invalid -> Log.d(TAG, "Skipping (invalid content): $fileName")
             ExtractionResult.Cancelled -> return
+            ExtractionResult.DeadlineExceeded -> Log.d(TAG, "Skipping (extraction deadline): $fileName")
             is ExtractionResult.Failed -> Log.w(TAG, "Skipping (extraction failed): $fileName", result.cause)
         }
     }
@@ -155,18 +173,22 @@ object FileIndexer {
         context: Context,
         file: DocumentFile,
         mimeType: String,
-        limits: IndexLimits,
+        budget: ExtractionBudget,
     ): ExtractionResult {
         if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+        val knownSize = file.length().takeIf { it > 0 }
+        if (knownSize != null && budget.exceedsInput(knownSize)) return ExtractionResult.TooLarge
         return try {
             when {
-                mimeType.startsWith("text/") -> extractPlainText(context, file.uri, limits.maxExtractedCharacters)
-                mimeType == "application/pdf" -> extractPdfText(context, file.uri, limits)
+                mimeType.startsWith("text/") -> extractPlainText(context, file.uri, budget, knownSize)
+                mimeType == "application/pdf" -> extractPdfText(context, file.uri, budget)
                 mimeType.startsWith("image/") -> ExtractionResult.Success(file.name ?: "")
                 else -> ExtractionResult.Unsupported
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ExtractionInputLimitException) {
+            ExtractionResult.TooLarge
         } catch (e: IOException) {
             ExtractionResult.Invalid
         } catch (e: IllegalArgumentException) {
@@ -176,49 +198,72 @@ object FileIndexer {
         }
     }
 
-    internal suspend fun extractPlainText(context: Context, uri: Uri, maxChars: Int): ExtractionResult = try {
-        val stream = context.contentResolver.openInputStream(uri)
+    internal suspend fun extractPlainText(
+        context: Context,
+        uri: Uri,
+        budget: ExtractionBudget,
+        knownSize: Long? = null,
+    ): ExtractionResult {
+        if (knownSize != null && budget.exceedsInput(knownSize)) {
+            return ExtractionResult.TooLarge
+        }
+        return try {
+            val stream = context.contentResolver.openInputStream(uri)
         if (stream == null) {
             ExtractionResult.Invalid
         } else {
-            stream.bufferedReader().use { reader ->
-                val sb = StringBuilder(minOf(maxChars, 8192))
-                val buf = CharArray(4096)
-                var total = 0
-                var n: Int
-                var cancelled = false
-                while (reader.read(buf).also { n = it } != -1 && total < maxChars) {
-                    if (!currentCoroutineContext().isActive) {
-                        cancelled = true
-                        break
+            stream.use { raw ->
+                LimitedInputStream(raw, budget.maxInputBytes).bufferedReader().use { reader ->
+                    val sb = StringBuilder(minOf(budget.maxOutputChars, 8192))
+                    val buf = CharArray(4096)
+                    var total = 0
+                    while (true) {
+                        if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+                        if (budget.isPastDeadline()) return ExtractionResult.DeadlineExceeded
+                        val n = reader.read(buf)
+                        if (n == -1) break
+                        val room = budget.maxOutputChars - total
+                        if (n >= room) {
+                            sb.append(buf, 0, room)
+                            total += room
+                            val exhausted = knownSize != null && knownSize <= total
+                            return if (exhausted) {
+                                ExtractionResult.Success(sb.toString())
+                            } else {
+                                ExtractionResult.Truncated(sb.toString())
+                            }
+                        }
+                        sb.append(buf, 0, n)
+                        total += n
                     }
-                    val toAppend = minOf(n, maxChars - total)
-                    sb.append(buf, 0, toAppend)
-                    total += toAppend
+                    ExtractionResult.Success(sb.toString())
                 }
-                if (cancelled) ExtractionResult.Cancelled else ExtractionResult.Success(sb.toString())
             }
         }
     } catch (e: CancellationException) {
         throw e
+    } catch (e: ExtractionInputLimitException) {
+        ExtractionResult.TooLarge
     } catch (e: IOException) {
         ExtractionResult.Invalid
     } catch (e: IllegalArgumentException) {
         ExtractionResult.Invalid
     }
+    }
 
     internal suspend fun extractPdfText(
         context: Context,
         uri: Uri,
-        limits: IndexLimits,
+        budget: ExtractionBudget,
     ): ExtractionResult {
         if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
         return try {
             val stream = context.contentResolver.openInputStream(uri) ?: return ExtractionResult.Invalid
-            stream.use { input ->
+            stream.use { raw ->
+                val input = LimitedInputStream(raw, budget.maxInputBytes)
                 PDDocument.load(input).use { doc ->
                     if (!doc.isEncrypted) {
-                        extractPdfPages(doc, limits)
+                        extractPdfPages(doc, budget)
                     } else {
                         ExtractionResult.Unsupported
                     }
@@ -226,6 +271,8 @@ object FileIndexer {
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ExtractionInputLimitException) {
+            ExtractionResult.TooLarge
         } catch (e: IOException) {
             ExtractionResult.Invalid
         } catch (e: IllegalArgumentException) {
@@ -233,24 +280,29 @@ object FileIndexer {
         }
     }
 
-    private suspend fun extractPdfPages(doc: PDDocument, limits: IndexLimits): ExtractionResult {
+    private suspend fun extractPdfPages(doc: PDDocument, budget: ExtractionBudget): ExtractionResult {
         val pageCount = doc.numberOfPages
-        if (pageCount > limits.maxPdfPages) return ExtractionResult.TooLarge
+        if (pageCount > budget.maxPages) return ExtractionResult.TooLarge
         if (pageCount <= 0) return ExtractionResult.Success("")
 
         val stripper = PDFTextStripper()
-        val sb = StringBuilder(minOf(limits.maxExtractedCharacters, 8192))
+        val sb = StringBuilder(minOf(budget.maxOutputChars, 8192))
         var total = 0
         for (page in 1..pageCount) {
             if (!currentCoroutineContext().isActive) return ExtractionResult.Cancelled
+            if (budget.isPastDeadline()) return ExtractionResult.DeadlineExceeded
             stripper.setStartPage(page)
             stripper.setEndPage(page)
             val text = stripper.getText(doc)
-            val remaining = limits.maxExtractedCharacters - total
+            val remaining = budget.maxOutputChars - total
             if (text.length >= remaining) {
                 sb.append(text, 0, remaining)
                 total += remaining
-                break
+                return if (page == pageCount && text.length == remaining) {
+                    ExtractionResult.Success(sb.toString())
+                } else {
+                    ExtractionResult.Truncated(sb.toString())
+                }
             }
             sb.append(text)
             total += text.length

@@ -4,9 +4,12 @@ import com.activitytrace.store.BackupEnvelope.DB_ENTRY
 import com.activitytrace.store.BackupEnvelope.GCM_TAG_BITS
 import com.activitytrace.store.BackupEnvelope.HEADER_BYTES
 import com.activitytrace.store.BackupEnvelope.KDF_PBKDF2_SHA256_ID
+import com.activitytrace.store.BackupEnvelope.LEGACY_HEADER_BYTES
+import com.activitytrace.store.BackupEnvelope.LEGACY_VERSION
 import com.activitytrace.store.BackupEnvelope.MAGIC
 import com.activitytrace.store.BackupEnvelope.METADATA_ENTRY
 import com.activitytrace.store.BackupEnvelope.NONCE_LENGTH
+import com.activitytrace.store.BackupEnvelope.PAYLOAD_LENGTH_BYTES
 import com.activitytrace.store.BackupEnvelope.SALT_LENGTH
 import com.activitytrace.store.BackupEnvelope.VERSION
 import java.io.BufferedInputStream
@@ -31,20 +34,31 @@ import javax.crypto.spec.SecretKeySpec
 
 object BackupEnvelope {
     const val MAGIC = "ATBK"
-    const val VERSION: Byte = 2
+    const val VERSION: Byte = 3
+
+    /** The previous format version, still readable (identical layout minus the payload length). */
+    const val LEGACY_VERSION: Byte = 2
 
     const val SALT_LENGTH = 16
     const val NONCE_LENGTH = 12
+    const val PAYLOAD_LENGTH_BYTES = 8
     const val PBKDF2_ITERATIONS = 128_000
     const val KEY_LENGTH_BITS = 256
     const val GCM_TAG_BITS = 128
+    const val GCM_TAG_BYTES = GCM_TAG_BITS / 8
 
     /**
-     * `magic(4) + version(1) + kdfId(1) + salt(16) + iterations(4) + nonce(12)`.
-     * KDF parameters are stored in the format so future iterations can be
-     * changed without losing the ability to read older backups.
+     * `magic(4) + version(1) + kdfId(1) + salt(16) + iterations(4) + nonce(12) + payloadLength(8)`.
+     *
+     * KDF parameters and the plaintext payload length are stored in the format so
+     * future iterations can be changed without losing the ability to read older
+     * backups and so an oversized payload is rejected from the header before any
+     * key derivation work happens.
      */
-    const val HEADER_BYTES = 4 + 1 + 1 + SALT_LENGTH + 4 + NONCE_LENGTH
+    const val HEADER_BYTES = 4 + 1 + 1 + SALT_LENGTH + 4 + NONCE_LENGTH + PAYLOAD_LENGTH_BYTES
+
+    /** Size of the v2 header (no payload length). */
+    const val LEGACY_HEADER_BYTES = HEADER_BYTES - PAYLOAD_LENGTH_BYTES
 
     const val DB_ENTRY = "database.sqlite"
     const val METADATA_ENTRY = "metadata.json"
@@ -58,7 +72,8 @@ object BackupEnvelope {
 
 /**
  * The fixed plaintext prefix of every backup. Contains all parameters needed
- * to derive the key and decrypt the payload; validated strictly on read.
+ * to derive the key and decrypt the payload (plus the plaintext payload length
+ * in v3); validated strictly on read.
  */
 data class BackupHeader(
     val version: Byte,
@@ -66,6 +81,8 @@ data class BackupHeader(
     val salt: ByteArray,
     val iterations: Int,
     val nonce: ByteArray,
+    /** Size of the plaintext payload in bytes; `-1` for legacy v2 backups. */
+    val payloadLength: Long,
 ) {
     fun writeTo(destination: OutputStream) {
         destination.write(MAGIC.toByteArray(Charsets.US_ASCII))
@@ -76,36 +93,61 @@ data class BackupHeader(
             ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(iterations).array(),
         )
         destination.write(nonce)
+        destination.write(
+            ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(payloadLength).array(),
+        )
     }
 
     companion object {
+        /** Bytes read before we know which version (and therefore header size) we are dealing with. */
+        const val META_BYTES: Int = MAGIC.length + 1 + 1
+
         fun readFrom(source: InputStream): BackupHeader {
-            val bytes = source.readFully(HEADER_BYTES)
-            require(bytes.size == HEADER_BYTES) {
+            val meta = source.readFully(META_BYTES)
+            require(meta.size == META_BYTES) {
                 "Backup too short to be a valid encrypted backup"
             }
             require(
-                bytes.copyOfRange(0, MAGIC.length).toString(Charsets.US_ASCII) == MAGIC,
+                meta.copyOfRange(0, MAGIC.length).toString(Charsets.US_ASCII) == MAGIC,
             ) { "Not an ActivityTrace backup" }
 
-            val version = bytes[MAGIC.length]
-            require(version == VERSION) { "Unsupported backup version: $version" }
+            val version = meta[MAGIC.length]
+            require(version == VERSION || version == LEGACY_VERSION) {
+                "Unsupported backup version: $version"
+            }
 
-            val kdfId = bytes[MAGIC.length + 1]
+            val kdfId = meta[MAGIC.length + 1]
             require(kdfId == KDF_PBKDF2_SHA256_ID) { "Unsupported KDF: $kdfId" }
 
-            val iterations = ByteBuffer.wrap(bytes, MAGIC.length + 2 + SALT_LENGTH, 4)
+            val paramsLength =
+                if (version == LEGACY_VERSION) LEGACY_HEADER_BYTES - META_BYTES else HEADER_BYTES - META_BYTES
+            val params = source.readFully(paramsLength)
+            require(params.size == paramsLength) { "Backup header is truncated" }
+
+            val iterations = ByteBuffer.wrap(params, SALT_LENGTH, 4)
                 .order(ByteOrder.BIG_ENDIAN).int
             require(iterations in BackupLimits.MIN_KDF_ITERATIONS..BackupLimits.MAX_KDF_ITERATIONS) {
                 "Rejected KDF iterations: $iterations"
             }
 
+            val payloadLength = if (version == VERSION) {
+                ByteBuffer.wrap(params, SALT_LENGTH + 4 + NONCE_LENGTH, PAYLOAD_LENGTH_BYTES)
+                    .order(ByteOrder.BIG_ENDIAN).long.also {
+                        require(it in 0..BackupLimits.MAX_PAYLOAD_BYTES) {
+                            "Rejected payload length: $it"
+                        }
+                    }
+            } else {
+                -1L
+            }
+
             return BackupHeader(
                 version = version,
                 kdfId = kdfId,
-                salt = bytes.copyOfRange(MAGIC.length + 2, MAGIC.length + 2 + SALT_LENGTH),
+                salt = params.copyOfRange(0, SALT_LENGTH),
                 iterations = iterations,
-                nonce = bytes.copyOfRange(HEADER_BYTES - NONCE_LENGTH, HEADER_BYTES),
+                nonce = params.copyOfRange(SALT_LENGTH + 4, SALT_LENGTH + 4 + NONCE_LENGTH),
+                payloadLength = payloadLength,
             )
         }
     }
@@ -132,35 +174,44 @@ object BackupCrypto {
     }
 
     /**
-     * Writes a fresh backup header to [destination], then returns a cipher
-     * output stream that GCM-encrypts everything written to it. Closing the
-     * returned stream writes the authentication tag but does NOT close
-     * [destination].
+     * Writes a fresh backup header (with the known [payloadLength]) to
+     * [destination], then returns a cipher output stream that GCM-encrypts
+     * everything written to it. Closing the returned stream writes the
+     * authentication tag but does NOT close [destination].
      */
     fun openEncryptStream(
         destination: OutputStream,
         password: CharArray,
+        payloadLength: Long,
         iterations: Int = BackupEnvelope.PBKDF2_ITERATIONS,
     ): CipherOutputStream {
         require(iterations in BackupLimits.MIN_KDF_ITERATIONS..BackupLimits.MAX_KDF_ITERATIONS) {
             "Iterations out of range: $iterations"
+        }
+        require(payloadLength in 0..BackupLimits.MAX_PAYLOAD_BYTES) {
+            "Payload length out of range: $payloadLength"
         }
         val salt = randomBytes(SALT_LENGTH)
         val nonce = randomBytes(NONCE_LENGTH)
         val key = deriveKey(password, salt, iterations)
         val cipher = Cipher.getInstance(BackupEnvelope.CIPHER_TRANSFORM)
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, nonce))
-        BackupHeader(BackupEnvelope.VERSION, KDF_PBKDF2_SHA256_ID, salt, iterations, nonce)
+        BackupHeader(BackupEnvelope.VERSION, KDF_PBKDF2_SHA256_ID, salt, iterations, nonce, payloadLength)
             .writeTo(destination)
         return CipherOutputStream(NonClosingOutputStream(destination), cipher)
     }
 
     /**
-     * Stream-encrypts [source] into [destination] without ever holding the
-     * whole payload (or the whole ciphertext) in memory.
+     * Stream-encrypts [source] (whose size is [payloadLength]) into [destination]
+     * without ever holding the whole payload (or the whole ciphertext) in memory.
      */
-    fun encryptTo(source: InputStream, destination: OutputStream, password: CharArray) {
-        val cipherOut = openEncryptStream(destination, password)
+    fun encryptTo(
+        source: InputStream,
+        destination: OutputStream,
+        password: CharArray,
+        payloadLength: Long,
+    ) {
+        val cipherOut = openEncryptStream(destination, password, payloadLength)
         try {
             source.copyTo(cipherOut, BackupEnvelope.IO_CHUNK)
         } finally {
@@ -171,13 +222,13 @@ object BackupCrypto {
 
     fun encrypt(payload: ByteArray, password: CharArray): ByteArray =
         ByteArrayOutputStream().use { out ->
-            encryptTo(ByteArrayInputStream(payload), out, password)
+            encryptTo(ByteArrayInputStream(payload), out, password, payload.size.toLong())
             out.toByteArray()
         }
 
     fun encrypt(payload: ByteArray, password: CharArray, iterations: Int): ByteArray =
         ByteArrayOutputStream().use { out ->
-            val cipherOut = openEncryptStream(out, password, iterations)
+            val cipherOut = openEncryptStream(out, password, payload.size.toLong(), iterations)
             try {
                 ByteArrayInputStream(payload).copyTo(cipherOut, BackupEnvelope.IO_CHUNK)
             } finally {
