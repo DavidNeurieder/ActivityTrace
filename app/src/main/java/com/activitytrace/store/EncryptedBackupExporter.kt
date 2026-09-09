@@ -135,9 +135,15 @@ object EncryptedBackupExporter {
                 }
             }
 
+            onProgress(ExportStatus.Progress(context.getString(R.string.progress_validating_backup)))
+            if (!BackupImporter.validateBackupSchema(restoredSqlite)) {
+                return@withContext RestoreResult.InvalidBackup(
+                    context.getString(R.string.restore_backup_database_unreadable),
+                )
+            }
+
             onProgress(ExportStatus.Progress(context.getString(R.string.progress_merging_backup)))
-            val items = BackupImporter.readItemsFromSqlite(restoredSqlite)
-            val imported = BackupImporter.importItems(items, dao)
+            val imported = BackupImporter.importStreaming(restoredSqlite, dao)
             RestoreResult.Success(imported)
         } catch (e: GeneralSecurityException) {
             RestoreResult.InvalidBackup(context.getString(R.string.restore_invalid_backup))

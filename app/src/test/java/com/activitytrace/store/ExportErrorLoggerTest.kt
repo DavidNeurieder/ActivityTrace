@@ -1,7 +1,6 @@
 package com.activitytrace.store
 
 import android.content.Context
-import android.os.Environment
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -18,14 +17,11 @@ class ExportErrorLoggerTest {
 
     private val context: Context = RuntimeEnvironment.getApplication()
     private val logDir: File
-        get() = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "ActivityTrace",
-        )
+        get() = File(context.cacheDir, "export_errors")
 
     @After
     fun tearDown() {
-        logDir.deleteRecursively()
+        ExportErrorLogger.clearLogs(context)
     }
 
     @Test
@@ -33,7 +29,7 @@ class ExportErrorLoggerTest {
         val exception = RuntimeException("test error msg")
         ExportErrorLogger.saveErrorLog(context, "export_test", exception)
 
-        val files = logDir.listFiles { f -> f.name.endsWith(".log") } ?: emptyArray()
+        val files = ExportErrorLogger.getLogFiles(context)
         assertEquals(1, files.size)
         val content = files[0].readText()
 
@@ -49,7 +45,7 @@ class ExportErrorLoggerTest {
         val exception = RuntimeException("wrapper", cause)
         ExportErrorLogger.saveErrorLog(context, "chain", exception)
 
-        val files = logDir.listFiles { f -> f.name.endsWith(".log") } ?: emptyArray()
+        val files = ExportErrorLogger.getLogFiles(context)
         assertEquals(1, files.size)
         val content = files[0].readText()
 
@@ -61,7 +57,18 @@ class ExportErrorLoggerTest {
         val exception = NullPointerException()
         ExportErrorLogger.saveErrorLog(context, "null_msg", exception)
 
-        val files = logDir.listFiles { f -> f.name.endsWith(".log") } ?: emptyArray()
+        val files = ExportErrorLogger.getLogFiles(context)
         assertTrue("Should create log file even with null message", files.size >= 1)
+    }
+
+    @Test
+    fun `clearLogs removes all log files`() {
+        ExportErrorLogger.saveErrorLog(context, "clear_a", RuntimeException("a"))
+        ExportErrorLogger.saveErrorLog(context, "clear_b", IllegalStateException("b"))
+        assertTrue("Should have at least 2 log files", ExportErrorLogger.getLogFiles(context).size >= 2)
+
+        ExportErrorLogger.clearLogs(context)
+
+        assertEquals(0, ExportErrorLogger.getLogFiles(context).size)
     }
 }

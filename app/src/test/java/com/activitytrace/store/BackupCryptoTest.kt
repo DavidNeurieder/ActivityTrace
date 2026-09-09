@@ -241,6 +241,41 @@ class BackupCryptoTest {
         assertArrayEquals(payload, BackupCrypto.decrypt(ciphertext, password))
     }
 
+    @Test
+    fun `mutated payload length byte is rejected via header authentication`() {
+        val payload = "header aad test".toByteArray(Charsets.UTF_8)
+        val backup = BackupCrypto.encrypt(payload, password)
+        val tampered = backup.copyOf()
+        val plIndex = BackupEnvelope.HEADER_BYTES - 1
+        tampered[plIndex] = (tampered[plIndex].toInt() xor 0xFF).toByte()
+        assertThrows(GeneralSecurityException::class.java) {
+            BackupCrypto.decrypt(tampered, password)
+        }
+    }
+
+    @Test
+    fun `mutated kdf iterations byte is rejected via header authentication`() {
+        val payload = "iterations aad test".toByteArray(Charsets.UTF_8)
+        val backup = BackupCrypto.encrypt(payload, password)
+        val tampered = backup.copyOf()
+        val iterLsb = BackupEnvelope.MAGIC.length + 2 + BackupEnvelope.SALT_LENGTH + 3
+        tampered[iterLsb] = (tampered[iterLsb].toInt() xor 0x01).toByte()
+        assertThrows(GeneralSecurityException::class.java) {
+            BackupCrypto.decrypt(tampered, password)
+        }
+    }
+
+    @Test
+    fun `mutated version byte is rejected via header authentication`() {
+        val payload = "version aad test".toByteArray(Charsets.UTF_8)
+        val backup = BackupCrypto.encrypt(payload, password)
+        val tampered = backup.copyOf()
+        tampered[BackupEnvelope.MAGIC.length] = BackupEnvelope.LEGACY_VERSION
+        assertThrows(GeneralSecurityException::class.java) {
+            BackupCrypto.decrypt(tampered, password)
+        }
+    }
+
     private fun craftedHeader(
         iterations: Int = BackupEnvelope.PBKDF2_ITERATIONS,
         kdfId: Byte = BackupEnvelope.KDF_PBKDF2_SHA256_ID,
@@ -323,4 +358,95 @@ class BackupPayloadTest {
             )
         }
     }
+
+    @Test
+    fun `unzipDatabase rejects unknown entries`() {
+        val zipBytes = java.io.ByteArrayOutputStream().use { out ->
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                zip.putNextEntry(java.util.zip.ZipEntry("evil.txt"))
+                zip.write("bad".toByteArray())
+                zip.closeEntry()
+                zip.putNextEntry(java.util.zip.ZipEntry(BackupEnvelope.DB_ENTRY))
+                zip.write(databaseBytes)
+                zip.closeEntry()
+                zip.putNextEntry(java.util.zip.ZipEntry(BackupEnvelope.METADATA_ENTRY))
+                zip.write(metadata.toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
+            }
+            out.toByteArray()
+        }
+        val out = java.io.ByteArrayOutputStream()
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            BackupPayload.unzipDatabase(
+                ByteArrayInputStream(zipBytes),
+                BackupLimits.MAX_DATABASE_ENTRY_BYTES,
+                BackupLimits.MAX_METADATA_ENTRY_BYTES,
+                out,
+            )
+        }
+        assertTrue(error.message!!.contains("evil.txt"))
+    }
+
+    @Test
+    fun `unzipDatabase rejects path traversal`() {
+        val zipBytes = java.io.ByteArrayOutputStream().use { out ->
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                zip.putNextEntry(java.util.zip.ZipEntry("../../../etc/passwd"))
+                zip.write("bad".toByteArray())
+                zip.closeEntry()
+            }
+            out.toByteArray()
+        }
+        val out = java.io.ByteArrayOutputStream()
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupPayload.unzipDatabase(
+                ByteArrayInputStream(zipBytes),
+                BackupLimits.MAX_DATABASE_ENTRY_BYTES,
+                BackupLimits.MAX_METADATA_ENTRY_BYTES,
+                out,
+            )
+        }
+    }
+
+    @Test
+    fun `unzipDatabase rejects directory entries`() {
+        val zipBytes = java.io.ByteArrayOutputStream().use { out ->
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                zip.putNextEntry(java.util.zip.ZipEntry("subdir/"))
+                zip.closeEntry()
+            }
+            out.toByteArray()
+        }
+        val out = java.io.ByteArrayOutputStream()
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupPayload.unzipDatabase(
+                ByteArrayInputStream(zipBytes),
+                BackupLimits.MAX_DATABASE_ENTRY_BYTES,
+                BackupLimits.MAX_METADATA_ENTRY_BYTES,
+                out,
+            )
+        }
+    }
+
+    @Test
+    fun `unzipDatabase rejects absolute paths`() {
+        val zipBytes = java.io.ByteArrayOutputStream().use { out ->
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                zip.putNextEntry(java.util.zip.ZipEntry("/etc/passwd"))
+                zip.write("bad".toByteArray())
+                zip.closeEntry()
+            }
+            out.toByteArray()
+        }
+        val out = java.io.ByteArrayOutputStream()
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupPayload.unzipDatabase(
+                ByteArrayInputStream(zipBytes),
+                BackupLimits.MAX_DATABASE_ENTRY_BYTES,
+                BackupLimits.MAX_METADATA_ENTRY_BYTES,
+                out,
+            )
+        }
+    }
+
 }

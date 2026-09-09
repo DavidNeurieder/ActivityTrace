@@ -32,7 +32,6 @@ class EncryptedBackupImporterTest {
     @Before
     fun setUp() {
         context = RuntimeEnvironment.getApplication()
-        coEvery { dao.getAllItemKeys() } returns emptyList()
         coEvery { dao.insertAll(any()) } returns listOf(1L)
     }
 
@@ -72,14 +71,12 @@ class EncryptedBackupImporterTest {
     @Test
     fun `encrypted import merges only new items`() = runTest {
         stubBackupBytes(encryptedBackupBytes())
-        coEvery { dao.getAllItemKeys() } returns
-            listOf(CaptureDao.ItemKey("secret note", 1000, "com.example"))
+        coEvery { dao.insertAll(any()) } returns listOf(-1L)
 
         val result = EncryptedBackupExporter.import(context, backupUri, password, dao)
 
         assertTrue("expected success with 0 imports, was $result", result is RestoreResult.Success)
         assertEquals(0, (result as RestoreResult.Success).importedCount)
-        coVerify(exactly = 0) { dao.insertAll(any()) }
     }
 
     @Test

@@ -69,38 +69,28 @@ class BackupImporterTest {
     }
 
     @Test
-    fun `importFromBackup inserts only new items based on dedup keys`() = runTest {
+    fun `importFromBackup streams items with content hash and deduplicates at DB level`() = runTest {
         val dao = mockk<CaptureDao>()
-        coEvery { dao.getAllItemKeys() } returns listOf(
-            CaptureDao.ItemKey("item_0", 1000L, "com.test"),
-            CaptureDao.ItemKey("item_1", 2000L, "com.test"),
-        )
-        coEvery { dao.insertAll(any()) } returns listOf(1L)
+        coEvery { dao.insertAll(any()) } returns listOf(1L, 2L, 3L)
 
         val backupUri = createBackupUri(3)
-
         val count = BackupImporter.importFromBackup(context, backupUri, dao)
 
-        assertEquals(1, count)
-        coVerify(exactly = 1) { dao.insertAll(match { it.size == 1 && it[0].text == "item_2" }) }
+        assertEquals(3, count)
+        coVerify(exactly = 1) { dao.insertAll(match { items ->
+            items.size == 3 && items.all { it.contentHash != null }
+        }) }
     }
 
     @Test
-    fun `importFromBackup returns 0 when no new items`() = runTest {
+    fun `importFromBackup returns correct count when some items are duplicates`() = runTest {
         val dao = mockk<CaptureDao>()
-        coEvery { dao.getAllItemKeys() } returns listOf(
-            CaptureDao.ItemKey("item_0", 1000L, "com.test"),
-            CaptureDao.ItemKey("item_1", 2000L, "com.test"),
-            CaptureDao.ItemKey("item_2", 3000L, "com.test"),
-        )
-        coEvery { dao.insertAll(any()) } returns listOf(1L)
+        coEvery { dao.insertAll(any()) } returns listOf(1L, -1L, 3L)
 
         val backupUri = createBackupUri(3)
-
         val count = BackupImporter.importFromBackup(context, backupUri, dao)
 
-        assertEquals(0, count)
-        coVerify(exactly = 0) { dao.insertAll(any()) }
+        assertEquals(2, count)
     }
 
     private fun createBackupDb(itemCount: Int): File {

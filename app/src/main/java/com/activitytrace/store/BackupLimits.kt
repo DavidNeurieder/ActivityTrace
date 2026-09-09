@@ -36,6 +36,9 @@ object BackupLimits {
 
     /** Maximum PBKDF2 iterations accepted from a header (anti-DoS). */
     const val MAX_KDF_ITERATIONS: Int = 1_000_000
+
+    /** Maximum number of entries allowed in a backup ZIP (anti-zip-bomb). */
+    const val MAX_ZIP_ENTRIES: Int = 64
 }
 
 /**

@@ -84,18 +84,27 @@ data class BackupHeader(
     /** Size of the plaintext payload in bytes; `-1` for legacy v2 backups. */
     val payloadLength: Long,
 ) {
-    fun writeTo(destination: OutputStream) {
-        destination.write(MAGIC.toByteArray(Charsets.US_ASCII))
-        destination.write(version.toInt())
-        destination.write(kdfId.toInt())
-        destination.write(salt)
-        destination.write(
-            ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(iterations).array(),
-        )
-        destination.write(nonce)
-        destination.write(
-            ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(payloadLength).array(),
-        )
+    fun writeTo(destination: OutputStream) =
+        destination.write(encode())
+
+    /**
+     * Canonical big-endian serialization of this header. The same bytes are
+     * written to the file and bound as the GCM additional authenticated data,
+     * so any tampering with version, KDF parameters, salt, nonce or the plaintext
+     * payload length fails authentication during decryption.
+     */
+    fun encode(): ByteArray {
+        val out = ByteArrayOutputStream(HEADER_BYTES)
+        out.write(MAGIC.toByteArray(Charsets.US_ASCII))
+        out.write(version.toInt())
+        out.write(kdfId.toInt())
+        out.write(salt)
+        out.write(ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(iterations).array())
+        out.write(nonce)
+        if (version == VERSION) {
+            out.write(ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(payloadLength).array())
+        }
+        return out.toByteArray()
     }
 
     companion object {
@@ -196,8 +205,9 @@ object BackupCrypto {
         val key = deriveKey(password, salt, iterations)
         val cipher = Cipher.getInstance(BackupEnvelope.CIPHER_TRANSFORM)
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, nonce))
-        BackupHeader(BackupEnvelope.VERSION, KDF_PBKDF2_SHA256_ID, salt, iterations, nonce, payloadLength)
-            .writeTo(destination)
+        val header = BackupHeader(BackupEnvelope.VERSION, KDF_PBKDF2_SHA256_ID, salt, iterations, nonce, payloadLength)
+        header.writeTo(destination)
+        cipher.updateAAD(header.encode())
         return CipherOutputStream(NonClosingOutputStream(destination), cipher)
     }
 
@@ -259,6 +269,13 @@ object BackupCrypto {
             deriveKey(password, header.salt, header.iterations),
             GCMParameterSpec(GCM_TAG_BITS, header.nonce),
         )
+        if (header.version == VERSION) {
+            // A v3 backup binds the full canonical header as AAD. Legacy v2
+            // backups (the same layout minus the payload length) predate header
+            // authentication, so their tags were computed without it and must
+            // keep decrypting -- do not send AAD for them.
+            cipher.updateAAD(header.encode())
+        }
         val limited = BoundedInputStream(source, maxCiphertextBytes)
 
         val blockSize = 16
@@ -341,8 +358,9 @@ object BackupPayload {
     /**
      * Streams the `database.sqlite` entry into [databaseOut] (bounded by
      * [maxDatabaseBytes]) and returns the `metadata.json` entry (bounded by
-     * [maxMetadataBytes]). Unknown zip entries are ignored. Fails fast on
-     * missing required entries or over-limit sizes.
+     * [maxMetadataBytes]). Rejects unexpected entries, path traversal,
+     * duplicate required names, directory entries, and entries exceeding
+     * [BackupLimits.MAX_ZIP_ENTRIES]. Fails fast on missing required entries.
      */
     fun unzipDatabase(
         input: InputStream,
@@ -351,17 +369,44 @@ object BackupPayload {
         databaseOut: OutputStream,
     ): String {
         var sawDatabase = false
+        var sawMetadata = false
         var metadata: String? = null
+        var entryCount = 0
         ZipInputStream(BufferedInputStream(input)).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
-                when (entry.name) {
+                val name = entry.name
+
+                if (entry.isDirectory) {
+                    throw IllegalArgumentException("ZIP entry '$name' is a directory")
+                }
+                if (name.startsWith("/") || name.contains("..")) {
+                    throw IllegalArgumentException("ZIP entry '$name' contains a path traversal")
+                }
+                if (name != DB_ENTRY && name != METADATA_ENTRY) {
+                    throw IllegalArgumentException("ZIP entry '$name' is not expected")
+                }
+                if (name == DB_ENTRY && sawDatabase) {
+                    throw IllegalArgumentException("ZIP contains duplicate entry '$name'")
+                }
+                if (name == METADATA_ENTRY && sawMetadata) {
+                    throw IllegalArgumentException("ZIP contains duplicate entry '$name'")
+                }
+
+                entryCount++
+                if (entryCount > BackupLimits.MAX_ZIP_ENTRIES) {
+                    throw BackupTooLargeException(
+                        "ZIP contains more than ${BackupLimits.MAX_ZIP_ENTRIES} entries",
+                    )
+                }
+
+                when (name) {
                     DB_ENTRY -> {
                         sawDatabase = true
                         zip.copyTo(BoundedOutputStream(databaseOut, maxDatabaseBytes), BackupEnvelope.IO_CHUNK)
                     }
-
                     METADATA_ENTRY -> {
+                        sawMetadata = true
                         val bytes = ByteArrayOutputStream(maxMetadataBytes).use { buffer ->
                             zip.copyTo(BoundedOutputStream(buffer, maxMetadataBytes.toLong()), BackupEnvelope.IO_CHUNK)
                             buffer.toByteArray()

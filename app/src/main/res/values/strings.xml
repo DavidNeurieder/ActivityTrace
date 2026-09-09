@@ -219,6 +219,7 @@ Continue?</string>
     <string name="progress_writing_file">Writing file…</string>
     <string name="progress_copying_backup">Copying backup…</string>
     <string name="progress_reading_backup">Reading backup…</string>
+    <string name="progress_validating_backup">Validating backup…</string>
     <string name="progress_merging">Merging with existing data…</string>
     <plurals name="progress_importing">
         <item quantity="one">Importing %d item…</item>
