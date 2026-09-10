@@ -79,6 +79,56 @@ class FtsSearchTest {
         assertTrue("unrelated doc must not match", !texts.contains("something unrelated"))
     }
 
+    @Test
+    fun `fts_recent_pool_orders_by_timestamp_desc`() = runBlocking {
+        insertAll(
+            item("sync one", "com.sync", "screen", 1),
+            item("sync two", "com.sync", "screen", 2),
+            item("sync three", "com.sync", "screen", 3),
+        )
+
+        val candidates = dao.searchFtsRecentCandidates(matchQuery = "sync").first()
+
+        assertEquals(
+            listOf("sync three", "sync two", "sync one"),
+            candidates.map { it.item.text },
+        )
+    }
+
+    @Test
+    fun `fts_recent_pool_applies_filters_and_limit`() = runBlocking {
+        insertAll(
+            item("meeting notes one", "com.test", "screen", 1),
+            item("meeting notes two", "com.test", "notification", 2),
+            item("meeting notes three", "com.test", "screen", 3),
+            item("meeting notes four", "com.test", "screen", 4),
+        )
+
+        val candidates = dao.searchFtsRecentCandidates(
+            matchQuery = "meeting",
+            contentType = "screen",
+            limit = 2,
+        ).first()
+
+        assertEquals(listOf(4L, 3L), candidates.map { it.item.timestamp })
+    }
+
+    @Test
+    fun `fts_weighting_favors_app_name_over_text`() = runBlocking {
+        insertAll(
+            itemWithAppName(text = "solo", appPackage = "com.dhl", appName = "battery", contentType = "screen", timestamp = 1),
+            item("battery", "com.text", "screen", 2),
+        )
+
+        val candidates = dao.searchFtsCandidates(matchQuery = "battery").first()
+
+        assertEquals(
+            "two-fold app_name weight must outrank an equal single text hit",
+            listOf("solo", "battery"),
+            candidates.map { it.item.text },
+        )
+    }
+
     private suspend fun insertAll(vararg items: CapturedItem) {
         items.forEach { dao.insert(it) }
     }
@@ -91,6 +141,21 @@ class FtsSearchTest {
     ) = CapturedItem(
         text = text,
         appPackage = appPackage,
+        contentType = contentType,
+        timestamp = timestamp,
+        contentHash = ContentHasher.hash(appPackage, contentType, text),
+    )
+
+    private fun itemWithAppName(
+        text: String,
+        appPackage: String,
+        appName: String,
+        contentType: String,
+        timestamp: Long,
+    ) = CapturedItem(
+        text = text,
+        appPackage = appPackage,
+        appName = appName,
         contentType = contentType,
         timestamp = timestamp,
         contentHash = ContentHasher.hash(appPackage, contentType, text),

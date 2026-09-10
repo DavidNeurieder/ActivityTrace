@@ -128,23 +128,52 @@ fun buildFtsQuery(rawQuery: String, parsedFilters: QueryFilters): String {
 }
 ```
 
-**Two-stage ranking (implemented in `SearchRanker`):**
+```kotlin
+// activity_trace_build_plan.md — SearchConfig.kt is the single source of truth
+SearchConfig {
+    FTS_TEXT_WEIGHT       = 1.0   // bm25 column 0 (text)
+    FTS_APP_NAME_WEIGHT   = 2.0   // bm25 column 1 (app_name)
+    BM25_WEIGHT           = 0.8
+    RECENCY_WEIGHT        = 0.2
+    RECENCY_WEIGHT_WITH_TIME_FILTER = 0.1
+    BM25_CANDIDATE_LIMIT  = 200
+    RECENT_CANDIDATE_LIMIT = 100
+    RRF_K                 = 60
+}
+```
 
-FTS5 `rank` is SQLite's built-in BM25 relevance and **lower is better**, so the
-database returns `ORDER BY rank LIMIT 200` candidates ordered purely by
-relevance. The application does NOT touch every row — it re-ranks only this
-small candidate pool in Kotlin:
+**Two-tier retrieval:**
 
-- **BM25 normalization:** raw scores are negative and scale differently from
-  recency, so min-max normalize to `[0,1]` across the candidate pool
-  (`(worst - score) / (worst - best)`; degenerate uniform pool => `1.0`).
-- **Recency:** exponential half-life decay, `recency = exp(-age * ln2 / halfLife)`
-  with a 30-day half-life (a result 30 days old scores exactly 0.5).
-- **Combination:** `final = 0.8 * bm25Normalized + 0.2 * recency` — text
-  relevance stays the dominant signal, recency is a controlled tiebreaker.
-- **Deterministic sort:** `final DESC`, then `timestamp DESC`, then `id DESC`.
+The engine pulls two pools per query and fuses them with RRF:
+
+- **BM25 pool** (`OFFSET`/`LIMIT` never used): top [BM25_CANDIDATE_LIMIT] rows
+  ordered by the weighted BM25 score `bm25(text=1.0, app_name=2.0)` (ascending,
+  more negative = better) — the best textual matches.
+- **Recency pool**: top [RECENT_CANDIDATE_LIMIT] matching rows
+  `ORDER BY captured_items.timestamp DESC` — guarantees a freshly captured
+  item that ranks outside the BM25 top-N can still participate in ranking.
+- The two pools share one `WHERE` (MATCH + time / content-type / app filters)
+  and are merged by item id via `mergeCandidates`, so a document present in
+  both pools is ranked once.
+
+**RRF ranking (implemented in `SearchRanker`):**
+
+FTS5 BM25 relevance is **lower is better**. Each
+candidate receives two ordinal ranks inside the pool (`bm25Rank` by relevance,
+`recencyRank` by timestamp) and RRF fuses them:
+
+- **Rank fusion:** `bm25Rrf = 1/(k + bm25Rank)`, `recencyRrf = 1/(k +
+  recencyRank)` with `k = 60`. Min-max normalization was discarded: it makes a
+  score depend on the *other* documents in one pool, while RRF depends only on
+  the ordering, so it is invariant to the BM25 scale and distribution.
+- **Combination:** `final = 0.8 * bm25Rrf + 0.2 * recencyRrf` — relevance stays
+  the dominant signal. When the user supplied an explicit time range the
+  recency weight drops to `0.1` (`RECENCY_WEIGHT_WITH_TIME_FILTER`).
+- **Deterministic sort:** `finalScore DESC`, then `timestamp DESC`, then
+  `id DESC`. Rank ties inside the pools are broken likewise, so the same
+  database state always yields the same result.
 - **Pagination:** `offset/limit` are applied AFTER ranking, never in the FTS
-  query (the FTS query is always `LIMIT 200`).
+  query (the FTS queries are always `LIMIT 200` / `LIMIT 100`).
 
 A recent result can beat a marginally better old result, but a substantially
 better textual match still wins even when old. Earlier plans proposed

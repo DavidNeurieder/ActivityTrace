@@ -12,7 +12,7 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.search.SearchCandidate
-import com.activitytrace.search.SearchRanker
+import com.activitytrace.search.SearchConfig
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -65,17 +65,64 @@ interface CaptureDao {
     /**
      * Retrieves the best [limit] BM25 candidates for an FTS5 [matchQuery].
      *
-     * FTS5's `rank` column is its built-in BM25 relevance score where *lower
-     * is better*, so candidates come back ordered by relevance. Recency based
-     * re-ranking happens in [SearchRanker] after this DAO call.
+     * Candidates come back ordered by the weighted BM25 score
+     * (`bm25(text=1.0, app_name=2.0)`), lowest first — that is the raw
+     * relevance signal for [SearchRanker]. Recency based re-ranking happens
+     * after this DAO call. The weights live in [SearchConfig], which must stay
+     * consistent between this query and the rest of the pipeline.
      */
     fun searchFtsCandidates(
         matchQuery: String,
         timeRange: Pair<Long, Long>? = null,
         contentType: String? = null,
         appPackage: String? = null,
-        limit: Long = SearchRanker.SEARCH_CANDIDATE_LIMIT.toLong(),
+        limit: Long = SearchConfig.BM25_CANDIDATE_LIMIT.toLong(),
     ): Flow<List<SearchCandidate>> {
+        val (whereClause, params) = ftsWhere(matchQuery, timeRange, contentType, appPackage)
+        params.add(limit)
+
+        val sql = """
+            $FTS_CANDIDATE_SELECT
+            $whereClause
+            ORDER BY bm25_score
+            LIMIT ?
+        """.trimIndent()
+
+        return searchCandidatesRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /**
+     * Retrieves the [limit] most recent records matching the same FTS5
+     * [matchQuery] and filters as the BM25 pool. This second pool guarantees a
+     * freshly captured item that ranks outside the BM25 top-N can still
+     * participate in ranking.
+     */
+    fun searchFtsRecentCandidates(
+        matchQuery: String,
+        timeRange: Pair<Long, Long>? = null,
+        contentType: String? = null,
+        appPackage: String? = null,
+        limit: Long = SearchConfig.RECENT_CANDIDATE_LIMIT.toLong(),
+    ): Flow<List<SearchCandidate>> {
+        val (whereClause, params) = ftsWhere(matchQuery, timeRange, contentType, appPackage)
+        params.add(limit)
+
+        val sql = """
+            $FTS_CANDIDATE_SELECT
+            $whereClause
+            ORDER BY captured_items.timestamp DESC
+            LIMIT ?
+        """.trimIndent()
+
+        return searchCandidatesRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    private fun ftsWhere(
+        matchQuery: String,
+        timeRange: Pair<Long, Long>?,
+        contentType: String?,
+        appPackage: String?,
+    ): Pair<String, MutableList<Any>> {
         val conditions = mutableListOf<String>()
         conditions.add("captured_items_fts MATCH ?")
         val params = mutableListOf<Any>(matchQuery)
@@ -95,19 +142,16 @@ interface CaptureDao {
             params.add("%$appPackage%")
         }
 
-        val whereClause = " WHERE ${conditions.joinToString(" AND ")}"
-        params.add(limit)
+        return " WHERE ${conditions.joinToString(" AND ")}" to params
+    }
 
-        val sql = """
-            SELECT captured_items.*, bm25(captured_items_fts, ${SearchRanker.BM25_TEXT_WEIGHT}, ${SearchRanker.BM25_APP_WEIGHT}) AS bm25_score
+    companion object {
+        private val FTS_CANDIDATE_SELECT =
+            """
+            SELECT captured_items.*, bm25(captured_items_fts, ${SearchConfig.FTS_TEXT_WEIGHT}, ${SearchConfig.FTS_APP_NAME_WEIGHT}) AS bm25_score
             FROM captured_items
             JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid
-            $whereClause
-            ORDER BY rank
-            LIMIT ?
-        """.trimIndent()
-
-        return searchCandidatesRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+            """.trimIndent()
     }
 
     fun searchLike(

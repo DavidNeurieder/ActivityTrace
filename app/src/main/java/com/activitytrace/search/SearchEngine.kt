@@ -3,6 +3,7 @@ package com.activitytrace.search
 import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.util.Locale
@@ -69,13 +70,8 @@ class SearchEngine(
             return flowOf(emptyList())
         }
 
-        return captureDao.searchFtsCandidates(
-            matchQuery = matchQuery,
-            timeRange = effectiveRange,
-            contentType = effectiveType,
-            appPackage = effectiveApp,
-        ).map { candidates ->
-            ranker.rank(candidates, System.currentTimeMillis()).map { it.item }
+        return rankAndMap(matchQuery, effectiveRange, effectiveType, effectiveApp) { ranked ->
+            ranked.map { it.item }
         }
     }
 
@@ -109,18 +105,36 @@ class SearchEngine(
             return flowOf(SearchPage(emptyList(), isLastPage = true))
         }
 
-        return captureDao.searchFtsCandidates(
-            matchQuery = matchQuery,
-            timeRange = effectiveRange,
-            contentType = effectiveType,
-            appPackage = effectiveApp,
-        ).map { candidates ->
-            val ranked = ranker.rank(candidates, System.currentTimeMillis())
-                .drop(offset)
-                .take(pageSize)
-                .map { it.item }
-            SearchPage(ranked, ranked.size < pageSize)
+        return rankAndMap(matchQuery, effectiveRange, effectiveType, effectiveApp) { ranked ->
+            val page = ranked.drop(offset).take(pageSize).map { it.item }
+            SearchPage(page, page.size < pageSize)
         }
+    }
+
+    /**
+     * Runs the two-tier candidate retrieval (BM25 pool + recency pool), merges
+     * them by id, applies RRF ranking and maps the ranked results with
+     * [mapResults]. An explicit [timeRange] lowers the recency weight because
+     * the user has already constrained the temporal context.
+     */
+    private fun <T> rankAndMap(
+        matchQuery: String,
+        timeRange: Pair<Long, Long>?,
+        contentType: String?,
+        appPackage: String?,
+        mapResults: (List<SearchResult>) -> T,
+    ): Flow<T> {
+        val bm25Pool = captureDao.searchFtsCandidates(matchQuery, timeRange, contentType, appPackage)
+        val recentPool = captureDao.searchFtsRecentCandidates(matchQuery, timeRange, contentType, appPackage)
+        val effectiveRecencyWeight = if (timeRange != null) {
+            SearchConfig.RECENCY_WEIGHT_WITH_TIME_FILTER
+        } else {
+            SearchConfig.RECENCY_WEIGHT
+        }
+        return combine(bm25Pool, recentPool) { bm25Candidates, recentCandidates ->
+            val merged = mergeCandidates(bm25Candidates, recentCandidates)
+            ranker.rank(merged, effectiveRecencyWeight)
+        }.map { mapResults(it) }
     }
 
     private data class ResolvedQuery(

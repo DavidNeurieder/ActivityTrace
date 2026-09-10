@@ -18,6 +18,8 @@ class SearchEngineTest {
 
     @Before
     fun setUp() {
+        every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
+        every { captureDao.searchFtsRecentCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
         searchEngine = SearchEngine(captureDao)
     }
 
@@ -156,6 +158,7 @@ class SearchEngineTest {
         every { captureDao.searchFtsCandidates("hello", null, null, null, any()) } returns flowOf(
             items.map { SearchCandidate(it, -it.id.toDouble()) },
         )
+        every { captureDao.searchFtsRecentCandidates("hello", null, null, null, any()) } returns flowOf(emptyList())
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 10, offset = 20).collect { pages.add(it) }
@@ -193,6 +196,7 @@ class SearchEngineTest {
         every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(
             items.map { SearchCandidate(it, -1.0) },
         )
+        every { captureDao.searchFtsRecentCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
@@ -204,16 +208,45 @@ class SearchEngineTest {
     @Test
     fun `searchPaged keeps has more when the page is full`() = runTest {
         val items = (1..50).map {
-            CapturedItem(text = "full $it", appPackage = "com.x", contentType = "text", timestamp = it.toLong())
+            CapturedItem(text = "full $it", appPackage = "com.x", contentType = "text", timestamp = it.toLong(), id = it.toLong())
         }
         every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(
             items.map { SearchCandidate(it, -1.0) },
         )
+        every { captureDao.searchFtsRecentCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
 
         assert(!pages.single().isLastPage)
+    }
+
+    @Test
+    fun `search pulls both the bm25 and the recent candidate pools`() = runTest {
+        val item = CapturedItem(text = "hit", appPackage = "com.x", contentType = "text", timestamp = 7L, id = 9L)
+        every { captureDao.searchFtsCandidates("hello", null, null, null, any()) } returns flowOf(
+            listOf(SearchCandidate(item, -3.0)),
+        )
+        every { captureDao.searchFtsRecentCandidates("hello", null, null, null, any()) } returns flowOf(emptyList())
+
+        val hits = mutableListOf<List<CapturedItem>>()
+        searchEngine.search("hello").collect { hits.add(it) }
+
+        verify { captureDao.searchFtsRecentCandidates("hello", null, null, null, SearchConfig.RECENT_CANDIDATE_LIMIT.toLong()) }
+        assertEquals(listOf(item), hits.single())
+    }
+
+    @Test
+    fun `time range lowers the recency weight`() = runTest {
+        val ranker = mockk<SearchRanker>()
+        val range = 1000L to 2000L
+        searchEngine = SearchEngine(captureDao, ranker)
+        every { ranker.rank(any(), SearchConfig.RECENCY_WEIGHT_WITH_TIME_FILTER) } returns emptyList()
+        every { ranker.rank(any(), SearchConfig.RECENCY_WEIGHT) } returns emptyList()
+
+        searchEngine.search("hello today").collect { }
+
+        verify { ranker.rank(any(), SearchConfig.RECENCY_WEIGHT_WITH_TIME_FILTER) }
     }
 
     @Test

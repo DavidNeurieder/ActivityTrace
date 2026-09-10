@@ -1,9 +1,11 @@
 package com.activitytrace.search
 
 import com.activitytrace.store.CaptureDao
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -16,6 +18,8 @@ class SearchEngineAdversarialTest {
 
     @Before
     fun setUp() {
+        every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
+        every { captureDao.searchFtsRecentCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
         searchEngine = SearchEngine(captureDao)
     }
 

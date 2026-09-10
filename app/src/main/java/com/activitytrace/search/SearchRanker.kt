@@ -3,12 +3,12 @@ package com.activitytrace.search
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import com.activitytrace.model.CapturedItem
-import kotlin.math.exp
 
 /**
- * A single BM25 candidate retrieved from the FTS5 index, before any
- * application-layer ranking has been applied. [bm25Score] is the raw FTS5
- * BM25 value where **smaller is better** (more negative = more relevant).
+ * A single candidate retrieved from the SQLite layer, before any application
+ * ranking. [bm25Score] is the raw FTS5 BM25 value where **smaller is better**
+ * (more negative = more relevant). Candidate lists arrive already ordered by
+ * BM25 relevance from `ORDER BY rank`.
  */
 data class SearchCandidate(
     @Embedded
@@ -18,54 +18,73 @@ data class SearchCandidate(
 )
 
 /**
- * A fully ranked search result carrying the individual signal scores so that
- * the ranking is easy to debug and tune.
+ * A fully ranked search result carrying the individual ranking signals so the
+ * ranking is easy to debug and tune. [bm25Score] is the raw FTS5 value kept
+ * for debugging; the actual fusion runs on [bm25Rank] / [recencyRank].
  */
 data class SearchResult(
     val item: CapturedItem,
     val bm25Score: Double,
-    val bm25Normalized: Double,
-    val recencyScore: Double,
+    val bm25Rank: Int,
+    val recencyRank: Int,
+    val bm25RrfScore: Double,
+    val recencyRrfScore: Double,
     val finalScore: Double,
 )
 
 /**
- * Two-stage search ranking: FTS5 BM25 relevance and recency are combined into
- * a single score. BM25 values are min-max normalized to [0,1] across the
- * candidate pool (raw FTS5 scores are negative and scale differently from a
- * recency score), and recency decays exponentially with age.
+ * Merges the BM25 pool and the recency pool by item id. A result that appears
+ * in both pools is kept once.
+ */
+fun mergeCandidates(
+    bm25Candidates: List<SearchCandidate>,
+    recentCandidates: List<SearchCandidate>,
+): List<SearchCandidate> = (bm25Candidates + recentCandidates)
+    .associateBy { it.item.id }
+    .values
+    .toList()
+
+/**
+ * Two-signal search ranking using Reciprocal Rank Fusion (RRF).
+ *
+ * Rank fusion is used instead of min-max BM25 normalization because a
+ * normalized score depends on the other documents in a particular candidate
+ * pool. RRF converts each document's BM25 position and recency position into
+ * `1 / (k + rank)` scores, so the output depends only on the *ordering* of the
+ * pool — it is invariant to the absolute BM25 scale and to how the BM25
+ * distribution differs between queries.
  *
  * Pure Kotlin so the whole algorithm is unit-testable without SQLite.
  */
 class SearchRanker(
-    private val bm25Weight: Double = BM25_WEIGHT,
-    private val recencyWeight: Double = RECENCY_WEIGHT,
-    private val halfLifeMs: Double = RECENCY_HALF_LIFE_MS,
+    private val bm25Weight: Double = SearchConfig.BM25_WEIGHT,
+    private val recencyWeight: Double = SearchConfig.RECENCY_WEIGHT,
+    private val rrfK: Double = SearchConfig.RRF_K.toDouble(),
 ) {
 
-    fun rank(candidates: List<SearchCandidate>, now: Long): List<SearchResult> {
+    fun rank(
+        candidates: List<SearchCandidate>,
+        recencyWeight: Double = this.recencyWeight,
+    ): List<SearchResult> {
         if (candidates.isEmpty()) return emptyList()
 
-        val best = candidates.minOf { it.bm25Score }
-        val worst = candidates.maxOf { it.bm25Score }
-        val bm25Range = worst - best
+        val bm25Ranks = byRelevance(candidates)
+        val recencyRanks = byRecency(candidates)
 
         val ranked = ArrayList<SearchResult>(candidates.size)
         for (candidate in candidates) {
-            val bm25Normalized = if (bm25Range == 0.0) {
-                1.0
-            } else {
-                (worst - candidate.bm25Score) / bm25Range
-            }
-            val age = maxOf(0L, now - candidate.item.timestamp).toDouble()
-            val recency = exp(-AGE_DECAY * age / halfLifeMs)
-            val finalScore = bm25Weight * bm25Normalized + recencyWeight * recency
+            val bm25Rank = bm25Ranks[candidate.item.id]!!
+            val recencyRank = recencyRanks[candidate.item.id]!!
+            val bm25RrfScore = rrf(bm25Rank)
+            val recencyRrfScore = rrf(recencyRank)
             ranked += SearchResult(
                 item = candidate.item,
                 bm25Score = candidate.bm25Score,
-                bm25Normalized = bm25Normalized.coerceIn(0.0, 1.0),
-                recencyScore = recency.coerceIn(0.0, 1.0),
-                finalScore = finalScore,
+                bm25Rank = bm25Rank,
+                recencyRank = recencyRank,
+                bm25RrfScore = bm25RrfScore,
+                recencyRrfScore = recencyRrfScore,
+                finalScore = bm25Weight * bm25RrfScore + recencyWeight * recencyRrfScore,
             )
         }
 
@@ -76,25 +95,18 @@ class SearchRanker(
         )
     }
 
-    companion object {
-        /** BM25 weight for the `text` column of the FTS5 index. */
-        const val BM25_TEXT_WEIGHT: Double = 1.0
+    private fun byRelevance(candidates: List<SearchCandidate>): Map<Long, Int> =
+        candidates.sortedWith(
+            compareBy<SearchCandidate> { it.bm25Score }
+                .thenByDescending { it.item.timestamp }
+                .thenByDescending { it.item.id },
+        ).withIndex().associate { (index, candidate) -> candidate.item.id to index + 1 }
 
-        /** BM25 weight for the `app_name` column of the FTS5 index. */
-        const val BM25_APP_WEIGHT: Double = 2.0
+    private fun byRecency(candidates: List<SearchCandidate>): Map<Long, Int> =
+        candidates.sortedWith(
+            compareByDescending<SearchCandidate> { it.item.timestamp }
+                .thenByDescending { it.item.id },
+        ).withIndex().associate { (index, candidate) -> candidate.item.id to index + 1 }
 
-        /** How many BM25 candidates to retrieve before application ranking. */
-        const val SEARCH_CANDIDATE_LIMIT: Int = 200
-
-        /** Recency half-life in days; recency(age == half-life) == 0.5. */
-        const val RECENCY_HALF_LIFE_DAYS: Double = 30.0
-
-        const val BM25_WEIGHT: Double = 0.8
-        const val RECENCY_WEIGHT: Double = 0.2
-
-        /** ln(2) / half-life so a result at the half-life age scores exactly 0.5. */
-        private const val AGE_DECAY: Double = 0.6931471805599453
-
-        val RECENCY_HALF_LIFE_MS: Double = RECENCY_HALF_LIFE_DAYS * 24.0 * 3600.0 * 1000.0
-    }
+    private fun rrf(rank: Int): Double = 1.0 / (rrfK + rank)
 }
