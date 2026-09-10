@@ -12,7 +12,7 @@ work = "2.9.0"
 sqlcipher = "4.17.0"
 sqliteKtx = "2.4.0"
 pdfbox = "2.0.27.0"
-documentfile = "1.0.1"
+documentfile = "1.1.0"
 
 # Test
 junit = "4.13.2"
