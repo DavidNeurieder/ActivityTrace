@@ -15,5 +15,12 @@ enum class DemoDataScenario(
     companion object {
         const val SHOWCASE_DATASET_ID = "showcase-v1"
         const val BENCHMARK_DATASET_ID = "benchmark-v1"
+
+        fun forDatasetId(datasetId: String): DemoDataScenario? =
+            entries.firstOrNull { it.datasetId == datasetId }
+
+        /** "v1" from "showcase-v1"; null when the id has no version suffix. */
+        fun datasetVersion(datasetId: String): Int? =
+            datasetId.substringAfterLast('-', "").toIntOrNull()
     }
 }

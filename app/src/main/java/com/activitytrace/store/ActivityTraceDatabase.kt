@@ -29,8 +29,30 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
         fun getInstance(context: Context): ActivityTraceDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context.applicationContext, EncryptionManager.getOrCreateKey(context))
-                    .also { INSTANCE = it }
+                    .also { openForWritesWithRetry(it); INSTANCE = it }
             }
+        }
+
+        /**
+         * Opens [database] for writes, retrying once.
+         *
+         * SQLCipher's first creation of a brand-new database can fail its own
+         * header self-verification with `file is not a database` (the file is
+         * left fully initialized, and a subsequent open succeeds). Without the
+         * retry, the very first UI access in a fresh process deterministically
+         * crashes. Retrying against the already-created file is safe and cheap.
+         */
+        private fun openForWritesWithRetry(database: ActivityTraceDatabase) {
+            var lastFailure: Throwable? = null
+            repeat(2) {
+                try {
+                    database.openHelper.writableDatabase
+                    return
+                } catch (failure: Throwable) {
+                    lastFailure = failure
+                }
+            }
+            throw lastFailure ?: IllegalStateException("Database open failed")
         }
 
         @VisibleForTesting

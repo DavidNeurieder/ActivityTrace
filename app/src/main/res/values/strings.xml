@@ -195,6 +195,7 @@ Continue?</string>
     <string name="delete_blocked_collected_message">Delete all captured data for this app?</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="dismiss">Dismiss</string>
     <string name="add_blocked_app">Add blocked app</string>
     <string name="select_app_to_block">Select an app to block</string>
     <string name="search_apps_hint">Search apps…</string>
@@ -236,23 +237,33 @@ Continue?</string>
     <string name="demo_data_title">Demo data</string>
     <string name="demo_data_description">Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time.</string>
     <string name="demo_data_what_it_contains">Includes messages, notifications, emails, documents and browsing activity from a fictional user — nothing real is ever shown here.</string>
+    <string name="demo_data_empty">No demo data installed</string>
     <plurals name="demo_data_captures">
         <item quantity="one">%d capture</item>
         <item quantity="other">%d captures</item>
     </plurals>
+    <string name="demo_data_dataset_meta">%1$d captures · Version %2$d</string>
+    <string name="demo_data_benchmark_meta">%1$d captures · Version %2$d</string>
+    <plurals name="demo_data_clear_removes">
+        <item quantity="one">This removes %d fictional capture. Your real activity will not be affected.</item>
+        <item quantity="other">This removes %d fictional captures. Your real activity will not be affected.</item>
+    </plurals>
     <string name="demo_data_generate">Generate demo data</string>
     <string name="demo_data_regenerate">Regenerate demo data</string>
+    <string name="demo_data_clear">Clear demo data</string>
     <string name="demo_data_reset">Reset demo data</string>
-    <string name="demo_data_busy">Working…</string>
+    <string name="demo_data_busy">Generating…</string>
     <string name="demo_data_error_occurred">Something went wrong while updating demo data.</string>
     <string name="demo_data_generated_on">Generated on %1$s</string>
     <string name="demo_data_not_generated">Not generated yet</string>
     <string name="demo_data_reset_title">Reset demo data?</string>
     <string name="demo_data_reset_message">This removes all fictional demo captures. Your real captures are never affected.</string>
     <string name="reset">Reset</string>
+    <string name="demo_data_clear_showcase_title">Clear demo data?</string>
     <string name="demo_data_developer_options">Developer options</string>
     <string name="demo_data_generate_benchmark">Regenerate benchmark (1,000 records)</string>
     <string name="demo_data_benchmark_empty">No benchmark data</string>
+    <string name="demo_data_clear_benchmark">Clear benchmark</string>
     <string name="demo_data_clear_all">Clear all demo data</string>
     <string name="demo_data_clear_all_title">Clear all demo data?</string>
 </resources>

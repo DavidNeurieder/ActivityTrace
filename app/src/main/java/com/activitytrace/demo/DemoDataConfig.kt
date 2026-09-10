@@ -14,10 +14,10 @@ data class DemoDataConfig(
 ) {
     companion object {
         /**
-         * A pinned reference time for fully reproducible screenshots and
-         * regression fixtures. "Today" in the showcase is relative to this
-         * instant.
+         * The pinned "now" used by the deterministic screenshot environment.
+         * Screenshots always generate `showcase-v1` against this instant — the
+         * showcase "today" is relative to it and never to `Instant.now()`.
          */
-        val SCREENSHOT_REFERENCE_TIME: Instant = Instant.parse("2026-03-10T18:00:00Z")
+        val SCREENSHOT_REFERENCE_TIME: Instant = Instant.parse("2026-09-01T12:00:00Z")
     }
 }

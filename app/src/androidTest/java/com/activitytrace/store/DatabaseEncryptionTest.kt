@@ -23,6 +23,7 @@ class DatabaseEncryptionTest {
 
     private lateinit var context: Context
     private lateinit var dbFile: File
+    private var tryOpenDb: ActivityTraceDatabase? = null
 
     @Before
     fun setUp() {
@@ -33,6 +34,11 @@ class DatabaseEncryptionTest {
 
     @After
     fun tearDown() {
+        try {
+            tryOpenDb?.close()
+        } catch (_: Throwable) {}
+        tryOpenDb = null
+        ActivityTraceDatabase.resetForTesting()
         dbFile.delete()
     }
 
@@ -133,6 +139,7 @@ class DatabaseEncryptionTest {
             result is DatabaseOpenResult.Opened,
         )
         val opened = result as DatabaseOpenResult.Opened
+        tryOpenDb = opened.database
         opened.database.captureDao()
         assertNull("successful open must clear recovery state", RecoveryStateStore(context).current())
     }

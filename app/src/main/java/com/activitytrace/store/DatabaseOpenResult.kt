@@ -71,15 +71,20 @@ class DatabaseOpener(
     private val stateStore: RecoveryStateStore,
 ) {
     fun open(): DatabaseOpenResult {
-        return try {
-            database.openHelper.writableDatabase
-            stateStore.clear()
-            DatabaseOpenResult.Opened(database)
-        } catch (error: Throwable) {
-            val reason = RecoveryClassifier.classify(error)
-                ?: return DatabaseOpenResult.Failed(error)
-            stateStore.record(reason)
-            DatabaseOpenResult.RecoveryRequired(reason)
+        var lastError: Throwable? = null
+        repeat(2) {
+            try {
+                database.openHelper.writableDatabase
+                stateStore.clear()
+                return DatabaseOpenResult.Opened(database)
+            } catch (error: Throwable) {
+                lastError = error
+            }
         }
+        val error = lastError ?: IllegalStateException("Database open failed")
+        val reason = RecoveryClassifier.classify(error)
+            ?: return DatabaseOpenResult.Failed(error)
+        stateStore.record(reason)
+        return DatabaseOpenResult.RecoveryRequired(reason)
     }
 }

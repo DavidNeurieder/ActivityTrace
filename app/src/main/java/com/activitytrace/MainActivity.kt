@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.activitytrace.demo.DemoDataRepository
+import com.activitytrace.ui.DemoDataViewModel
 import com.activitytrace.ui.OnboardingScreen
 import com.activitytrace.ui.SearchScreen
 import com.activitytrace.ui.SearchViewModel
@@ -104,7 +106,14 @@ class MainActivity : ComponentActivity() {
                         }
                         Screen.DemoData -> {
                             BackHandler { screen = Screen.Settings }
+                            val demoViewModel = ViewModelProvider(
+                                this,
+                                DemoDataViewModel.Factory(
+                                    DemoDataRepository.getInstance(applicationContext)
+                                )
+                            )[DemoDataViewModel::class.java]
                             DemoDataScreen(
+                                viewModel = demoViewModel,
                                 onBack = { screen = Screen.Settings },
                             )
                         }

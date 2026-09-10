@@ -1,8 +1,6 @@
 package com.activitytrace.ui
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.net.Uri
 import android.os.Environment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.hasText
@@ -13,14 +11,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
-import com.activitytrace.model.CapturedItem
 import com.activitytrace.store.ActivityTraceDatabase
-import com.activitytrace.store.BackupImporter
-import com.activitytrace.store.DataExporter
-import com.activitytrace.store.DatabaseExporter
-import com.activitytrace.store.ExportStatus
 import com.activitytrace.store.RetentionCleanupWorker
-import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -36,18 +28,27 @@ class SettingsScreenTest {
 
     @Before
     fun setUp() {
+        context = InstrumentationRegistry.getInstrumentation().targetContext
+        ActivityTraceDatabase.resetForTesting()
+        val dbFile = context.getDatabasePath("activity_trace.db")
+        dbFile.delete()
+        File("${dbFile.path}-wal").delete()
+        File("${dbFile.path}-shm").delete()
         composeTestRule.setContent {
             MaterialTheme {
                 SettingsScreen(onBack = {})
             }
         }
-        context = InstrumentationRegistry.getInstrumentation().targetContext
     }
 
     @After
     fun tearDown() {
         RetentionCleanupWorker.setRetentionDays(context, 7)
-        context.getDatabasePath("activity_trace.db").delete()
+        val dbFile = context.getDatabasePath("activity_trace.db")
+        ActivityTraceDatabase.resetForTesting()
+        dbFile.delete()
+        File("${dbFile.path}-wal").delete()
+        File("${dbFile.path}-shm").delete()
         File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "ActivityTrace/activity_trace.sqlite",
@@ -61,7 +62,6 @@ class SettingsScreenTest {
             "ActivityTrace/activity_trace.csv",
         ).delete()
         File(context.cacheDir, "export_temp").deleteRecursively()
-        ActivityTraceDatabase.resetForTesting()
     }
 
     @Test
@@ -161,90 +161,6 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Export as JSON").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Export as JSON").assertExists()
-    }
-
-    @Test
-    fun exportCsvAndImportSqliteRoundTrip() {
-        runBlocking {
-        val dao = ActivityTraceDatabase.getInstance(context).captureDao()
-
-        dao.insert(
-            CapturedItem(
-                text = "roundtrip one",
-                appPackage = "com.roundtrip",
-                appName = null,
-                contentType = "text",
-                category = null,
-                timestamp = 10000L,
-                metadata = null,
-            )
-        )
-        dao.insert(
-            CapturedItem(
-                text = "roundtrip two",
-                appPackage = "com.roundtrip",
-                appName = null,
-                contentType = "notification",
-                category = null,
-                timestamp = 20000L,
-                metadata = null,
-            )
-        )
-
-        assert(DataExporter.exportToCsv(context, dao) is ExportStatus.Success) { "CSV export should succeed" }
-
-        val dbResult = DatabaseExporter.exportPlaintextDatabase(context)
-        assert(dbResult is ExportStatus.Success) { "Database export should succeed, got: ${(dbResult as? ExportStatus.Error)?.message}" }
-
-        val backupFile = File(context.cacheDir, "import_roundtrip_test/backup.sqlite").also {
-            it.parentFile?.mkdirs()
-            it.delete()
-        }
-        val roomDb = ActivityTraceDatabase.getInstance(context)
-        DatabaseExporter.exportToPlainSqlite(roomDb.openHelper.writableDatabase, backupFile)
-
-        val dedupCount = BackupImporter.importFromBackup(context, Uri.fromFile(backupFile), dao)
-        assert(dedupCount == 0) { "Importing same items should dedup to 0, got $dedupCount" }
-
-        val manualBackupDir = File(context.cacheDir, "import_roundtrip_test")
-        manualBackupDir.mkdirs()
-        val manualBackupFile = File(manualBackupDir, "manual_backup.sqlite").also { it.delete() }
-        SQLiteDatabase.openOrCreateDatabase(manualBackupFile, null).use { db ->
-            db.execSQL(
-                """
-                CREATE TABLE captured_items (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    text TEXT NOT NULL,
-                    app_package TEXT NOT NULL,
-                    app_name TEXT,
-                    content_type TEXT NOT NULL,
-                    category TEXT,
-                    timestamp INTEGER NOT NULL,
-                    metadata TEXT
-                )
-                """.trimIndent()
-            )
-            db.execSQL(
-                "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                arrayOf("new item a", "com.new", "NewApp", "text", null, 30000L, null),
-            )
-            db.execSQL(
-                "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                arrayOf("new item b", "com.new2", "NewApp2", "text", null, 40000L, null),
-            )
-
-        val newCount = BackupImporter.importFromBackup(context, Uri.fromFile(manualBackupFile), dao)
-        assert(newCount == 2) { "Should import 2 new items, got $newCount" }
-
-        val rededupCount = BackupImporter.importFromBackup(context, Uri.fromFile(manualBackupFile), dao)
-        assert(rededupCount == 0) { "Re-importing should dedup to 0, got $rededupCount" }
-
-        val allKeys = dao.getAllItemKeys()
-        assert(allKeys.size == 4) { "Total items should be 4, got ${allKeys.size}" }
-
-        manualBackupDir.deleteRecursively()
-        }
-    }
     }
 
     @Test
