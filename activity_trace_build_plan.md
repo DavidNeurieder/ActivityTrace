@@ -110,28 +110,47 @@ fun buildFtsQuery(rawQuery: String, parsedFilters: QueryFilters): String {
         .filterNot { it in parsedFilters.consumedTokens }
         .joinToString(" AND ") { "\"$it\"" }
     
-    val baseQuery = if (terms.isNotBlank()) terms else "*"
-    
     // FTS5 column targeting:
-    // Search text, app_name, and metadata fields
-    // Weight: text=1.0, app_name=2.0, metadata=0.5
+    // The v9 FTS index covers only `text` and `app_name` (no metadata).
+    // Weight: text=1.0, app_name=2.0
+    val baseQuery = if (terms.isNotBlank()) terms else "*"
     return """
-        SELECT i.*, rank
-        FROM captured_items_fts f
-        JOIN captured_items i ON f.rowid = i.id
+        SELECT captured_items.*,
+               bm25(captured_items_fts, 1.0, 2.0) AS bm25_score
+        FROM captured_items
+        JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid
         WHERE captured_items_fts MATCH ?
           AND i.timestamp BETWEEN ? AND ?
           AND (i.app_package = ? OR ? = '')
-        ORDER BY rank DESC, i.timestamp DESC
-        LIMIT 50
+        ORDER BY rank
+        LIMIT 200
     """
 }
 ```
 
-**Ranking:** FTS5 `rank` is built-in BM25 relevance. After retrieval, apply:
-- **Recency boost**: `score = bm25_score * (1 + 0.5 * recency_normalized)` where recency = (now - timestamp) / (30 days)
-- **App priority**: user's most-used apps get a small multiplier
-- **Content type priority**: screenshots + browser pages rank higher than transient notifications
+**Two-stage ranking (implemented in `SearchRanker`):**
+
+FTS5 `rank` is SQLite's built-in BM25 relevance and **lower is better**, so the
+database returns `ORDER BY rank LIMIT 200` candidates ordered purely by
+relevance. The application does NOT touch every row — it re-ranks only this
+small candidate pool in Kotlin:
+
+- **BM25 normalization:** raw scores are negative and scale differently from
+  recency, so min-max normalize to `[0,1]` across the candidate pool
+  (`(worst - score) / (worst - best)`; degenerate uniform pool => `1.0`).
+- **Recency:** exponential half-life decay, `recency = exp(-age * ln2 / halfLife)`
+  with a 30-day half-life (a result 30 days old scores exactly 0.5).
+- **Combination:** `final = 0.8 * bm25Normalized + 0.2 * recency` — text
+  relevance stays the dominant signal, recency is a controlled tiebreaker.
+- **Deterministic sort:** `final DESC`, then `timestamp DESC`, then `id DESC`.
+- **Pagination:** `offset/limit` are applied AFTER ranking, never in the FTS
+  query (the FTS query is always `LIMIT 200`).
+
+A recent result can beat a marginally better old result, but a substantially
+better textual match still wins even when old. Earlier plans proposed
+`ORDER BY rank DESC` (backwards — rank is lower-is-better) and a multiplicative
+`score = bm25 * (1 + 0.5 * recency)` blend that mixed raw negative BM25 values
+with a recency multiplier on incompatible scales; both were discarded.
 
 ---
 

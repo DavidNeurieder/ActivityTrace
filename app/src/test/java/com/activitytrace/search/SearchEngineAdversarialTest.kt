@@ -53,7 +53,7 @@ class SearchEngineAdversarialTest {
         }
 
         val queries = mutableListOf<String>()
-        verify(atLeast = 1) { captureDao.searchFts(capture(queries), null, null, null) }
+        verify(atLeast = 1) { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         for (q in queries) {
             assertMatchQueryIsOperatorSafe(q)
         }
@@ -66,7 +66,7 @@ class SearchEngineAdversarialTest {
         searchEngine.search(longQuery).collect { }
 
         val queries = mutableListOf<String>()
-        verify { captureDao.searchFts(capture(queries), null, null, null) }
+        verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         val matchQuery = queries.single()
         assertTrue(
             "match query length ${matchQuery.length} exceeds budget",
@@ -82,7 +82,7 @@ class SearchEngineAdversarialTest {
         searchEngine.search(manyTerms).collect { }
 
         val queries = mutableListOf<String>()
-        verify { captureDao.searchFts(capture(queries), null, null, null) }
+        verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         val tokenCount = queries.single().split(" ").filter { it.isNotBlank() }.size
         assertTrue("expected <= ${QueryParser.MAX_TERMS} terms, got $tokenCount", tokenCount <= QueryParser.MAX_TERMS)
         assertMatchQueryIsOperatorSafe(queries.single())
@@ -93,7 +93,7 @@ class SearchEngineAdversarialTest {
         searchEngine.search("or and not near").collect { }
 
         val queries = mutableListOf<String>()
-        verify { captureDao.searchFts(capture(queries), null, null, null) }
+        verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         val matchQuery = queries.single()
         assertMatchQueryIsOperatorSafe(matchQuery)
         assertTrue(matchQuery.contains("\"or\" \"and\" \"not\" \"near\""))
@@ -104,7 +104,7 @@ class SearchEngineAdversarialTest {
         searchEngine.search("hello OR * \"quoted\" (paren)").collect { }
 
         val queries = mutableListOf<String>()
-        verify { captureDao.searchFts(capture(queries), null, null, null) }
+        verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         assertMatchQueryIsOperatorSafe(queries.single())
     }
 
@@ -113,7 +113,7 @@ class SearchEngineAdversarialTest {
         searchEngine.search("foo\"bar").collect { }
 
         val queries = mutableListOf<String>()
-        verify { captureDao.searchFts(capture(queries), null, null, null) }
+        verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         assertMatchQueryIsOperatorSafe(queries.single())
         assertTrue(queries.single().contains("\"foo\"\"bar\""))
     }

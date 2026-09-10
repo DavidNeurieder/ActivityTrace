@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 
@@ -38,42 +39,42 @@ class SearchEngineTest {
     fun `search wraps keywords in full-word tokens for fts`() = runTest {
         searchEngine.search("hello world").collect { }
 
-        verify { captureDao.searchFts("hello world", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello world", null, null, null) }
     }
 
     @Test
     fun `search with single keyword makes a full-word token`() = runTest {
         searchEngine.search("hello").collect { }
 
-        verify { captureDao.searchFts("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
     }
 
     @Test
     fun `search with wildcard drops star and makes full-word token`() = runTest {
         searchEngine.search("hello*").collect { }
 
-        verify { captureDao.searchFts("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
     }
 
     @Test
     fun `search with leading wildcard drops star and makes full-word token`() = runTest {
         searchEngine.search("*hello").collect { }
 
-        verify { captureDao.searchFts("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
     }
 
     @Test
     fun `search with surrounding wildcards drops stars and makes full-word token`() = runTest {
         searchEngine.search("*hello*").collect { }
 
-        verify { captureDao.searchFts("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
     }
 
     @Test
     fun `search with time range passes it to fts dao`() = runTest {
         searchEngine.search("hello today").collect { }
 
-        verify { captureDao.searchFts("hello", any(), null, null) }
+        verify { captureDao.searchFtsCandidates("hello", any(), null, null) }
     }
 
     @Test
@@ -88,42 +89,42 @@ class SearchEngineTest {
     fun `search strips time keywords from match query`() = runTest {
         searchEngine.search("today tomorrow").collect { }
 
-        verify { captureDao.searchFts("tomorrow", any(), null, null) }
+        verify { captureDao.searchFtsCandidates("tomorrow", any(), null, null) }
     }
 
     @Test
     fun `search with type filter passes contentType to fts dao`() = runTest {
         searchEngine.search("type:notification hello").collect { }
 
-        verify { captureDao.searchFts("hello", null, "notification", null) }
+        verify { captureDao.searchFtsCandidates("hello", null, "notification", null) }
     }
 
     @Test
     fun `search with in filter passes appPackage to fts dao`() = runTest {
         searchEngine.search("in:signal meeting").collect { }
 
-        verify { captureDao.searchFts("meeting", null, null, "signal") }
+        verify { captureDao.searchFtsCandidates("meeting", null, null, "signal") }
     }
 
     @Test
     fun `search with combined type and in filters and keyword`() = runTest {
         searchEngine.search("in:com.example type:screen notes").collect { }
 
-        verify { captureDao.searchFts("notes", null, "screen", "com.example") }
+        verify { captureDao.searchFtsCandidates("notes", null, "screen", "com.example") }
     }
 
     @Test
     fun `search with operator chars quotes the token`() = runTest {
         searchEngine.search("C++").collect { }
 
-        verify { captureDao.searchFts("\"c++\"", null, null, null) }
+        verify { captureDao.searchFtsCandidates("\"c++\"", null, null, null) }
     }
 
     @Test
     fun `search with colon char quotes the token`() = runTest {
         searchEngine.search("3:30").collect { }
 
-        verify { captureDao.searchFts("\"3:30\"", null, null, null) }
+        verify { captureDao.searchFtsCandidates("\"3:30\"", null, null, null) }
     }
 
     @Test
@@ -142,10 +143,28 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `searchPaged uses fts paged with page size and offset`() = runTest {
-        searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 25).collect { }
+    fun `searchPaged retrieves candidates and paginates after ranking`() = runTest {
+        val items = (1..60).map { i ->
+            CapturedItem(
+                text = "found $i",
+                appPackage = "com.x",
+                contentType = "text",
+                timestamp = (60 - i).toLong(),
+                id = i.toLong(),
+            )
+        }
+        every { captureDao.searchFtsCandidates("hello", null, null, null, any()) } returns flowOf(
+            items.map { SearchCandidate(it, -it.id.toDouble()) },
+        )
 
-        verify { captureDao.searchFtsPaged("hello", null, null, null, 50L, 25L) }
+        val pages = mutableListOf<SearchPage>()
+        searchEngine.searchPaged("hello", null, null, null, pageSize = 10, offset = 20).collect { pages.add(it) }
+
+        val page = pages.single()
+        val ranked = items.reversed()
+        assertEquals(ranked.slice(20 until 30).map { it.text }, page.items.map { it.text })
+        assertEquals(10, page.items.size)
+        assert(!page.isLastPage)
     }
 
     @Test
@@ -163,7 +182,7 @@ class SearchEngineTest {
         assert(page.items.isEmpty())
         assert(page.isLastPage)
 
-        verify(exactly = 0) { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -171,7 +190,9 @@ class SearchEngineTest {
         val items = listOf(
             CapturedItem(text = "found", appPackage = "com.x", contentType = "text", timestamp = 1L)
         )
-        every { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(items)
+        every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(
+            items.map { SearchCandidate(it, -1.0) },
+        )
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }
@@ -185,7 +206,9 @@ class SearchEngineTest {
         val items = (1..50).map {
             CapturedItem(text = "full $it", appPackage = "com.x", contentType = "text", timestamp = it.toLong())
         }
-        every { captureDao.searchFtsPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(items)
+        every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(
+            items.map { SearchCandidate(it, -1.0) },
+        )
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 50, offset = 0).collect { pages.add(it) }

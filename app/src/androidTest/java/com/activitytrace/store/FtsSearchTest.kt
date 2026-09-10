@@ -26,8 +26,8 @@ class FtsSearchTest {
             item("shaking a cocktail", "com.bar", "screen", 3),
         )
 
-        val results = dao.searchFts(matchQuery = "bake").first()
-        val texts = results.map { it.text }
+        val results = dao.searchFtsCandidates(matchQuery = "bake").first()
+        val texts = results.map { it.item.text }
 
         assertTrue("expected exact bake docs to match", texts.contains("bake a cake"))
         assertTrue("expected prefix baking not to match", !texts.contains("kitchen baking adventure"))
@@ -41,10 +41,10 @@ class FtsSearchTest {
             item("important meeting", "com.test", "notification", 2),
         )
 
-        val results = dao.searchFts(matchQuery = "meeting", contentType = "notification").first()
+        val results = dao.searchFtsCandidates(matchQuery = "meeting", contentType = "notification").first()
 
-        assertEquals(listOf("important meeting"), results.map { it.text })
-        assertEquals(listOf("notification"), results.map { it.contentType })
+        assertEquals(listOf("important meeting"), results.map { it.item.text })
+        assertEquals(listOf("notification"), results.map { it.item.contentType })
     }
 
     @Test
@@ -54,9 +54,29 @@ class FtsSearchTest {
             item("quarterly report", "com.competitor", "screen", 2),
         )
 
-        val results = dao.searchFts(matchQuery = "report", appPackage = "com.acme").first()
+        val results = dao.searchFtsCandidates(matchQuery = "report", appPackage = "com.acme").first()
 
-        assertEquals(listOf("com.acme"), results.map { it.appPackage })
+        assertEquals(listOf("com.acme"), results.map { it.item.appPackage })
+    }
+
+    @Test
+    fun `fts_orders_candidates_by_bm25_relevance`() = runBlocking {
+        insertAll(
+            item("pizza restaurant in Munich", "com.food", "screen", 1000),
+            item("something unrelated", "com.other", "screen", 1001),
+            item("pizza", "com.food", "screen", 1002),
+            item("pizza pizza pizza", "com.food", "screen", 1003),
+        )
+
+        val candidates = dao.searchFtsCandidates(matchQuery = "pizza").first()
+
+        val texts = candidates.map { it.item.text }
+        assertEquals(
+            "repeated-term doc should rank first, then singleton matches",
+            listOf("pizza pizza pizza", "pizza", "pizza restaurant in Munich"),
+            texts,
+        )
+        assertTrue("unrelated doc must not match", !texts.contains("something unrelated"))
     }
 
     private suspend fun insertAll(vararg items: CapturedItem) {

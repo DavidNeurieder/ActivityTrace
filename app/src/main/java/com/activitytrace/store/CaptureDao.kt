@@ -11,6 +11,8 @@ import androidx.room.Update
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.SearchCandidate
+import com.activitytrace.search.SearchRanker
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -57,23 +59,23 @@ interface CaptureDao {
     @RawQuery(observedEntities = [CapturedItem::class])
     fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 
-    fun searchFts(
-        matchQuery: String,
-        timeRange: Pair<Long, Long>? = null,
-        contentType: String? = null,
-        appPackage: String? = null,
-    ): Flow<List<CapturedItem>> {
-        return searchFtsPaged(matchQuery, timeRange, contentType, appPackage, limit = Long.MAX_VALUE, offset = 0)
-    }
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun searchCandidatesRaw(query: SupportSQLiteQuery): Flow<List<SearchCandidate>>
 
-    fun searchFtsPaged(
+    /**
+     * Retrieves the best [limit] BM25 candidates for an FTS5 [matchQuery].
+     *
+     * FTS5's `rank` column is its built-in BM25 relevance score where *lower
+     * is better*, so candidates come back ordered by relevance. Recency based
+     * re-ranking happens in [SearchRanker] after this DAO call.
+     */
+    fun searchFtsCandidates(
         matchQuery: String,
         timeRange: Pair<Long, Long>? = null,
         contentType: String? = null,
         appPackage: String? = null,
-        limit: Long,
-        offset: Long,
-    ): Flow<List<CapturedItem>> {
+        limit: Long = SearchRanker.SEARCH_CANDIDATE_LIMIT.toLong(),
+    ): Flow<List<SearchCandidate>> {
         val conditions = mutableListOf<String>()
         conditions.add("captured_items_fts MATCH ?")
         val params = mutableListOf<Any>(matchQuery)
@@ -95,17 +97,17 @@ interface CaptureDao {
 
         val whereClause = " WHERE ${conditions.joinToString(" AND ")}"
         params.add(limit)
-        params.add(offset)
 
         val sql = """
-            SELECT captured_items.* FROM captured_items
+            SELECT captured_items.*, bm25(captured_items_fts, ${SearchRanker.BM25_TEXT_WEIGHT}, ${SearchRanker.BM25_APP_WEIGHT}) AS bm25_score
+            FROM captured_items
             JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid
             $whereClause
-            ORDER BY captured_items.timestamp DESC
-            LIMIT ? OFFSET ?
+            ORDER BY rank
+            LIMIT ?
         """.trimIndent()
 
-        return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+        return searchCandidatesRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
 
     fun searchLike(

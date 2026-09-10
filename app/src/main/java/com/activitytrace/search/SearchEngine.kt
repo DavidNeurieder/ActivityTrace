@@ -12,7 +12,10 @@ data class SearchPage(
     val isLastPage: Boolean = false,
 )
 
-class SearchEngine(private val captureDao: CaptureDao) {
+class SearchEngine(
+    private val captureDao: CaptureDao,
+    private val ranker: SearchRanker = SearchRanker(),
+) {
 
     fun recentItems(
         contentType: String? = null,
@@ -66,12 +69,14 @@ class SearchEngine(private val captureDao: CaptureDao) {
             return flowOf(emptyList())
         }
 
-        return captureDao.searchFts(
+        return captureDao.searchFtsCandidates(
             matchQuery = matchQuery,
             timeRange = effectiveRange,
             contentType = effectiveType,
             appPackage = effectiveApp,
-        )
+        ).map { candidates ->
+            ranker.rank(candidates, System.currentTimeMillis()).map { it.item }
+        }
     }
 
     fun searchPaged(
@@ -104,14 +109,18 @@ class SearchEngine(private val captureDao: CaptureDao) {
             return flowOf(SearchPage(emptyList(), isLastPage = true))
         }
 
-        return captureDao.searchFtsPaged(
+        return captureDao.searchFtsCandidates(
             matchQuery = matchQuery,
             timeRange = effectiveRange,
             contentType = effectiveType,
             appPackage = effectiveApp,
-            limit = pageSize.toLong(),
-            offset = offset.toLong(),
-        ).map { SearchPage(it, it.size < pageSize) }
+        ).map { candidates ->
+            val ranked = ranker.rank(candidates, System.currentTimeMillis())
+                .drop(offset)
+                .take(pageSize)
+                .map { it.item }
+            SearchPage(ranked, ranked.size < pageSize)
+        }
     }
 
     private data class ResolvedQuery(
