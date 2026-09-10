@@ -17,7 +17,7 @@ documentfile = "1.0.1"
 # Test
 junit = "4.13.2"
 mockk = "1.13.9"
-coroutinesTest = "1.7.3"
+coroutinesTest = "1.11.0"
 turbine = "1.0.0"
 androidxTestExtJunit = "1.1.5"
 androidxTestRunner = "1.5.2"
