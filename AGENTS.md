@@ -37,6 +37,7 @@ python3 build_and_test.py   # automate full CI workflow
 - **Capture:** `ActivityTraceNotificationListener.kt`, `AccessibilityCaptureService.kt`
 - **Store:** `ActivityTraceDatabase.kt` (Room + SQLCipher), `CaptureDao.kt`, `EncryptionManager.kt`, `RetentionCleanupWorker.kt`
 - **Search:** `QueryParser.kt`, `SearchEngine.kt`
+- **Demo mode:** `demo/` package (`DemoDataScenario`, `DemoDataConfig`, `DemoRecordFactory`, `DemoDataGenerator`, `DemoDataRepository`), `ui/DemoDataScreen.kt` — deterministic, isolated dataset (schema column `demo_dataset_id`, never touches real captures)
 - **File indexing:** `FileIndexer.kt`, `FileIndexingWorker.kt`
 - **Model:** `CapturedItem.kt`
 - **Theme:** `ui/theme/Theme.kt` (dynamic color API 31+, fallback green seed)

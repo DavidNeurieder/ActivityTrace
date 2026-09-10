@@ -25,11 +25,12 @@ import com.activitytrace.ui.SearchScreen
 import com.activitytrace.ui.SearchViewModel
 import com.activitytrace.ui.SettingsScreen
 import com.activitytrace.ui.BlockedAppsScreen
+import com.activitytrace.ui.DemoDataScreen
 import com.activitytrace.ui.theme.ActivityTraceTheme
 import com.activitytrace.ui.theme.ThemeMode
 
 class MainActivity : ComponentActivity() {
-    private enum class Screen { Search, Settings, BlockedApps }
+    private enum class Screen { Search, Settings, BlockedApps, DemoData }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +88,7 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(
                                 onBack = { screen = Screen.Search },
                                 onNavigateToBlockedApps = { screen = Screen.BlockedApps },
+                                onNavigateToDemoData = { screen = Screen.DemoData },
                                 themeMode = themeMode,
                                 onThemeModeChanged = { mode ->
                                     themeMode = mode
@@ -97,6 +99,12 @@ class MainActivity : ComponentActivity() {
                         Screen.BlockedApps -> {
                             BackHandler { screen = Screen.Settings }
                             BlockedAppsScreen(
+                                onBack = { screen = Screen.Settings },
+                            )
+                        }
+                        Screen.DemoData -> {
+                            BackHandler { screen = Screen.Settings }
+                            DemoDataScreen(
                                 onBack = { screen = Screen.Settings },
                             )
                         }

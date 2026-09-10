@@ -21,7 +21,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
     abstract fun blockedAppDao(): BlockedAppDao
 
     companion object {
-        const val CURRENT_VERSION = 9
+        const val CURRENT_VERSION = 10
         const val DB_NAME = "activity_trace.db"
         @Volatile
         private var INSTANCE: ActivityTraceDatabase? = null
@@ -71,7 +71,7 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
             )
                 .openHelperFactory(factory)
                 .addCallback(SEED_DEFAULTS_CALLBACK)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .build()
         }
 
@@ -220,6 +220,12 @@ abstract class ActivityTraceDatabase : RoomDatabase() {
                     SELECT `id`, `text`, `app_name` FROM `captured_items`
                     """.trimIndent()
                 )
+            }
+        }
+
+        internal val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE captured_items ADD COLUMN demo_dataset_id TEXT DEFAULT NULL")
             }
         }
 

@@ -31,4 +31,6 @@ data class CapturedItem(
     val imageBlob: ByteArray? = null,
     @ColumnInfo(name = "content_hash")
     val contentHash: String? = null,
+    @ColumnInfo(name = "demo_dataset_id")
+    val demoDatasetId: String? = null,
 )

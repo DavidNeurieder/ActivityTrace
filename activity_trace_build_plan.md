@@ -183,6 +183,49 @@ with a recency multiplier on incompatible scales; both were discarded.
 
 ---
 
+## Demo Mode (implemented)
+
+A deterministic, fully isolated demo dataset so the app can be explored and
+screenshotted without real captures. Design (spec: `ideas/demo_mode.txt`):
+
+- **Isolation:** every demo row carries `demo_dataset_id` (`MIGRATION_9_10`,
+  schema v10; rows are NULL for real captures). Demo lifecycle operations
+  (`deleteByDemoDatasetId`) match only on that column — real records are never
+  touched, and generate/clear are one `withTransaction` so the user never sees
+  half a dataset.
+- **Determinism:** `DemoRecordFactory` never reads the wall clock. Timestamps
+  are offsets from `DemoDataConfig.referenceTime` (`SCREENSHOT_REFERENCE_TIME`
+  pins a fixed instant for reproducible screenshots) and the benchmark variant
+  is seeded (`seed = 12345`), so the same generation always yields identical
+  content, ordering and hashes.
+- **Showcase** (`showcase-v1`, ~155 records): one fictional user (Vienna trip,
+  Project Aurora, Café Isar, Hotel Danube, invoice 2026-041) spread across the
+  full 90-day retention window in discrete buckets (§13), including the
+  engineered cases:
+  - app-name weighting triplet "Your invoice is ready" in Gmail/Signal/WhatsApp
+    (§11, identical text so the 1.0/2.0 column weights must decide the order),
+  - BM25 fixture cluster (§10) with exact-length variants ("Project Aurora
+    [x3]", long vs short documents, "lunch reservation" named-entity probe),
+  - a ~700-word fictional email exercising doc-length normalization (§12).
+- **Benchmark** (`benchmark-v1`): 1,000 seeded records plus a 210-record
+  "zenith sonic blueprint" cluster that saturates the 200-row BM25 candidate
+  pool. One deliberately weak but *fresh* match sits at the end and must still
+  surface via the 100-row recent-candidate pool (candidate-cutoff protection,
+  §25). Sizes 1000 can be regenerated from the debug-only developer section.
+- **UI:** `DemoDataScreen`, reachable via Settings. Build-config guarded
+  (`BuildConfig.DEBUG`), strings/plurals in `strings.xml`, generation time
+  persisted in prefs. The demo enters the DB as ordinary rows, so it is fully
+  searchable through the real pipeline (FTS) but namespaced for inspection and
+  bulk removal.
+- **Tests:** `DemoRecordFactoryTest` (determinism, counts, buckets, hash
+  uniqueness, engineered fixtures) and `DemoDataInstrumentedTest` (generate →
+  search → clear lifecycle against real SQLCipher + FTS, real-record survival,
+  benchmark recent-pool rescue). Migration coverage: `MIGRATION_9_10` unit test
+  + the encrypted `MigrationMatrixTest` chain now covers source versions
+  6/7/8/9 → 10.
+
+---
+
 ## Capture Components
 
 ### 1. NotificationListenerService

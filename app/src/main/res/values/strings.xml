@@ -231,4 +231,28 @@ Continue?</string>
         <item quantity="one">Importing %d item…</item>
         <item quantity="other">Importing %d items…</item>
     </plurals>
+
+    <!-- DemoDataScreen -->
+    <string name="demo_data_title">Demo data</string>
+    <string name="demo_data_description">Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time.</string>
+    <string name="demo_data_what_it_contains">Includes messages, notifications, emails, documents and browsing activity from a fictional user — nothing real is ever shown here.</string>
+    <plurals name="demo_data_captures">
+        <item quantity="one">%d capture</item>
+        <item quantity="other">%d captures</item>
+    </plurals>
+    <string name="demo_data_generate">Generate demo data</string>
+    <string name="demo_data_regenerate">Regenerate demo data</string>
+    <string name="demo_data_reset">Reset demo data</string>
+    <string name="demo_data_busy">Working…</string>
+    <string name="demo_data_error_occurred">Something went wrong while updating demo data.</string>
+    <string name="demo_data_generated_on">Generated on %1$s</string>
+    <string name="demo_data_not_generated">Not generated yet</string>
+    <string name="demo_data_reset_title">Reset demo data?</string>
+    <string name="demo_data_reset_message">This removes all fictional demo captures. Your real captures are never affected.</string>
+    <string name="reset">Reset</string>
+    <string name="demo_data_developer_options">Developer options</string>
+    <string name="demo_data_generate_benchmark">Regenerate benchmark (1,000 records)</string>
+    <string name="demo_data_benchmark_empty">No benchmark data</string>
+    <string name="demo_data_clear_all">Clear all demo data</string>
+    <string name="demo_data_clear_all_title">Clear all demo data?</string>
 </resources>

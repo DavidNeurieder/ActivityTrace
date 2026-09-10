@@ -63,6 +63,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Room schema JSONs are exported here and fed to the unit test (Robolectric)

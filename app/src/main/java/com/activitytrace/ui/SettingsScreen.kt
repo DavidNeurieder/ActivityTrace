@@ -99,6 +99,7 @@ import com.activitytrace.ui.theme.ThemeMode
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateToBlockedApps: () -> Unit = {},
+    onNavigateToDemoData: () -> Unit = {},
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     onThemeModeChanged: (ThemeMode) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -137,6 +138,8 @@ fun SettingsScreen(
             PermissionsSection(context)
             Spacer(Modifier.height(24.dp))
             BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
+            Spacer(Modifier.height(24.dp))
+            DemoDataSection(onNavigate = onNavigateToDemoData)
             Spacer(Modifier.height(24.dp))
             PrivacySection()
             Spacer(Modifier.height(24.dp))
@@ -1039,6 +1042,27 @@ private fun BlockedAppsSection(onNavigate: () -> Unit) {
     ) {
         Text(
             text = stringResource(R.string.blocked_apps_description),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun DemoDataSection(onNavigate: () -> Unit) {
+    Text(
+        text = stringResource(R.string.demo_data_title),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigate() },
+    ) {
+        Text(
+            text = stringResource(R.string.demo_data_description),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(16.dp),
         )

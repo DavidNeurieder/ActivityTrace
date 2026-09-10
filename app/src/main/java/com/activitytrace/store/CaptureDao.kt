@@ -56,6 +56,18 @@ interface CaptureDao {
     @Query("DELETE FROM captured_items WHERE app_package = :appPackage")
     suspend fun deleteByAppPackage(appPackage: String)
 
+    @Query("DELETE FROM captured_items WHERE demo_dataset_id = :datasetId")
+    suspend fun deleteByDemoDatasetId(datasetId: String): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE demo_dataset_id = :datasetId")
+    suspend fun countByDemoDatasetId(datasetId: String): Int
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE demo_dataset_id = :datasetId")
+    fun demoCountFlow(datasetId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM captured_items WHERE demo_dataset_id IS NOT NULL")
+    suspend fun countAllDemoRecords(): Int
+
     @RawQuery(observedEntities = [CapturedItem::class])
     fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 

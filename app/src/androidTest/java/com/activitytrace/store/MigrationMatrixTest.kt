@@ -46,7 +46,7 @@ class MigrationMatrixTest {
 
     @Test
     fun full_chain_migrates_every_encrypted_source_version_to_current() {
-        for (version in arrayOf(6, 7, 8)) {
+        for (version in arrayOf(6, 7, 8, 9)) {
             migrateEncryptedDatabaseFrom(version)
         }
     }
@@ -64,11 +64,24 @@ class MigrationMatrixTest {
             )
             assertEquals("rows must survive the chain", 2L, count(db, "SELECT COUNT(*) FROM captured_items"))
 
-            val ftsRecovered = count(
-                db,
-                "SELECT COUNT(*) FROM captured_items_fts WHERE captured_items_fts MATCH 'tracking'",
-            )
-            assertEquals("MIGRATION_8_9 must backfill rows into FTS", 1L, ftsRecovered)
+            if (sourceVersion <= 8) {
+                // The FTS index exists on disk only from v8→v9 onward; verify the
+                // backfill for sources that predate it.
+                val ftsRecovered = count(
+                    db,
+                    "SELECT COUNT(*) FROM captured_items_fts WHERE captured_items_fts MATCH 'tracking'",
+                )
+                assertEquals("MIGRATION_8_9 must backfill rows into FTS", 1L, ftsRecovered)
+            } else {
+                // A v9 fixture materialised from the Room schema JSON has no FTS
+                // table at all (it is created by MIGRATION_8_9 / the DB callback,
+                // not declared as a Room entity) — it must still open cleanly.
+                val ftsTable = count(
+                    db,
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'captured_items_fts'",
+                )
+                assertEquals("v9 fixture starts without an FTS table", 0L, ftsTable)
+            }
 
             assertEquals("integrity_check must pass on the migrated database", "ok", scalar(db, "PRAGMA integrity_check"))
 
@@ -76,11 +89,13 @@ class MigrationMatrixTest {
                 "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked, content_hash) " +
                     "VALUES ('fresh matrix row', 'com.example', 'screen', 3000, 0, 'hash-fresh')"
             )
-            val liveSync = count(
-                db,
-                "SELECT COUNT(*) FROM captured_items_fts WHERE captured_items_fts MATCH 'fresh'",
-            )
-            assertEquals("migration triggers must keep FTS in sync on insert", 1L, liveSync)
+            if (sourceVersion <= 8) {
+                val liveSync = count(
+                    db,
+                    "SELECT COUNT(*) FROM captured_items_fts WHERE captured_items_fts MATCH 'fresh'",
+                )
+                assertEquals("migration triggers must keep FTS in sync on insert", 1L, liveSync)
+            }
 
             val blockedKept = count(
                 db,
@@ -93,6 +108,12 @@ class MigrationMatrixTest {
                 "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'index_captured_items_content_hash'",
             )
             assertEquals("the content_hash unique index must exist", 1L, hashIndex)
+
+            val demoColumn = count(
+                db,
+                "SELECT COUNT(*) FROM pragma_table_info('captured_items') WHERE name = 'demo_dataset_id'",
+            )
+            assertEquals("MIGRATION_9_10 must add demo_dataset_id", 1L, demoColumn)
             close()
         }
 

@@ -179,10 +179,39 @@ class ActivityTraceDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun `MIGRATION_9_10 adds demo_dataset_id without data loss`() {
+        helper.createDatabase(TEST_DB_9_10, 9).use { db ->
+            db.execSQL(
+                "INSERT INTO captured_items (text, app_package, content_type, timestamp, is_bookmarked) VALUES ('hello', 'com.test', 'screen', 1000, 0)"
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB_9_10, 10, true, ActivityTraceDatabase.MIGRATION_9_10)
+            .use { db ->
+                val rowCursor = db.query("SELECT COUNT(*) FROM captured_items")
+                rowCursor.moveToFirst()
+                assertEquals(1, rowCursor.getInt(0))
+                rowCursor.close()
+
+                val demoCursor = db.query(
+                    "SELECT demo_dataset_id FROM captured_items WHERE text = 'hello'"
+                )
+                assertTrue(demoCursor.moveToFirst())
+                val value = try {
+                    demoCursor.getString(0)
+                } finally {
+                    demoCursor.close()
+                }
+                assertTrue("existing records must stay real (NULL demo id)", value.isNullOrBlank())
+            }
+    }
+
     private companion object {
         const val TEST_DB = "migration-test-6-7.db"
         const val TEST_DB_7_8 = "migration-test-7-8.db"
         const val TEST_DB_FAIL = "migration-test-failing.db"
+        const val TEST_DB_9_10 = "migration-test-9-10.db"
     }
 
     private fun createV5Database(): File {
