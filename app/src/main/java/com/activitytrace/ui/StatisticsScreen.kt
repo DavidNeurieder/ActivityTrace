@@ -2,10 +2,6 @@ package com.activitytrace.ui
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
@@ -629,10 +625,7 @@ private fun TopAppsList(
             displayApps.forEachIndexed { index, app ->
                 val appName = remember(app.appPackage) { resolveAppName2(context, app.appPackage) }
                 val appIcon = remember(app.appPackage) {
-                    try {
-                        context.packageManager.getApplicationIcon(app.appPackage)
-                            .toBitmap2().asImageBitmap()
-                    } catch (_: Exception) { null }
+                    AppIconResolver.resolveByPackage(context, app.appPackage)
                 }
                 val fraction = app.count.toFloat() / total
 
@@ -935,13 +928,4 @@ private fun resolveAppName2(context: Context, pkg: String): String {
     }
 }
 
-private fun Drawable.toBitmap2(defaultSize: Int = 256): Bitmap = when (this) {
-    is BitmapDrawable -> bitmap
-    else -> {
-        val bmp = Bitmap.createBitmap(defaultSize, defaultSize, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        setBounds(0, 0, defaultSize, defaultSize)
-        draw(canvas)
-        bmp
-    }
-}
+

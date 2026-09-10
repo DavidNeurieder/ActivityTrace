@@ -7,10 +7,12 @@ import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
 import com.activitytrace.store.ContentHasher
+import com.activitytrace.ui.DemoIconMap
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -159,6 +161,20 @@ class DemoDataInstrumentedTest {
             results.any { it.text.contains("zenith sonic blueprint morning note") },
         )
         assertTrue(results.size >= 200)
+    }
+
+    @Test
+    fun every_demo_app_has_icon() {
+        val allAppNames = DemoRecordFactory.recordsFor(
+            DemoDataScenario.SHOWCASE, DemoDataConfig()
+        ).map { it.appName }.toSet()
+
+        allAppNames.forEach { name ->
+            assertNotNull(
+                "Demo app '$name' has no bundled icon -- add demo_icon_<name>.xml",
+                DemoIconMap.resId(name)
+            )
+        }
     }
 
     private suspend fun insertRealRecord() {

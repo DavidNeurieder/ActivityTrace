@@ -3,10 +3,6 @@ package com.activitytrace.ui
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -303,10 +299,7 @@ private fun AppPickerDialog(
                     items(filteredApps, key = { it.packageName }) { ai ->
                         val label = pm.getApplicationLabel(ai).toString()
                         val icon = remember(ai.packageName) {
-                            try {
-                                pm.getApplicationIcon(ai.packageName)
-                                    .toBitmap().asImageBitmap()
-                            } catch (_: Exception) { null }
+                            AppIconResolver.resolveByPackage(context, ai.packageName)
                         }
                         Row(
                             modifier = Modifier
@@ -369,10 +362,7 @@ private fun BlockedAppRow(
     val context = LocalContext.current
     val appName = remember(app.appPackage) { resolveAppName(context, app.appPackage) }
     val appIcon = remember(app.appPackage) {
-        try {
-            context.packageManager.getApplicationIcon(app.appPackage)
-                .toBitmap().asImageBitmap()
-        } catch (_: Exception) { null }
+        AppIconResolver.resolveByPackage(context, app.appPackage)
     }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -483,13 +473,4 @@ private fun resolveAppName(context: Context, pkg: String): String {
     }
 }
 
-private fun Drawable.toBitmap(defaultSize: Int = 256): Bitmap = when (this) {
-    is BitmapDrawable -> bitmap
-    else -> {
-        val bmp = Bitmap.createBitmap(defaultSize, defaultSize, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        setBounds(0, 0, defaultSize, defaultSize)
-        draw(canvas)
-        bmp
-    }
-}
+

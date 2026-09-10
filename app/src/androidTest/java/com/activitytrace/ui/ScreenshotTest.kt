@@ -96,6 +96,14 @@ class ScreenshotTest {
         }
         val showcaseText = "${DemoRecordFactory.SHOWCASE_RECORD_COUNT} captures · Version 1"
 
+        // Verify demo icons resolve: every showcase app must have a bundled icon.
+        DemoRecordFactory.recordsFor(DemoDataScenario.SHOWCASE, config)
+            .map { it.appName }.toSet().forEach { name ->
+                assert(com.activitytrace.ui.DemoIconMap.resId(name) != null) {
+                    "Demo app '$name' has no bundled icon"
+                }
+            }
+
         // Deterministic UI state: light theme, onboarded.
         context.getSharedPreferences("activity_trace", Context.MODE_PRIVATE).edit()
             .putBoolean("onboarded", true)

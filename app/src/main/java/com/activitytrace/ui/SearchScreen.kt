@@ -8,11 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -536,16 +532,9 @@ Card(
         colors = CardDefaults.cardColors(),
     ) {
         val context = LocalContext.current
-        val appIcon = if (item.appPackage != "local") {
-            var cachedIcon by remember(item.appPackage) { mutableStateOf<ImageBitmap?>(null) }
-            if (cachedIcon == null) {
-                cachedIcon = try {
-                    context.packageManager.getApplicationIcon(item.appPackage)
-                        .toBitmap().asImageBitmap()
-                } catch (_: Exception) { null }
-            }
-            cachedIcon
-        } else null
+        val appIcon = remember(item.appPackage, item.appName, item.demoDatasetId) {
+            AppIconResolver.resolve(context, item)
+        }
 
         ListItem(
             leadingContent = {
@@ -750,16 +739,7 @@ private fun groupByDate(
     return groups
 }
 
-private fun Drawable.toBitmap(defaultSize: Int = 256): Bitmap {
-    if (this is BitmapDrawable) return bitmap
-    val w = if (intrinsicWidth > 0) intrinsicWidth else defaultSize
-    val h = if (intrinsicHeight > 0) intrinsicHeight else defaultSize
-    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bmp)
-    setBounds(0, 0, canvas.width, canvas.height)
-    draw(canvas)
-    return bmp
-}
+
 
 private fun contentTypeIcon(type: String): ImageVector = when (type) {
     "notification" -> Icons.Default.Notifications
