@@ -179,7 +179,7 @@ class SettingsScreenTest {
     fun backupDialogShowsUnencryptedOptionWithWarning() {
         composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
+        composeTestRule.onNodeWithText("Backup unencrypted").assertExists()
         composeTestRule.onNode(
             hasText("anyone who can access this file", substring = true)
         ).assertExists()
@@ -189,7 +189,7 @@ class SettingsScreenTest {
     fun clickingUnencryptedOptionOpensWarningConfirm() {
         composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Backup to SQLite").performClick()
+        composeTestRule.onNodeWithText("Backup unencrypted").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Export plain SQLite").assertExists()
         composeTestRule.onNode(

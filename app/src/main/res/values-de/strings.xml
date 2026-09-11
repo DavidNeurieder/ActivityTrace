@@ -60,7 +60,7 @@
     <string name="database_exported">Datenbank exportiert</string>
     <string name="export_failed">Export fehlgeschlagen</string>
     <string name="export_failed_log_created">Export fehlgeschlagen, Logdatei erstellt</string>
-    <string name="backup_to_sqlite">SQLite-Backup</string>
+    <string name="backup_to_sqlite">Unverschlüsseltes Backup</string>
     <string name="restore_from_backup">Aus Backup wiederherstellen</string>
     <string name="export_formats_title">Exportformate</string>
     <string name="export_formats_description">Lesbare Auszüge deiner Daten zur externen Nutzung. Diese können nicht reimportiert werden.</string>

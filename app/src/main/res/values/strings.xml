@@ -113,7 +113,7 @@
     <string name="database_exported">Database exported</string>
     <string name="export_failed">Export failed</string>
     <string name="export_failed_log_created">Export failed, logfile created</string>
-    <string name="backup_to_sqlite">Backup to SQLite</string>
+    <string name="backup_to_sqlite">Backup unencrypted</string>
     <string name="restore_from_backup">Restore from backup</string>
     <string name="plaintext_export_warning">This export is NOT encrypted.
 
