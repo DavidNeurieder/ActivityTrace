@@ -1,5 +1,6 @@
 package com.activitytrace.demo
 
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,8 +11,13 @@ class DemoRecordFactoryTest {
 
     private val referenceTime = Instant.parse("2026-03-10T18:00:00Z")
 
-    private fun showcase(): List<DemoRecord> =
-        DemoRecordFactory.recordsFor(DemoDataScenario.SHOWCASE, DemoDataConfig(referenceTime = referenceTime))
+    private fun showcase(): List<DemoEvent> {
+        val generator = DemoDataGenerator(
+            captureDao = mockk(relaxed = true),
+            database = mockk(relaxed = true),
+        )
+        return generator.showcaseDataset().events
+    }
 
     @Test
     fun `showcase generation is deterministic`() {
@@ -19,72 +25,73 @@ class DemoRecordFactoryTest {
         val second = showcase()
 
         assertEquals(first, second)
-        assertEquals(first.map { it.offset }, second.map { it.offset })
+        assertEquals(first.map { it.timestamp }, second.map { it.timestamp })
+        assertEquals(first.map { it.id }, second.map { it.id })
     }
 
     @Test
     fun `showcase produces the expected record count`() {
-        assertEquals(DemoRecordFactory.SHOWCASE_RECORD_COUNT, showcase().size)
-        assertTrue("showcase should be in the 100-160 range", showcase().size in 100..160)
+        val size = showcase().size
+        assertTrue("showcase should be in the 120-150 range, got $size", size in 120..150)
     }
 
     @Test
-    fun `every showcase record lies within the 90 day retention window`() {
-        for (record in showcase()) {
-            val timestamp = referenceTime.minus(record.offset)
-            assertTrue("timestamp must be <= referenceTime", timestamp <= referenceTime)
+    fun `every showcase event lies within the three day window`() {
+        for (event in showcase()) {
             assertTrue(
-                "record too old: ${record.offset}",
-                record.offset <= Duration.ofDays(90),
+                "event at ${event.timestamp} before DemoClock.start",
+                !event.timestamp.isBefore(DemoClock.start),
+            )
+            assertTrue(
+                "event at ${event.timestamp} at or after DemoClock.end",
+                event.timestamp.isBefore(DemoClock.endExclusive),
             )
         }
     }
 
     @Test
-    fun `showcase spans recent and old buckets`() {
-        val offsets = showcase().map { it.offset }
-        assertTrue("missing today bucket", offsets.any { it < Duration.ofHours(12) })
-        assertTrue("missing yesterday bucket", offsets.any { it >= Duration.ofDays(1) && it < Duration.ofDays(2) })
-        assertTrue("missing 61-89 day bucket", offsets.any { it >= Duration.ofDays(61) })
-        assertTrue("missing 31-60 day bucket", offsets.any { it >= Duration.ofDays(31) && it < Duration.ofDays(60) })
-    }
-
-    @Test
-    fun `every showcase record is content-addressed uniquely`() {
-        val items = showcase().map { it.toCapturedItem(referenceTime, DemoDataScenario.SHOWCASE_DATASET_ID) }
+    fun `every showcase event is content-addressed uniquely`() {
+        val items = showcase().map { it.toCapturedItem(DemoDataScenario.SHOWCASE_DATASET_ID) }
         val hashes = items.map { it.contentHash }
         assertEquals("content_hash must be unique or the DB unique index drops rows", hashes.size, hashes.toSet().size)
     }
 
     @Test
     fun `all records carry the demo dataset id`() {
-        val items = showcase().map { it.toCapturedItem(referenceTime, DemoDataScenario.SHOWCASE_DATASET_ID) }
+        val items = showcase().map { it.toCapturedItem(DemoDataScenario.SHOWCASE_DATASET_ID) }
         assertTrue(items.all { it.demoDatasetId == DemoDataScenario.SHOWCASE_DATASET_ID })
         assertTrue(items.none { it.demoDatasetId == null })
     }
 
     @Test
-    fun `showcase contains the app-name weighting triplet`() {
-        val invoiceRecords = showcase().filter { it.text == "Your invoice is ready" }
-        assertEquals(setOf("gmail", "signal", "whatsapp"), invoiceRecords.map { it.appPackage }.toSet())
+    fun `showcase is validated clean`() {
+        val generator = DemoDataGenerator(
+            captureDao = mockk(relaxed = true),
+            database = mockk(relaxed = true),
+        )
+        val result = DemoDatasetValidator.validate(generator.showcaseDataset())
+        assertEquals(emptyList<String>(), result.errors)
     }
 
     @Test
-    fun `showcase contains the engineered bm25 relevance cluster`() {
-        val texts = showcase().map { it.text }
-        assertTrue(texts.any { it == "Project Aurora design review" })
-        assertTrue(texts.any { it == "Project Aurora Project Aurora Project Aurora design review" })
-        assertTrue(texts.any { it.contains("Today's meeting covered Project Aurora") })
-        assertTrue(texts.any { it == "Tomorrow's lunch reservation is confirmed" })
+    fun `showcase covers all three days`() {
+        val days = showcase().map { (it.timestamp.toEpochMilli() - DemoClock.start.toEpochMilli()) / 86_400_000L }.toSet()
+        assertEquals(setOf(0L, 1L, 2L), days)
     }
 
     @Test
     fun `showcase contains a long document`() {
-        val longText = showcase().map { it.text }.maxByOrNull { it.split(" ").size }!!
-        assertTrue(
-            "long document expected, got ${longText.split(" ").size} words",
-            longText.split(" ").size >= 500,
-        )
+        val longest = showcase().map { it.text.split(Regex("\\s+")).size }.max()
+        assertTrue("long document expected, got $longest words", longest >= 400)
+    }
+
+    @Test
+    fun `showcase contains the four story fingerprints`() {
+        val text = showcase().joinToString(" ") { it.text }
+        assertTrue(text.contains("Project Aurora"))
+        assertTrue(text.contains("Vienna"))
+        assertTrue(text.contains("which neighbor??"))
+        assertTrue(text.contains("€89.00"))
     }
 
     @Test
@@ -118,5 +125,19 @@ class DemoRecordFactoryTest {
         val weakFresh = records.count { it.text.contains("zenith sonic blueprint morning note") }
         assertTrue("expected > 200 strong candidates, got $strong", strong >= 200)
         assertEquals("exactly one weak fresh match", 1, weakFresh)
+    }
+
+    @Test
+    fun `recordsFor rejects the curated showcase scenario`() {
+        val exception = runCatching {
+            DemoRecordFactory.recordsFor(DemoDataScenario.SHOWCASE, DemoDataConfig(referenceTime = referenceTime))
+        }.exceptionOrNull()
+        assertTrue("expected an exception for SHOWCASE, got $exception", exception is IllegalArgumentException)
+    }
+
+    @Test
+    fun `recordsFor produces the benchmark corpus`() {
+        val records = DemoRecordFactory.recordsFor(DemoDataScenario.SEARCH_BENCHMARK, DemoDataConfig(referenceTime = referenceTime))
+        assertEquals(1_000, records.size)
     }
 }

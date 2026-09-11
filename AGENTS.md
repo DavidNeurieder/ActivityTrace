@@ -37,7 +37,7 @@ python3 build_and_test.py   # automate full CI workflow
 - **Capture:** `ActivityTraceNotificationListener.kt`, `AccessibilityCaptureService.kt`
 - **Store:** `ActivityTraceDatabase.kt` (Room + SQLCipher), `CaptureDao.kt`, `EncryptionManager.kt`, `RetentionCleanupWorker.kt`
 - **Search:** `QueryParser.kt`, `SearchEngine.kt`
-- **Demo mode:** `demo/` package (`DemoDataScenario`, `DemoDataConfig`, `DemoRecordFactory`, `DemoDataGenerator`, `DemoDataRepository`), `ui/DemoDataScreen.kt` — deterministic, isolated dataset (schema column `demo_dataset_id`, never touches real captures)
+- **Demo mode:** `demo/` package — curated deterministic showcase (`DemoAppCatalog`, `DemoClock` anchored `2026-09-08T06:30:00Z`, `DemoStories` ×4, `DemoDocuments` ≤15, `DemoBackgroundActivity`) assembled+validated by `DemoDataGenerator.showcaseDataset()`/`DemoDatasetValidator`, benchmark corpus in `DemoRecordFactory` (dev-only `SearchBenchmark`), `DemoDataRepository` facade, `ui/DemoDataScreen.kt`. Schema column `demo_dataset_id` (`activitytrace_showcase_v1`), never touches real captures.
 - **File indexing:** `FileIndexer.kt`, `FileIndexingWorker.kt`
 - **Model:** `CapturedItem.kt`
 - **Theme:** `ui/theme/Theme.kt` (dynamic color API 31+, fallback green seed)

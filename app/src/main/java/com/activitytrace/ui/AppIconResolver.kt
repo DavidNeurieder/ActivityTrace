@@ -8,31 +8,49 @@ import android.graphics.drawable.Drawable
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.activitytrace.demo.DemoAppCatalog
 import com.activitytrace.model.CapturedItem
 
+/**
+ * Single place that turns a captured item (or a package name) into a rendered
+ * icon. Real apps resolve through the installed [PackageManager]; demo records
+ * resolve through the [DemoAppCatalog]'s bundled vector drawables so the demo
+ * never depends on any third-party app being installed.
+ */
 object AppIconResolver {
 
     fun resolve(context: Context, item: CapturedItem): ImageBitmap? {
         if (item.appPackage == "local") return null
 
-        if (item.demoDatasetId == null) {
-            return try {
-                context.packageManager.getApplicationIcon(item.appPackage)
-                    .toBitmap().asImageBitmap()
-            } catch (_: Exception) { null }
+        if (item.demoDatasetId != null) {
+            val demoApp = DemoAppCatalog.byPackage(item.appPackage)
+                ?: DemoAppCatalog.byName(item.appName.orEmpty())
+                ?: return null
+            return resolveDrawable(context, demoApp.iconRes)
         }
 
-        val resId = DemoIconMap.resId(item.appName ?: item.appPackage) ?: return null
-        val drawable = ContextCompat.getDrawable(context, resId) ?: return null
-        return drawable.toBitmap().asImageBitmap()
+        return try {
+            context.packageManager.getApplicationIcon(item.appPackage)
+                .toBitmap().asImageBitmap()
+        } catch (_: Exception) { null }
     }
 
     fun resolveByPackage(context: Context, appPackage: String): ImageBitmap? {
         if (appPackage == "local") return null
+        val demoApp = DemoAppCatalog.byPackage(appPackage)
+        if (demoApp != null) {
+            return resolveDrawable(context, demoApp.iconRes)
+        }
         return try {
             context.packageManager.getApplicationIcon(appPackage)
                 .toBitmap().asImageBitmap()
         } catch (_: Exception) { null }
+    }
+
+    /** Renders a vector drawable resource id to a [ImageBitmap]. */
+    fun resolveDrawable(context: Context, resId: Int): ImageBitmap? {
+        val drawable = ContextCompat.getDrawable(context, resId) ?: return null
+        return drawable.toBitmap().asImageBitmap()
     }
 }
 

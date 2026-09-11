@@ -11,6 +11,10 @@ import com.activitytrace.store.CaptureDao
  * are removed first, then every fixture is inserted, including its FTS5 entry
  * (via the `captured_items_fts_ai` trigger). If anything fails the whole
  * dataset rolls back — the user never sees half a dataset.
+ *
+ * The showcase is content from [DemoDocuments], [DemoStories] and
+ * [DemoBackgroundActivity], validated by [DemoDatasetValidator] before insert.
+ * The benchmark is generated ad hoc from [DemoRecordFactory].
  */
 class DemoDataGenerator(
     private val captureDao: CaptureDao,
@@ -36,10 +40,44 @@ class DemoDataGenerator(
         replace(scenario)
     }
 
+    /**
+     * The deterministic showcase content. Pure function, no I/O — unit-testable
+     * and shared with the validator so generation and its guarantee never drift.
+     */
+    fun showcaseDataset(): DemoDataset {
+        val events = (
+            DemoDocuments.events() +
+                DemoStories.projectAurora() +
+                DemoStories.viennaTrip() +
+                DemoStories.parcelIncident() +
+                DemoStories.questionableSpending() +
+                DemoBackgroundActivity.events()
+            ).sortedWith(compareBy({ it.timestamp }, { it.id }))
+        return DemoDataset(
+            apps = DemoAppCatalog.all,
+            people = DemoPerson.entries,
+            events = events,
+        )
+    }
+
     private suspend fun replace(scenario: DemoDataScenario): Int {
         captureDao.deleteByDemoDatasetId(scenario.datasetId)
-        val records = DemoRecordFactory.recordsFor(scenario, config)
-        captureDao.insertAll(records.map { it.toCapturedItem(config.referenceTime, scenario.datasetId) })
-        return records.size
+        when (scenario) {
+            DemoDataScenario.SHOWCASE -> {
+                val dataset = showcaseDataset()
+                val validation = DemoDatasetValidator.validate(dataset)
+                check(validation.isValid) {
+                    "Showcase dataset invalid: ${validation.errors.joinToString("; ")}"
+                }
+                captureDao.insertAll(dataset.events.map { it.toCapturedItem(scenario.datasetId) })
+                return dataset.events.size
+            }
+
+            DemoDataScenario.SEARCH_BENCHMARK -> {
+                val records = DemoRecordFactory.recordsFor(scenario, config)
+                captureDao.insertAll(records.map { it.toCapturedItem(config.referenceTime, scenario.datasetId) })
+                return records.size
+            }
+        }
     }
 }

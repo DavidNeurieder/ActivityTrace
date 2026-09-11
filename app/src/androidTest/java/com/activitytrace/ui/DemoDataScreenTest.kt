@@ -62,7 +62,7 @@ class DemoDataScreenTest {
         waitForReady()
 
         composeTestRule.onNodeWithTag("demo_showcase_meta")
-            .assertTextContains("155 captures · Version 1")
+            .assertTextContains("141 captures · Version 1")
         composeTestRule.onAllNodesWithText("Showcase").assertCountEquals(2)
         composeTestRule.onNodeWithTag("demo_regenerate").assertExists()
         composeTestRule.onNodeWithTag("demo_clear").assertExists()
@@ -78,8 +78,8 @@ class DemoDataScreenTest {
         waitForReady()
 
         composeTestRule.onNodeWithTag("demo_showcase_meta")
-            .assertTextContains("155 captures · Version 1")
-        assertEquals("regenerate must replace, not append", 155, fake.showcaseCountValue())
+            .assertTextContains("141 captures · Version 1")
+        assertEquals("regenerate must replace, not append", 141, fake.showcaseCountValue())
     }
 
     @Test
@@ -88,7 +88,7 @@ class DemoDataScreenTest {
 
         composeTestRule.onNodeWithTag("demo_clear").performClick()
         composeTestRule.onNodeWithText("Clear demo data?").assertExists()
-        composeTestRule.onAllNodesWithText("This removes 155 fictional captures", substring = true)
+        composeTestRule.onAllNodesWithText("This removes 141 fictional captures", substring = true)
             .assertCountEquals(1)
 
         composeTestRule.onNodeWithTag("demo_clear_confirm").performClick()
@@ -112,7 +112,7 @@ class DemoDataScreenTest {
         composeTestRule.onNodeWithTag("demo_generate").performClick()
         waitForReady()
         composeTestRule.onNodeWithText("Something went wrong while updating demo data.").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("demo_showcase_meta").assertTextContains("155 captures · Version 1")
+        composeTestRule.onNodeWithTag("demo_showcase_meta").assertTextContains("141 captures · Version 1")
     }
 
     @Test
@@ -120,7 +120,7 @@ class DemoDataScreenTest {
         generate()
 
         composeTestRule.onNodeWithTag("demo_showcase_meta")
-            .assertTextContains("155 captures · Version 1")
+            .assertTextContains("141 captures · Version 1")
         composeTestRule.onNodeWithText("Generated on", substring = true).assertExists()
     }
 
@@ -185,7 +185,7 @@ private class FakeDemoDataRepository : DemoDataRepository {
         if (generateDelayMs > 0) delay(generateDelayMs)
         when (scenario) {
             DemoDataScenario.SHOWCASE -> {
-                showcase.value = 155
+                showcase.value = 141
                 showcaseGenerated = 1_752_500_000_000L
             }
             DemoDataScenario.SEARCH_BENCHMARK -> {
@@ -202,7 +202,7 @@ private class FakeDemoDataRepository : DemoDataRepository {
         DemoDataScenario.SHOWCASE -> {
             showcase.value = 0
             showcaseGenerated = -1L
-            155
+            141
         }
         DemoDataScenario.SEARCH_BENCHMARK -> {
             benchmark.value = 0

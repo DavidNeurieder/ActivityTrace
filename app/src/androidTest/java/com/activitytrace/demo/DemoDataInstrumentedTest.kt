@@ -7,7 +7,7 @@ import com.activitytrace.search.SearchEngine
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
 import com.activitytrace.store.ContentHasher
-import com.activitytrace.ui.DemoIconMap
+import com.activitytrace.ui.AppIconResolver
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -24,6 +24,10 @@ import java.time.Instant
  * generated records must flow through the exact production FTS5 search path,
  * and demo deletion must never reach real captures.
  *
+ * Also the living search-quality contract for the showcase: the four storylines,
+ * the per-app prefix resolution, and relevance ranking are asserted against
+ * production search here — if the corpus drifts, this file fails.
+ *
  * Every test runs against its own freshly created database, so a test can
  * never observe another test's rows. Teardown is still strictly scoped to the
  * demo datasets (defense in depth) — no test uses an unscoped delete.
@@ -35,10 +39,13 @@ class DemoDataInstrumentedTest {
     private lateinit var database: ActivityTraceDatabase
     private lateinit var dao: CaptureDao
     private lateinit var repository: DemoDataRepository
+    private lateinit var generator: DemoDataGenerator
     private lateinit var prefs: android.content.SharedPreferences
     private lateinit var dbFile: File
 
     private val referenceTime: Instant = Instant.parse("2026-03-10T18:00:00Z")
+
+    private val showcaseSize: Int get() = generator.showcaseDataset().events.size
 
     @Before
     fun setUp() {
@@ -49,6 +56,10 @@ class DemoDataInstrumentedTest {
         dao = database.captureDao()
         prefs = context.getSharedPreferences("demo_test_prefs_$unique", Context.MODE_PRIVATE)
             .also { it.edit().clear().commit() }
+        generator = DemoDataGenerator(
+            captureDao = dao,
+            database = database,
+        )
         repository = DemoDataRepository.create(
             captureDao = dao,
             database = database,
@@ -74,15 +85,19 @@ class DemoDataInstrumentedTest {
     fun generate_showcase_then_search_finds_demo_records() = runBlocking {
         val inserted = repository.generate(DemoDataScenario.SHOWCASE)
 
-        assertEquals(DemoRecordFactory.SHOWCASE_RECORD_COUNT, inserted)
+        assertEquals(showcaseSize, inserted)
         assertEquals(inserted, dao.countByDemoDatasetId(DemoDataScenario.SHOWCASE_DATASET_ID))
 
         val engine = SearchEngine(dao)
         val viennaResults = engine.search("Vienna").first()
         assertTrue("search must find Vienna records", viennaResults.isNotEmpty())
         assertTrue(
-            "Vienna cluster should contain the train/ÖBB/platform fixture",
-            viennaResults.any { it.text.contains("platform 7") || it.text.contains("ÖBB") },
+            "Vienna cluster should contain the trip docs",
+            viennaResults.any { it.text.contains("Vienna Itinerary") },
+        )
+        assertTrue(
+            "Vienna cluster should contain the currency confusion",
+            viennaResults.any { it.text.contains("VIENNA USES EUROS") },
         )
         assertTrue(
             "every result must be marked as demo",
@@ -90,11 +105,12 @@ class DemoDataInstrumentedTest {
         )
 
         val invoiceResults = engine.search("invoice").first()
-        assertTrue(invoiceResults.any { it.text.contains("2026-041") })
+        assertTrue("invoice corpus must include the incoming PDF", invoiceResults.any { it.text.contains("invoice-2026-041.pdf") })
+        assertTrue(invoiceResults.any { it.text.contains("2026-042 is ready") })
 
-        val gmailOnly = engine.search("in:gmail invoice").first()
-        assertTrue(gmailOnly.isNotEmpty())
-        assertTrue("in:gmail filter must return only Gmail", gmailOnly.all { it.appPackage == "gmail" })
+        val chatterboxOnly = engine.search("in:chatterbox chat").first()
+        assertTrue(chatterboxOnly.isNotEmpty())
+        assertTrue("in:chatterbox filter must return only Chatterbox", chatterboxOnly.all { it.appPackage == DemoAppCatalog.byId(DemoAppId.CHATTERBOX).packageName })
     }
 
     @Test
@@ -113,11 +129,11 @@ class DemoDataInstrumentedTest {
 
         repository.generate(DemoDataScenario.SHOWCASE)
         repository.generate(DemoDataScenario.SEARCH_BENCHMARK)
-        assertEquals(1 + DemoRecordFactory.SHOWCASE_RECORD_COUNT + 1_000, dao.getAllItems().size)
+        assertEquals(1 + showcaseSize + 1_000, dao.getAllItems().size)
 
         val removed = repository.clear(DemoDataScenario.SHOWCASE)
 
-        assertEquals(DemoRecordFactory.SHOWCASE_RECORD_COUNT, removed)
+        assertEquals(showcaseSize, removed)
         assertEquals(0, dao.countByDemoDatasetId(DemoDataScenario.SHOWCASE_DATASET_ID))
         assertEquals(1_000, dao.countByDemoDatasetId(DemoDataScenario.BENCHMARK_DATASET_ID))
 
@@ -142,7 +158,7 @@ class DemoDataInstrumentedTest {
         val removed = repository.clearDemoDataset("does-not-exist")
         assertEquals("unknown id must delete nothing", 0, removed)
         assertEquals(
-            DemoRecordFactory.SHOWCASE_RECORD_COUNT,
+            showcaseSize,
             dao.countByDemoDatasetId(DemoDataScenario.SHOWCASE_DATASET_ID),
         )
     }
@@ -164,15 +180,80 @@ class DemoDataInstrumentedTest {
     }
 
     @Test
-    fun every_demo_app_has_icon() {
-        val allAppNames = DemoRecordFactory.recordsFor(
-            DemoDataScenario.SHOWCASE, DemoDataConfig()
-        ).map { it.appName }.toSet()
+    fun prefix_search_resolves_each_demo_app() = runBlocking {
+        repository.generate(DemoDataScenario.SHOWCASE)
+        val engine = SearchEngine(dao)
 
-        allAppNames.forEach { name ->
+        mapOf(
+            "chat" to DemoAppId.CHATTERBOX,
+            "chatt" to DemoAppId.CHATTERBOX,
+            "parc" to DemoAppId.PARCEL_PANIC,
+            "parcel" to DemoAppId.PARCEL_PANIC,
+            "meet" to DemoAppId.MEETING_MONSTER,
+            "libre" to DemoAppId.LIBRECRATE,
+            "curr" to DemoAppId.OFFLINE_CURRENCY_CONVERTER,
+            "wand" to DemoAppId.WANDERLUST,
+            "snac" to DemoAppId.SNACKTRACK,
+            "budget" to DemoAppId.BUDGET_BUDDY,
+            "aurora" to DemoAppId.ACTIVITY_TRACE,
+            "maya" to DemoAppId.CHATTERBOX,
+        ).forEach { (query, expected) ->
+            val results = engine.search(query).first()
+            assertTrue(
+                "prefix search '$query' must surface ${expected.name}",
+                results.any { it.appPackage == DemoAppCatalog.byId(expected).packageName },
+            )
+            assertTrue(
+                "prefix search '$query' must only return demo records",
+                results.all { it.demoDatasetId == DemoDataScenario.SHOWCASE_DATASET_ID },
+            )
+        }
+    }
+
+    @Test
+    fun search_returns_relevant_ranked_results() = runBlocking {
+        repository.generate(DemoDataScenario.SHOWCASE)
+        val engine = SearchEngine(dao)
+
+        val invoiceResults = engine.search("invoice").first()
+        assertTrue(invoiceResults.isNotEmpty())
+        assertTrue(
+            "top results must all be invoice-relevant",
+            invoiceResults.take(3).all { it.text.contains("invoice", ignoreCase = true) },
+        )
+    }
+
+    @Test
+    fun every_storyline_is_findable_and_isolated() = runBlocking {
+        repository.generate(DemoDataScenario.SHOWCASE)
+        val engine = SearchEngine(dao)
+
+        // Story 1: Project Aurora.
+        val aurora = engine.search("aurora").first()
+        assertTrue("aurora story missing", aurora.isNotEmpty())
+        assertTrue(aurora.any { it.text.contains("retrospective") })
+
+        // Story 3: the parcel delivered to a neighbor.
+        val parcel = engine.search("which neighbor").first()
+        assertTrue("parcel story missing", parcel.isNotEmpty())
+        assertTrue(parcel.any { it.text.contains("which neighbor??") })
+
+        // Story 4: the keyboard spiral.
+        val keyboard = engine.search("keyboard").first()
+        assertTrue("keyboard story missing", keyboard.isNotEmpty())
+        assertTrue(keyboard.any { it.text.contains("Cancelled: keyboard insurance") })
+
+        // Negative isolation: no cross-app leakage from a term outside the corpus.
+        val leaked = engine.search("whatsapp").first()
+        assertTrue("forbidden term must not leak into the showcase", leaked.isEmpty())
+    }
+
+    @Test
+    fun every_demo_app_has_icon() {
+        DemoAppCatalog.all.forEach { app ->
             assertNotNull(
-                "Demo app '$name' has no bundled icon -- add demo_icon_<name>.xml",
-                DemoIconMap.resId(name)
+                "Demo app '${app.name}' has no bundled icon",
+                AppIconResolver.resolveDrawable(context, app.iconRes)
             )
         }
     }

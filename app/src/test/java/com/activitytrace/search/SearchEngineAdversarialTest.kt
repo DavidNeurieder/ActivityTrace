@@ -25,19 +25,24 @@ class SearchEngineAdversarialTest {
 
     /**
      * Every FTS MATCH query produced by the engine must be safe under the FTS5
-     * grammar: each token is either a bare alphanumeric word (never an FTS5
-     * operator keyword) or a fully double-quoted literal.
+     * grammar: each token is either a bare alphanumeric prefix-with-star word
+     * (never an FTS5 operator keyword) or a fully double-quoted literal with an
+     * optional trailing prefix marker (`"foo bar"*`).
      */
     private fun assertMatchQueryIsOperatorSafe(matchQuery: String) {
         val tokens = matchQuery.split(" ").filter { it.isNotEmpty() }
         for (token in tokens) {
-            val isQuoted = token.startsWith("\"") && token.endsWith("\"")
-            if (isQuoted) continue
-            val isBareWord = token.all { it.isLetterOrDigit() || it == '_' }
+            if (token.startsWith("\"")) {
+                assertTrue("quoted literal with optional prefix marker expected, got: $token",
+                    token == "\"\"" || token.endsWith("\"") || token.endsWith("\"*"))
+                continue
+            }
+            val bare = token.removeSuffix("*")
+            val isBareWord = bare.all { it.isLetterOrDigit() || it == '_' }
             assertTrue("quoted or bare word expected, got: $token", isBareWord)
             assertTrue(
                 "FTS5 operator keyword must not appear bare: $token",
-                token.lowercase() !in setOf("and", "or", "not", "near"),
+                bare.lowercase() !in setOf("and", "or", "not", "near"),
             )
         }
     }
@@ -72,9 +77,10 @@ class SearchEngineAdversarialTest {
         val queries = mutableListOf<String>()
         verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         val matchQuery = queries.single()
+        val prefixMarkers = matchQuery.count { it == '*' }
         assertTrue(
-            "match query length ${matchQuery.length} exceeds budget",
-            matchQuery.length <= QueryParser.MAX_QUERY_LENGTH,
+            "match query length ${matchQuery.length} exceeds budget (${matchQuery.length - prefixMarkers} chars + $prefixMarkers prefix markers)",
+            matchQuery.length - prefixMarkers <= QueryParser.MAX_QUERY_LENGTH,
         )
         assertMatchQueryIsOperatorSafe(matchQuery)
     }
@@ -100,7 +106,7 @@ class SearchEngineAdversarialTest {
         verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         val matchQuery = queries.single()
         assertMatchQueryIsOperatorSafe(matchQuery)
-        assertTrue(matchQuery.contains("\"or\" \"and\" \"not\" \"near\""))
+        assertTrue(matchQuery.contains("\"or\"* \"and\"* \"not\"* \"near\"*"))
     }
 
     @Test
@@ -119,6 +125,6 @@ class SearchEngineAdversarialTest {
         val queries = mutableListOf<String>()
         verify { captureDao.searchFtsCandidates(capture(queries), null, null, null) }
         assertMatchQueryIsOperatorSafe(queries.single())
-        assertTrue(queries.single().contains("\"foo\"\"bar\""))
+        assertTrue(queries.single().contains("\"foo\"\"bar\"*"))
     }
 }

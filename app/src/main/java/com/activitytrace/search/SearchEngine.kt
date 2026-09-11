@@ -172,19 +172,22 @@ class SearchEngine(
     }
 
     /**
-     * Maps a single search keyword to an FTS5 MATCH token. Plain tokens are
-     * matched as full words (`hello`). Tokens containing FTS5 operators or
-     * operator keywords (AND, OR, NOT, NEAR) are quoted with double quotes —
+     * Maps a single search keyword to an FTS5 MATCH token. Every keyword gets
+     * an implicit prefix marker so bare input (`chat`) finds partial words
+     * (`chatterbox`) — the same mechanism that makes `whats` find WhatsApp
+     * instead of silently returning nothing. Tokens containing FTS5 operators
+     * or operator keywords (AND, OR, NOT, NEAR) are quoted with double quotes —
      * quoting is also a natural way to search literal punctuation and keeps
-     * operator words (`or`) from being parsed as operators.
+     * operator words (`or`) from being parsed as operators. The prefix marker
+     * is applied outside the quotes (`"c++"*`).
      */
     private fun ftsToken(token: String): String {
         val lower = token.lowercase(Locale.ROOT)
         val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' } && lower !in FTS_OPERATORS
         return if (isPlainWord) {
-            token
+            token + "*"
         } else {
-            "\"" + token.replace("\"", "\"\"") + "\""
+            "\"" + token.replace("\"", "\"\"") + "\"*"
         }
     }
 

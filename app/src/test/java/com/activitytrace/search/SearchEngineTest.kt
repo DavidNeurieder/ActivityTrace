@@ -38,45 +38,45 @@ class SearchEngineTest {
     }
 
     @Test
-    fun `search wraps keywords in full-word tokens for fts`() = runTest {
+    fun `search wraps keywords in prefix tokens for fts`() = runTest {
         searchEngine.search("hello world").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello world", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello* world*", null, null, null) }
     }
 
     @Test
-    fun `search with single keyword makes a full-word token`() = runTest {
+    fun `search with single keyword makes a prefix token`() = runTest {
         searchEngine.search("hello").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with wildcard drops star and makes full-word token`() = runTest {
+    fun `search with trailing wildcard keeps the implicit prefix`() = runTest {
         searchEngine.search("hello*").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with leading wildcard drops star and makes full-word token`() = runTest {
+    fun `search with leading wildcard drops star and makes prefix token`() = runTest {
         searchEngine.search("*hello").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello*", null, null, null) }
     }
 
     @Test
-    fun `search with surrounding wildcards drops stars and makes full-word token`() = runTest {
+    fun `search with surrounding wildcards drops stars and makes prefix token`() = runTest {
         searchEngine.search("*hello*").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", null, null, null) }
+        verify { captureDao.searchFtsCandidates("hello*", null, null, null) }
     }
 
     @Test
     fun `search with time range passes it to fts dao`() = runTest {
         searchEngine.search("hello today").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", any(), null, null) }
+        verify { captureDao.searchFtsCandidates("hello*", any(), null, null) }
     }
 
     @Test
@@ -91,42 +91,42 @@ class SearchEngineTest {
     fun `search strips time keywords from match query`() = runTest {
         searchEngine.search("today tomorrow").collect { }
 
-        verify { captureDao.searchFtsCandidates("tomorrow", any(), null, null) }
+        verify { captureDao.searchFtsCandidates("tomorrow*", any(), null, null) }
     }
 
     @Test
     fun `search with type filter passes contentType to fts dao`() = runTest {
         searchEngine.search("type:notification hello").collect { }
 
-        verify { captureDao.searchFtsCandidates("hello", null, "notification", null) }
+        verify { captureDao.searchFtsCandidates("hello*", null, "notification", null) }
     }
 
     @Test
     fun `search with in filter passes appPackage to fts dao`() = runTest {
         searchEngine.search("in:signal meeting").collect { }
 
-        verify { captureDao.searchFtsCandidates("meeting", null, null, "signal") }
+        verify { captureDao.searchFtsCandidates("meeting*", null, null, "signal") }
     }
 
     @Test
     fun `search with combined type and in filters and keyword`() = runTest {
         searchEngine.search("in:com.example type:screen notes").collect { }
 
-        verify { captureDao.searchFtsCandidates("notes", null, "screen", "com.example") }
+        verify { captureDao.searchFtsCandidates("notes*", null, "screen", "com.example") }
     }
 
     @Test
-    fun `search with operator chars quotes the token`() = runTest {
+    fun `search with operator chars quotes the token with prefix`() = runTest {
         searchEngine.search("C++").collect { }
 
-        verify { captureDao.searchFtsCandidates("\"c++\"", null, null, null) }
+        verify { captureDao.searchFtsCandidates("\"c++\"*", null, null, null) }
     }
 
     @Test
-    fun `search with colon char quotes the token`() = runTest {
+    fun `search with colon char quotes the token with prefix`() = runTest {
         searchEngine.search("3:30").collect { }
 
-        verify { captureDao.searchFtsCandidates("\"3:30\"", null, null, null) }
+        verify { captureDao.searchFtsCandidates("\"3:30\"*", null, null, null) }
     }
 
     @Test
@@ -155,10 +155,10 @@ class SearchEngineTest {
                 id = i.toLong(),
             )
         }
-        every { captureDao.searchFtsCandidates("hello", null, null, null, any()) } returns flowOf(
+        every { captureDao.searchFtsCandidates("hello*", null, null, null, any()) } returns flowOf(
             items.map { SearchCandidate(it, -it.id.toDouble()) },
         )
-        every { captureDao.searchFtsRecentCandidates("hello", null, null, null, any()) } returns flowOf(emptyList())
+        every { captureDao.searchFtsRecentCandidates("hello*", null, null, null, any()) } returns flowOf(emptyList())
 
         val pages = mutableListOf<SearchPage>()
         searchEngine.searchPaged("hello", null, null, null, pageSize = 10, offset = 20).collect { pages.add(it) }
@@ -224,15 +224,15 @@ class SearchEngineTest {
     @Test
     fun `search pulls both the bm25 and the recent candidate pools`() = runTest {
         val item = CapturedItem(text = "hit", appPackage = "com.x", contentType = "text", timestamp = 7L, id = 9L)
-        every { captureDao.searchFtsCandidates("hello", null, null, null, any()) } returns flowOf(
+        every { captureDao.searchFtsCandidates("hello*", null, null, null, any()) } returns flowOf(
             listOf(SearchCandidate(item, -3.0)),
         )
-        every { captureDao.searchFtsRecentCandidates("hello", null, null, null, any()) } returns flowOf(emptyList())
+        every { captureDao.searchFtsRecentCandidates("hello*", null, null, null, any()) } returns flowOf(emptyList())
 
         val hits = mutableListOf<List<CapturedItem>>()
         searchEngine.search("hello").collect { hits.add(it) }
 
-        verify { captureDao.searchFtsRecentCandidates("hello", null, null, null, SearchConfig.RECENT_CANDIDATE_LIMIT.toLong()) }
+        verify { captureDao.searchFtsRecentCandidates("hello*", null, null, null, SearchConfig.RECENT_CANDIDATE_LIMIT.toLong()) }
         assertEquals(listOf(item), hits.single())
     }
 

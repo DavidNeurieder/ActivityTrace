@@ -24,10 +24,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import androidx.test.platform.app.InstrumentationRegistry
 import com.activitytrace.MainActivity
+import com.activitytrace.demo.DemoAppCatalog
 import com.activitytrace.demo.DemoDataConfig
+import com.activitytrace.demo.DemoDataGenerator
 import com.activitytrace.demo.DemoDataRepository
 import com.activitytrace.demo.DemoDataScenario
-import com.activitytrace.demo.DemoRecordFactory
 import com.activitytrace.store.ActivityTraceDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume
@@ -42,8 +43,8 @@ import java.io.FileOutputStream
  * Deterministic screenshot automation for the F-Droid listing.
  *
  * Every scenario starts from the same canonical state: the showcase dataset
- * regenerated against [DemoDataConfig.SCREENSHOT_REFERENCE_TIME] (so the
- * "today" grouping is pinned), real device data untouched, light theme.
+ * regenerated on the deterministic [DemoClock] window (timestamps are pinned,
+ * never the wall clock), real device data untouched, light theme.
  *
  * Screenshots are only produced when the instrumentation is asked for them
  * (`-e screenshots true`), so this suite stays a no-op on normal CI runs.
@@ -84,25 +85,26 @@ class ScreenshotTest {
     fun capture_the_seven_listing_screenshots() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-        // Canonical dataset: showcase only, against the pinned reference clock.
-        val config = DemoDataConfig(referenceTime = DemoDataConfig.SCREENSHOT_REFERENCE_TIME)
+        // Canonical dataset: showcase only, on the deterministic demo clock.
+        val config = DemoDataConfig()
         val db = ActivityTraceDatabase.getInstance(context)
         val repo = DemoDataRepository.create(db.captureDao(), db, context.getSharedPreferences(
             "activity_trace", Context.MODE_PRIVATE), config)
+        val showcaseCount = DemoDataGenerator(db.captureDao(), db)
+            .showcaseDataset().events.size
         runBlocking {
             repo.clearDemoDataset(DemoDataScenario.SHOWCASE_DATASET_ID)
             repo.clearDemoDataset(DemoDataScenario.BENCHMARK_DATASET_ID)
             repo.generate(DemoDataScenario.SHOWCASE)
         }
-        val showcaseText = "${DemoRecordFactory.SHOWCASE_RECORD_COUNT} captures · Version 1"
+        val showcaseText = "$showcaseCount captures · Version 1"
 
-        // Verify demo icons resolve: every showcase app must have a bundled icon.
-        DemoRecordFactory.recordsFor(DemoDataScenario.SHOWCASE, config)
-            .map { it.appName }.toSet().forEach { name ->
-                assert(com.activitytrace.ui.DemoIconMap.resId(name) != null) {
-                    "Demo app '$name' has no bundled icon"
-                }
+        // Verify demo icons resolve: every catalog app must have a bundled icon.
+        DemoAppCatalog.all.forEach { app ->
+            assert(AppIconResolver.resolveDrawable(context, app.iconRes) != null) {
+                "Demo app '${app.name}' has no bundled icon"
             }
+        }
 
         // Deterministic UI state: light theme, onboarded.
         context.getSharedPreferences("activity_trace", Context.MODE_PRIVATE).edit()
@@ -125,7 +127,7 @@ class ScreenshotTest {
 
         // 01_history — recent activity list.
         android.util.Log.i("ST", "01 waiting")
-        waitUntilPresent("15 minutes before: design review")
+        waitUntilPresent("Cancelled: keyboard insurance")
         composeTestRule.waitForIdle()
         capture("01_history")
         android.util.Log.i("ST", "01 done")
@@ -137,7 +139,7 @@ class ScreenshotTest {
         android.util.Log.i("ST", "02 waiting count")
         waitUntilPresent(" results")
         android.util.Log.i("ST", "02 waiting first result")
-        waitUntilPresent("Route preview: Munich → Vienna")
+        waitUntilPresent("Arrive Vienna Central — 20:11")
         composeTestRule.waitForIdle()
         capture("02_search_vienna")
         android.util.Log.i("ST", "02 done")
@@ -152,25 +154,25 @@ class ScreenshotTest {
         capture("03_search_invoice")
         android.util.Log.i("ST", "03 done")
 
-        // 04_filtered_gmail.
+        // 04_filtered_postpigeon.
         android.util.Log.i("ST", "04 typing")
         search.performTextClearance()
-        search.performTextInput("invoice in:gmail")
+        search.performTextInput("invoice in:postpigeon")
         android.util.Log.i("ST", "04 waiting")
         waitUntilPresent(" results")
         composeTestRule.waitForIdle()
-        capture("04_filtered_gmail")
+        capture("04_filtered_postpigeon")
         android.util.Log.i("ST", "04 done")
 
 // 05_detail — long-press the top Vienna result to reveal its actions.
         android.util.Log.i("ST", "05 typing")
         search.performTextClearance()
         search.performTextInput("Vienna")
-        waitForStableResults("Route preview: Munich → Vienna")
+        waitForStableResults("Train boarded — platform 7, seat 31")
         repeat(5) { attempt ->
             try {
                 composeTestRule.waitForIdle()
-                composeTestRule.onNodeWithText("Route preview: Munich → Vienna", substring = true)
+                composeTestRule.onNodeWithText("Train boarded — platform 7, seat 31", substring = true)
                     .performTouchInput { longClick() }
                 return@repeat
             } catch (e: Throwable) {
