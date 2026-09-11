@@ -63,7 +63,7 @@ class DemoDataScreenTest {
 
         composeTestRule.onNodeWithTag("demo_showcase_meta")
             .assertTextContains("141 captures · Version 1")
-        composeTestRule.onAllNodesWithText("Showcase").assertCountEquals(2)
+        composeTestRule.onAllNodesWithText("Showcase").assertCountEquals(1)
         composeTestRule.onNodeWithTag("demo_regenerate").assertExists()
         composeTestRule.onNodeWithTag("demo_clear").assertExists()
         composeTestRule.onNodeWithText("No demo data installed").assertDoesNotExist()

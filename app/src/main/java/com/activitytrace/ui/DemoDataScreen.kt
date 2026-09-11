@@ -40,7 +40,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.activitytrace.BuildConfig
 import com.activitytrace.R
 import com.activitytrace.demo.DemoDataScenario
 import java.time.format.DateTimeFormatter
@@ -54,13 +53,11 @@ fun DemoDataScreen(
     modifier: Modifier = Modifier,
 ) {
     val showcaseCount by viewModel.showcaseCount.collectAsState()
-    val benchmarkCount by viewModel.benchmarkCount.collectAsState()
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     val lastGeneratedAt by viewModel.lastGeneratedAt.collectAsState()
 
     var confirmClearShowcase by remember { mutableStateOf(false) }
-    var confirmClearAll by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -130,19 +127,6 @@ fun DemoDataScreen(
                     }
                 }
             }
-
-            if (BuildConfig.DEBUG) {
-                Spacer(Modifier.height(32.dp))
-                DebugDeveloperSection(
-                    showcaseCount = showcaseCount,
-                    benchmarkCount = benchmarkCount,
-                    busy = busy,
-                    onRegenerateShowcase = viewModel::regenerateShowcase,
-                    onGenerateBenchmark = viewModel::generateBenchmark,
-                    onClearBenchmark = viewModel::clearBenchmark,
-                    onClearAll = { confirmClearAll = true },
-                )
-            }
         }
     }
 
@@ -166,30 +150,6 @@ fun DemoDataScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmClearShowcase = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
-
-    if (confirmClearAll) {
-        AlertDialog(
-            onDismissRequest = { confirmClearAll = false },
-            title = { Text(stringResource(R.string.demo_data_clear_all_title)) },
-            text = { Text(stringResource(R.string.demo_data_reset_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmClearAll = false
-                        viewModel.clearBenchmark()
-                    },
-                    modifier = Modifier.testTag("demo_clear_all_confirm"),
-                ) {
-                    Text(stringResource(R.string.demo_data_clear_all))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmClearAll = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -260,84 +220,6 @@ private fun ReadyState(
                 modifier = Modifier.testTag("demo_clear"),
             ) {
                 Text(stringResource(R.string.demo_data_clear))
-            }
-        }
-    }
-}
-
-@Composable
-private fun DebugDeveloperSection(
-    showcaseCount: Int,
-    benchmarkCount: Int,
-    busy: Boolean,
-    onRegenerateShowcase: () -> Unit,
-    onGenerateBenchmark: () -> Unit,
-    onClearBenchmark: () -> Unit,
-    onClearAll: () -> Unit,
-) {
-    Text(
-        text = stringResource(R.string.demo_data_developer_options),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            DatasetHeader(DemoDataScenario.SHOWCASE.displayName)
-            Spacer(Modifier.height(4.dp))
-            DatasetMeta(
-                count = showcaseCount,
-                datasetId = DemoDataScenario.SHOWCASE.datasetId,
-                lastGeneratedAt = -1L,
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onRegenerateShowcase,
-                enabled = !busy,
-                modifier = Modifier.testTag("demo_dev_regenerate"),
-            ) {
-                Text(stringResource(R.string.demo_data_regenerate))
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            DatasetHeader(DemoDataScenario.SEARCH_BENCHMARK.displayName)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = if (benchmarkCount > 0) {
-                    val version = DemoDataScenario.datasetVersion(DemoDataScenario.BENCHMARK_DATASET_ID) ?: 1
-                    stringResource(
-                        R.string.demo_data_benchmark_meta,
-                        benchmarkCount,
-                        version,
-                    )
-                } else {
-                    stringResource(R.string.demo_data_benchmark_empty)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row {
-                Button(
-                    onClick = onGenerateBenchmark,
-                    enabled = !busy,
-                    modifier = Modifier.testTag("demo_dev_benchmark_generate"),
-                ) {
-                    Text(stringResource(R.string.demo_data_generate_benchmark))
-                }
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton(
-                    onClick = onClearBenchmark,
-                    enabled = !busy,
-                    modifier = Modifier.testTag("demo_dev_benchmark_clear"),
-                ) {
-                    Text(stringResource(R.string.demo_data_clear_benchmark))
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            TextButton(onClick = onClearAll, enabled = !busy) {
-                Text(stringResource(R.string.demo_data_clear_all))
             }
         }
     }
