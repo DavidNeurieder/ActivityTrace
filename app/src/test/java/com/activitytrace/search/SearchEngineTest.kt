@@ -20,6 +20,7 @@ class SearchEngineTest {
     fun setUp() {
         every { captureDao.searchFtsCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
         every { captureDao.searchFtsRecentCandidates(any(), any(), any(), any(), any()) } returns flowOf(emptyList())
+        every { captureDao.recentPagedQuery(any(), any(), any(), any(), any(), any()) } returns flowOf(emptyList())
         searchEngine = SearchEngine(captureDao)
     }
 
@@ -27,14 +28,14 @@ class SearchEngineTest {
     fun `search with no keywords but filters uses like dao`() = runTest {
         searchEngine.search("type:notification").collect { }
 
-        verify { captureDao.searchLike(emptyList<String>(), null, "notification", null) }
+        verify { captureDao.recentPagedQuery("notification", null, null, null, Long.MAX_VALUE, 0L) }
     }
 
     @Test
     fun `search with no keywords but time range uses like dao`() = runTest {
         searchEngine.search("today").collect { }
 
-        verify { captureDao.searchLike(emptyList<String>(), any(), null, null) }
+        verify { captureDao.recentPagedQuery(null, null, any(), any(), Long.MAX_VALUE, 0L) }
     }
 
     @Test
@@ -141,7 +142,7 @@ class SearchEngineTest {
     fun `recentPaged uses like paged with page size and offset`() = runTest {
         searchEngine.recentPaged(null, null, null, pageSize = 50, offset = 25).collect { }
 
-        verify { captureDao.searchLikePaged(emptyList<String>(), null, null, null, 50L, 25L) }
+        verify { captureDao.recentPagedQuery(null, null, null, null, 50L, 25L) }
     }
 
     @Test
@@ -174,7 +175,7 @@ class SearchEngineTest {
     fun `searchPaged with filters and no keywords uses like paged`() = runTest {
         searchEngine.searchPaged("type:notification", null, null, null, pageSize = 50, offset = 0).collect { }
 
-        verify { captureDao.searchLikePaged(emptyList<String>(), null, "notification", null, 50L, 0L) }
+        verify { captureDao.recentPagedQuery("notification", null, null, null, 50L, 0L) }
     }
 
     @Test
@@ -254,6 +255,6 @@ class SearchEngineTest {
         val range = 1000L to 2000L
         searchEngine.recentPaged("notification", "signal", range, pageSize = 50, offset = 50).collect { }
 
-        verify { captureDao.searchLikePaged(emptyList<String>(), range, "notification", "signal", 50L, 50L) }
+        verify { captureDao.recentPagedQuery("notification", "signal", 1000L, 2000L, 50L, 50L) }
     }
 }

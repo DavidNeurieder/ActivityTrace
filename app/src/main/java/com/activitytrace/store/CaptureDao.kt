@@ -68,6 +68,32 @@ interface CaptureDao {
     @Query("SELECT COUNT(*) FROM captured_items WHERE demo_dataset_id IS NOT NULL")
     suspend fun countAllDemoRecords(): Int
 
+    /**
+     * Paged recent-items query used by the main window. This is a plain BoundMethod
+     * [androidx.room.Query] Flow rather than a RawQuery so that Room's invalidation
+     * tracker re-emits the list whenever rows change — the main window must refresh
+     * live after demo generation or a new capture, without an app restart.
+     */
+    @Query(
+        """
+        SELECT * FROM captured_items
+        WHERE (:contentType IS NULL OR content_type LIKE '%' || :contentType || '%')
+          AND (:appPackage IS NULL OR (app_package LIKE '%' || :appPackage || '%' OR app_name LIKE '%' || :appPackage || '%'))
+          AND (:startTime IS NULL OR timestamp >= :startTime)
+          AND (:endTime IS NULL OR timestamp <= :endTime)
+        ORDER BY timestamp DESC
+        LIMIT :queryLimit OFFSET :queryOffset
+        """,
+    )
+    fun recentPagedQuery(
+        contentType: String?,
+        appPackage: String?,
+        startTime: Long?,
+        endTime: Long?,
+        queryLimit: Long,
+        queryOffset: Long,
+    ): Flow<List<CapturedItem>>
+
     @RawQuery(observedEntities = [CapturedItem::class])
     fun searchLikeRaw(query: SupportSQLiteQuery): Flow<List<CapturedItem>>
 

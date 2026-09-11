@@ -34,13 +34,13 @@ class SearchEngine(
         pageSize: Int = PAGE_SIZE,
         offset: Int = 0,
     ): Flow<SearchPage> {
-        return captureDao.searchLikePaged(
-            patterns = emptyList(),
-            timeRange = dateRange,
+        return captureDao.recentPagedQuery(
             contentType = contentType,
             appPackage = appPackage,
-            limit = pageSize.toLong(),
-            offset = offset.toLong(),
+            startTime = dateRange?.first,
+            endTime = dateRange?.second,
+            queryLimit = pageSize.toLong(),
+            queryOffset = offset.toLong(),
         ).map { SearchPage(it, it.size < pageSize) }
     }
 
@@ -57,11 +57,13 @@ class SearchEngine(
             if (effectiveRange == null && effectiveType == null && effectiveApp == null) {
                 return flowOf(emptyList())
             }
-            return captureDao.searchLike(
-                patterns = emptyList(),
-                timeRange = effectiveRange,
+            return captureDao.recentPagedQuery(
                 contentType = effectiveType,
                 appPackage = effectiveApp,
+                startTime = effectiveRange?.first,
+                endTime = effectiveRange?.second,
+                queryLimit = Long.MAX_VALUE,
+                queryOffset = 0L,
             )
         }
 
@@ -90,13 +92,13 @@ class SearchEngine(
             if (effectiveRange == null && effectiveType == null && effectiveApp == null) {
                 return flowOf(SearchPage(emptyList(), isLastPage = true))
             }
-            return captureDao.searchLikePaged(
-                patterns = emptyList(),
-                timeRange = effectiveRange,
+            return captureDao.recentPagedQuery(
                 contentType = effectiveType,
                 appPackage = effectiveApp,
-                limit = pageSize.toLong(),
-                offset = offset.toLong(),
+                startTime = effectiveRange?.first,
+                endTime = effectiveRange?.second,
+                queryLimit = pageSize.toLong(),
+                queryOffset = offset.toLong(),
             ).map { SearchPage(it, it.size < pageSize) }
         }
 
