@@ -91,6 +91,8 @@
     <string name="data_title">Data</string>
     <string name="backup_restore_title">Backup &amp; Restore</string>
     <string name="backup_description">Keep your history safe. Encrypted backups use a password of your choice and can be restored on this or another device.</string>
+    <string name="backup_button">Create backup</string>
+    <string name="backup_unencrypted_warning">Unencrypted — anyone who can access this file can read your full ActivityTrace history.</string>
     <string name="backup_encrypted_title">Encrypted backup</string>
     <string name="backup_encrypted_description">A password-protected backup of your full history. Choose a password you will remember; without it the backup cannot be opened.</string>
     <string name="backup_password_label">Backup password</string>
@@ -108,8 +110,6 @@
     <string name="restore_backup_database_unreadable">The backup contains a database that could not be read.</string>
     <string name="restore_failed">Restore failed. Your existing activity was not changed.</string>
     <string name="progress_merging_backup">Merging with existing data…</string>
-    <string name="advanced_title">Advanced</string>
-    <string name="plaintext_backup_description">Full backup of captured items as a plain SQLite database. Only .sqlite files exported by this app can be restored.</string>
     <string name="database_exported">Database exported</string>
     <string name="export_failed">Export failed</string>
     <string name="export_failed_log_created">Export failed, logfile created</string>

@@ -143,13 +143,15 @@ class SettingsScreenTest {
 
     @Test
     fun showsExportButton() {
-        composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
+        composeTestRule.onNodeWithText("Create backup").assertExists()
     }
 
     @Test
     fun passwordVisibilityToggleFlipsBetweenShowAndHide() {
+        composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
         val toggle = composeTestRule.onNodeWithTag("backup_password_visibility_toggle")
-        toggle.performScrollTo().assertExists()
+        toggle.assertExists()
         toggle.assert(hasContentDescription("Show password"))
 
         toggle.performClick()
@@ -161,14 +163,38 @@ class SettingsScreenTest {
 
     @Test
     fun showsPasswordField() {
+        composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Backup password").assertExists()
     }
 
     @Test
     fun clickingExportButtonDoesNotCrash() {
-        composeTestRule.onNodeWithText("Backup to SQLite").performClick()
+        composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Encrypted backup").assertExists()
+    }
+
+    @Test
+    fun backupDialogShowsUnencryptedOptionWithWarning() {
+        composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
+        composeTestRule.onNode(
+            hasText("anyone who can access this file", substring = true)
+        ).assertExists()
+    }
+
+    @Test
+    fun clickingUnencryptedOptionOpensWarningConfirm() {
+        composeTestRule.onNodeWithText("Create backup").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Backup to SQLite").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Export plain SQLite").assertExists()
+        composeTestRule.onNode(
+            hasText("This export is NOT encrypted.", substring = true)
+        ).assertExists()
     }
 
     @Test
