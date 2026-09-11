@@ -10,8 +10,10 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.activitytrace.R
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -24,9 +26,7 @@ object DatabaseExporter {
         val tempFile = File(context.cacheDir, "export_temp/activity_trace.sqlite")
         try {
             tempFile.parentFile?.mkdirs()
-            val roomDb = ActivityTraceDatabase.getInstance(context)
-            val database = roomDb.openHelper.writableDatabase
-            exportToPlainSqlite(database, tempFile)
+            exportToPlainSqlite(context, tempFile)
             moveToDownloads(context, tempFile)
             ExportStatus.Success("")
         } catch (e: Exception) {
@@ -39,6 +39,39 @@ object DatabaseExporter {
         }
     }
 
+    /**
+     * Opens a short-lived dedicated SQLCipher connection to the encrypted
+     * database (identical passphrase to Room's own) and runs
+     * [exportToPlainSqlite] on that standalone connection. Because the ATTACH +
+     * sqlcipher_export never touches Room's pooled write/read connections the
+     * export is immune to the concurrent-flow / concurrent-write collisions that
+     * dropped the shared-connection variant with "file is not a database" /
+     * SQLiteDiskIOException on real hardware.
+     */
+    internal fun exportToPlainSqlite(context: Context, outputFile: File) {
+        val passphrase = EncryptionManager.getOrCreateKey(context)
+        val factory = SupportOpenHelperFactory(passphrase)
+        val configuration = SupportSQLiteOpenHelper.Configuration
+            .builder(context.applicationContext)
+            .name(ActivityTraceDatabase.DB_NAME)
+            .callback(NoOpCallback())
+            .build()
+        val helper = factory.create(configuration)
+        val database = helper.writableDatabase
+        try {
+            database.query("PRAGMA busy_timeout = 10000").close()
+            exportToPlainSqlite(database, outputFile)
+        } finally {
+            helper.close()
+        }
+    }
+
+    /**
+     * Core export path. Unit-tested against a mocked [SupportSQLiteDatabase].
+     * Production callers should prefer [exportToPlainSqlite] (the context-
+     * accepting overload) so the ATTACH + sqlcipher_export runs on its own
+     * dedicated connection.
+     */
     internal fun exportToPlainSqlite(database: SupportSQLiteDatabase, outputFile: File) {
         outputFile.delete()
         SQLiteDatabase.openOrCreateDatabase(outputFile.absolutePath, null).close()
@@ -161,5 +194,18 @@ object DatabaseExporter {
                 input.copyTo(output)
             }
         }
+    }
+
+    /**
+     * Minimal callback for the raw SQLCipher [SupportSQLiteOpenHelper] opened
+     * just for the export. The real DB schema was created by Room's own
+     * [RoomDatabase.Callback]; the export helper never needs to run
+     * [onCreate] / [onUpgrade] — it opens an existing file.
+     */
+    private class NoOpCallback : SupportSQLiteOpenHelper.Callback(ActivityTraceDatabase.CURRENT_VERSION) {
+        override fun onOpen(db: SupportSQLiteDatabase) = Unit
+        override fun onCreate(db: SupportSQLiteDatabase) = Unit
+        override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+        override fun onDowngrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
 }

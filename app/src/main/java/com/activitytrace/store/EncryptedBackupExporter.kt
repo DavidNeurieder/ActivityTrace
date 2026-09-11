@@ -30,14 +30,7 @@ object EncryptedBackupExporter {
                 tempDir.mkdirs()
 
                 val stagingSqlite = File(tempDir, "plain.sqlite")
-                val roomDb = ActivityTraceDatabase.getInstance(context)
-                val database = roomDb.openHelper.writableDatabase
-                val escapedPath = stagingSqlite.absolutePath.replace("'", "''")
-                database.execSQL(
-                    "ATTACH DATABASE '$escapedPath' AS plain KEY ''",
-                )
-                database.query("SELECT sqlcipher_export('plain')").use { it.moveToFirst() }
-                database.execSQL("DETACH DATABASE plain")
+                DatabaseExporter.exportToPlainSqlite(context, stagingSqlite)
 
                 val metadata = JSONObject().apply {
                     put("schema_version", ActivityTraceDatabase.CURRENT_VERSION)
