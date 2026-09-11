@@ -32,7 +32,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Einstellungen</string>
     <string name="back_description">Zurück</string>
-    <string name="restricted_settings_note">Benachrichtigungszugriff erfasst Benachrichtigungen in Echtzeit. Falls durch Eingeschränkte Einstellungen blockiert, gehe zu Einstellungen → Apps → Activity Trace → Eingeschränkte Einstellungen erlauben. Alternativ den Barrierefreiheitsdienst aktivieren (Android 14+).</string>
+    <string name="restricted_settings_note">Falls Android die Aktivierung des Benachrichtigungszugriffs verhindert, erlaube zuerst über „Eingeschränkte Einstellungen" die Ausführung in den Activity-Trace-App-Einstellungen.</string>
     <string name="retention_title">Aufbewahrungsdauer</string>
     <string name="retention_7d">7 Tage</string>
     <string name="retention_30d">30 Tage</string>

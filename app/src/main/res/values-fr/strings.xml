@@ -32,7 +32,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Paramètres</string>
     <string name="back_description">Retour</string>
-    <string name="restricted_settings_note">L\'accès aux notifications capture les notifications en temps réel. Si bloqué par les paramètres restreints, allez dans Paramètres → Apps → Activity Trace → Autoriser les paramètres restreints. Sinon, activez le service d\'accessibilité (Android 14+).</string>
+    <string name="restricted_settings_note">Si Android empêche l\'activation de l\'accès aux notifications, utilisez \"Autoriser les paramètres restreints\" dans les paramètres de l\'application Activity Trace.</string>
     <string name="retention_title">Durée de conservation</string>
     <string name="retention_7d">7 jours</string>
     <string name="retention_30d">30 jours</string>

@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Rule
 import org.junit.Test
 
@@ -50,6 +51,20 @@ class OnboardingScreenTest {
     }
 
     @Test
+    fun captureCardShowsSummaryWhenNothingGranted() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Capture isn't enabled yet").assertExists()
+        composeTestRule.onNodeWithText(
+            "ActivityTrace needs access to your device to record your activity."
+        ).assertExists()
+    }
+
+    @Test
     fun captureCardShowsEnableButtonsWhenNothingGranted() {
         composeTestRule.setContent {
             MaterialTheme {
@@ -62,6 +77,21 @@ class OnboardingScreenTest {
     }
 
     @Test
+    fun captureCardShowsContextualPermissionExplanations() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Notifications aren't being captured.").assertExists()
+        composeTestRule.onNodeWithText("Screen activity isn't being captured.").assertExists()
+        composeTestRule.onNodeWithText(
+            "Accessibility access lets ActivityTrace see which app is on screen."
+        ).assertExists()
+    }
+
+    @Test
     fun captureCardShowsRestrictedSettingsNote() {
         composeTestRule.setContent {
             MaterialTheme {
@@ -70,10 +100,8 @@ class OnboardingScreenTest {
         }
 
         composeTestRule.onNodeWithText(
-            "Notification Access captures notifications in real time. " +
-            "If blocked by Restricted Settings, go to " +
-            "Settings → Apps → Activity Trace → Allow restricted settings. " +
-            "Alternatively, enable the Accessibility Service (Android 14+)."
+            "If Android prevents enabling Notification Access, " +
+            "use Allow restricted settings in ActivityTrace's app settings."
         ).assertExists()
     }
 
@@ -86,8 +114,10 @@ class OnboardingScreenTest {
         }
 
         composeTestRule.onNodeWithText("Demo data").assertExists()
+        composeTestRule.onNodeWithText("Explore ActivityTrace with fictional activity.").assertExists()
+        composeTestRule.onNodeWithText("No demo data installed").assertExists()
         composeTestRule.onNodeWithText(
-            "Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time."
+            "Demo data is separate from your real activity and can be removed at any time."
         ).assertExists()
     }
 
@@ -100,9 +130,7 @@ class OnboardingScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText(
-            "Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time."
-        ).performClick()
+        composeTestRule.onNodeWithText("Explore ActivityTrace with fictional activity.").performScrollTo().performClick()
         assert(navigated)
     }
 
@@ -126,7 +154,7 @@ class OnboardingScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Continue").performClick()
+        composeTestRule.onNodeWithText("Continue").performScrollTo().performClick()
         assert(completed)
     }
 }

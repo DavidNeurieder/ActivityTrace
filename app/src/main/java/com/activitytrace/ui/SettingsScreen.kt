@@ -128,9 +128,10 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {
-            CaptureStatusSection(context)
-            Spacer(Modifier.height(24.dp))
-            BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
+            CaptureStatusSection(
+                context,
+                onBlockedAppsClick = onNavigateToBlockedApps,
+            )
             Spacer(Modifier.height(24.dp))
             DemoDataSection(onNavigate = onNavigateToDemoData)
             Spacer(Modifier.height(24.dp))
@@ -218,6 +219,12 @@ private fun AppearanceSection(
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
     )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        text = stringResource(R.string.appearance_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     Spacer(Modifier.height(8.dp))
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
@@ -280,6 +287,12 @@ private fun RetentionSection(
         text = stringResource(R.string.retention_title),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        text = stringResource(R.string.retention_description),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(8.dp))
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -874,27 +887,6 @@ private suspend fun isEncryptedBackup(context: Context, uri: Uri): Boolean = wit
         } ?: false
     } catch (_: Exception) {
         false
-    }
-}
-
-@Composable
-private fun BlockedAppsSection(onNavigate: () -> Unit) {
-    Text(
-        text = stringResource(R.string.blocked_apps_title),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigate() },
-    ) {
-        Text(
-            text = stringResource(R.string.blocked_apps_description),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(16.dp),
-        )
     }
 }
 

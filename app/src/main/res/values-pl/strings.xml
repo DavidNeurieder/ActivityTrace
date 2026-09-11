@@ -36,7 +36,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Ustawienia</string>
     <string name="back_description">Wstecz</string>
-    <string name="restricted_settings_note">Dostęp do powiadomień przechwytuje powiadomienia w czasie rzeczywistym. Jeśli jest zablokowany przez Ograniczone ustawienia, przejdź do Ustawienia → Aplikacje → Activity Trace → Zezwól na ograniczone ustawienia. Alternatywnie włącz Usługę dostępności (Android 14+).</string>
+    <string name="restricted_settings_note">Jeśli Android uniemożliwia włączenie dostępu do powiadomień, najpierw zezwól na \"Ograniczone ustawienia\" w ustawieniach aplikacji Activity Trace.</string>
     <string name="retention_title">Okres przechowywania</string>
     <string name="retention_7d">7 dni</string>
     <string name="retention_30d">30 dni</string>

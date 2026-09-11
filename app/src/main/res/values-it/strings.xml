@@ -32,7 +32,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Impostazioni</string>
     <string name="back_description">Indietro</string>
-    <string name="restricted_settings_note">L\'accesso alle notifiche cattura le notifiche in tempo reale. Se bloccato dalle Impostazioni limitate, vai su Impostazioni → App → Activity Trace → Consenti impostazioni limitate. In alternativa, attiva il Servizio di accessibilità (Android 14+).</string>
+    <string name="restricted_settings_note">Se Android impedisce l\'attivazione dell\'accesso alle notifiche, usa \"Consenti impostazioni limitate\" nelle impostazioni dell\'app Activity Trace.</string>
     <string name="retention_title">Periodo di conservazione</string>
     <string name="retention_7d">7 giorni</string>
     <string name="retention_30d">30 giorni</string>

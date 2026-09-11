@@ -36,7 +36,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Настройки</string>
     <string name="back_description">Назад</string>
-    <string name="restricted_settings_note">Доступ к уведомлениям захватывает уведомления в реальном времени. Если заблокировано ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы включите Службу специальных возможностей (Android 14+).</string>
+    <string name="restricted_settings_note">Если Android не разрешает включить доступ к уведомлениям, сначала разрешите \"Ограниченные настройки\" в настройках приложения Activity Trace.</string>
     <string name="retention_title">Срок хранения</string>
     <string name="retention_7d">7 дней</string>
     <string name="retention_30d">30 дней</string>

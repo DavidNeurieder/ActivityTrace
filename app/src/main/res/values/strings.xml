@@ -43,7 +43,7 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Settings</string>
     <string name="back_description">Back</string>
-    <string name="restricted_settings_note">Notification Access captures notifications in real time. If blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, enable the Accessibility Service (Android 14+).</string>
+    <string name="restricted_settings_note">If Android prevents enabling Notification Access, use Allow restricted settings in ActivityTrace\'s app settings.</string>
     <plurals name="capture_blocked_count">
         <item quantity="one">%d app blocked from capture</item>
         <item quantity="other">%d apps blocked from capture</item>
@@ -52,8 +52,15 @@
     <string name="capture_screen_activity">Screen activity</string>
     <string name="capture_notifications">Notifications</string>
     <string name="capture_enabled">Enabled</string>
-    <string name="capture_disabled">Disabled</string>
-    <string name="capture_partial_note">Some sources are turned off, so capture is incomplete.</string>
+    <string name="capture_status_need_setup">Needs setup</string>
+    <string name="capture_status_summary_ok">Everything is working</string>
+    <string name="capture_status_summary_partial">Capture is partially enabled</string>
+    <string name="capture_status_summary_off">Capture isn\'t enabled yet</string>
+    <string name="capture_explanation_off">ActivityTrace needs access to your device to record your activity.</string>
+    <string name="capture_explanation_partial">Some activity may not be recorded.</string>
+    <string name="capture_notifications_missing">Notifications aren\'t being captured.</string>
+    <string name="capture_screen_missing">Screen activity isn\'t being captured.</string>
+    <string name="capture_screen_why">Accessibility access lets ActivityTrace see which app is on screen.</string>
     <string name="enable_notifications">Enable notifications</string>
     <string name="enable_accessibility">Enable accessibility</string>
     <string name="privacy_title">Privacy</string>
@@ -62,12 +69,14 @@
     <string name="privacy_data_scope_title">What gets captured?</string>
     <string name="privacy_data_scope_body">Text you type and notifications you receive may be captured. Everything stays on this device in an encrypted database and is never sent anywhere.</string>
     <string name="appearance_title">Appearance</string>
+    <string name="appearance_description">Choose how ActivityTrace looks.</string>
     <string name="theme_select">Select theme</string>
     <string name="theme_system_default">System default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_oled_black">OLED Black</string>
     <string name="retention_title">Retention period</string>
+    <string name="retention_description">Automatically remove older activity.</string>
     <string name="retention_7d">7 days</string>
     <string name="retention_30d">30 days</string>
     <string name="retention_90d">90 days</string>
@@ -181,7 +190,6 @@ Continue?</string>
 
     <!-- Blocked apps -->
     <string name="blocked_apps_title">Blocked apps</string>
-    <string name="blocked_apps_description">Manage apps that are excluded from capture</string>
     <string name="blocked_apps_manually_blocked">Manually blocked</string>
     <string name="blocked_apps_system_noise">System apps (blocked by default)</string>
     <string name="blocked_apps_restore_defaults">Block recommended system apps</string>
@@ -228,9 +236,14 @@ Continue?</string>
 
     <!-- DemoDataScreen -->
     <string name="demo_data_title">Demo data</string>
-    <string name="demo_data_description">Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time.</string>
+    <string name="demo_data_description">Explore ActivityTrace with fictional activity.</string>
     <string name="demo_data_what_it_contains">Includes messages, notifications, emails, documents and browsing activity from a fictional user — nothing real is ever shown here.</string>
     <string name="demo_data_empty">No demo data installed</string>
+    <plurals name="demo_data_event_count">
+        <item quantity="one">%d demo event</item>
+        <item quantity="other">%d demo events</item>
+    </plurals>
+    <string name="demo_data_separate_note">Demo data is separate from your real activity and can be removed at any time.</string>
     <plurals name="demo_data_captures">
         <item quantity="one">%d capture</item>
         <item quantity="other">%d captures</item>

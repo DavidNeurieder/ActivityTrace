@@ -100,10 +100,8 @@ class SettingsScreenTest {
     @Test
     fun captureSectionShowsRestrictedSettingsNote() {
         composeTestRule.onNodeWithText(
-            "Notification Access captures notifications in real time. " +
-            "If blocked by Restricted Settings, go to " +
-            "Settings → Apps → Activity Trace → Allow restricted settings. " +
-            "Alternatively, enable the Accessibility Service (Android 14+)."
+            "If Android prevents enabling Notification Access, " +
+            "use Allow restricted settings in ActivityTrace's app settings."
         ).assertExists()
     }
 
