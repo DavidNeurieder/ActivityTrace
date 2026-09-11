@@ -32,12 +32,9 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Ajustes</string>
     <string name="back_description">Atrás</string>
-    <string name="permissions_title">Permisos</string>
     <string name="notification_access">Acceso a notificaciones</string>
-    <string name="permission_granted">Concedido</string>
-    <string name="permission_not_granted">No concedido</string>
     <string name="accessibility_service">Servicio de accesibilidad</string>
-    <string name="restricted_settings_note">El acceso a notificaciones captura notificaciones en tiempo real. Si está bloqueado por Configuración restringida, ve a Ajustes → Apps → Activity Trace → Permitir configuración restringida. Como alternativa, activa el Servicio de accesibilidad a continuación (Android 14+).</string>
+    <string name="restricted_settings_note">El acceso a notificaciones captura notificaciones en tiempo real. Si está bloqueado por Configuración restringida, ve a Ajustes → Apps → Activity Trace → Permitir configuración restringida. Como alternativa, activa el Servicio de accesibilidad (Android 14+).</string>
     <string name="retention_title">Período de retención</string>
     <string name="retention_7d">7 días</string>
     <string name="retention_30d">30 días</string>

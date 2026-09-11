@@ -67,8 +67,8 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun showsPermissionsSection() {
-        composeTestRule.onNodeWithText("Permissions").assertExists()
+    fun permissionsSectionIsRemoved() {
+        composeTestRule.onNodeWithText("Permissions").assertDoesNotExist()
     }
 
     @Test
@@ -98,22 +98,12 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun showsNotificationAccessRow() {
-        composeTestRule.onNodeWithText("Notification access").assertExists()
-    }
-
-    @Test
-    fun showsAccessibilityServiceRow() {
-        composeTestRule.onNodeWithText("Accessibility service").assertExists()
-    }
-
-    @Test
-    fun showsPermissionsExplanation() {
+    fun captureSectionShowsRestrictedSettingsNote() {
         composeTestRule.onNodeWithText(
             "Notification Access captures notifications in real time. " +
             "If blocked by Restricted Settings, go to " +
             "Settings → Apps → Activity Trace → Allow restricted settings. " +
-            "Alternatively, enable the Accessibility Service below (Android 14+)."
+            "Alternatively, enable the Accessibility Service (Android 14+)."
         ).assertExists()
     }
 

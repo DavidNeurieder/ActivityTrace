@@ -36,12 +36,9 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Настройки</string>
     <string name="back_description">Назад</string>
-    <string name="permissions_title">Разрешения</string>
     <string name="notification_access">Доступ к уведомлениям</string>
-    <string name="permission_granted">Предоставлено</string>
-    <string name="permission_not_granted">Не предоставлено</string>
     <string name="accessibility_service">Служба специальных возможностей</string>
-    <string name="restricted_settings_note">Доступ к уведомлениям захватывает уведомления в реальном времени. Если заблокировано ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы включите Службу специальных возможностей ниже (Android 14+).</string>
+    <string name="restricted_settings_note">Доступ к уведомлениям захватывает уведомления в реальном времени. Если заблокировано ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы включите Службу специальных возможностей (Android 14+).</string>
     <string name="retention_title">Срок хранения</string>
     <string name="retention_7d">7 дней</string>
     <string name="retention_30d">30 дней</string>

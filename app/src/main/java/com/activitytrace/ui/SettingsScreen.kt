@@ -142,8 +142,6 @@ fun SettingsScreen(
         ) {
             CaptureStatusSection(context)
             Spacer(Modifier.height(24.dp))
-            PermissionsSection(context)
-            Spacer(Modifier.height(24.dp))
             BlockedAppsSection(onNavigate = onNavigateToBlockedApps)
             Spacer(Modifier.height(24.dp))
             DemoDataSection(onNavigate = onNavigateToDemoData)
@@ -277,6 +275,12 @@ private fun CaptureStatusSection(context: Context) {
                         Text(stringResource(R.string.enable_accessibility))
                     }
                 }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.restricted_settings_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -413,82 +417,6 @@ private fun AppearanceSection(
             }
         }
     }
-}
-
-@Composable
-private fun PermissionsSection(context: Context) {
-    var notificationGranted by remember { mutableStateOf(false) }
-    var accessibilityGranted by remember { mutableStateOf(false) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-
-    LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            notificationGranted = isNotificationListenerGranted(context)
-            accessibilityGranted = isAccessibilityServiceGranted(context)
-        }
-    }
-
-    Text(
-        text = stringResource(R.string.permissions_title),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        context.startActivity(
-                            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                        )
-                    }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.notification_access), style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        text = if (notificationGranted) stringResource(R.string.permission_granted)
-                               else stringResource(R.string.permission_not_granted),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (notificationGranted) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-            Divider()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        context.startActivity(
-                            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        )
-                    }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.accessibility_service), style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        text = if (accessibilityGranted) stringResource(R.string.permission_granted)
-                               else stringResource(R.string.permission_not_granted),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (accessibilityGranted) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
-    }
-    Spacer(Modifier.height(8.dp))
-    Text(
-        text = stringResource(R.string.restricted_settings_note),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 @Composable
