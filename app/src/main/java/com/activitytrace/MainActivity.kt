@@ -79,7 +79,28 @@ class MainActivity : ComponentActivity() {
                 var onboarded by remember { mutableStateOf(prefs.getBoolean("onboarded", false)) }
                 var screen by remember { mutableStateOf(Screen.Search) }
 
-                if (onboarded) {
+                if (screen == Screen.DemoData) {
+                    val demoBack = { screen = if (onboarded) Screen.Settings else Screen.Search }
+                    BackHandler(onBack = demoBack)
+                    val demoViewModel = ViewModelProvider(
+                        this,
+                        DemoDataViewModel.Factory(
+                            DemoDataRepository.getInstance(applicationContext)
+                        )
+                    )[DemoDataViewModel::class.java]
+                    DemoDataScreen(
+                        viewModel = demoViewModel,
+                        onBack = demoBack,
+                    )
+                } else if (!onboarded) {
+                    OnboardingScreen(
+                        onComplete = {
+                            prefs.edit().putBoolean("onboarded", true).apply()
+                            onboarded = true
+                        },
+                        onNavigateToDemoData = { screen = Screen.DemoData },
+                    )
+                } else {
                     when (screen) {
                         Screen.Search -> SearchScreen(
                             viewModel = viewModel,
@@ -104,27 +125,8 @@ class MainActivity : ComponentActivity() {
                                 onBack = { screen = Screen.Settings },
                             )
                         }
-                        Screen.DemoData -> {
-                            BackHandler { screen = Screen.Settings }
-                            val demoViewModel = ViewModelProvider(
-                                this,
-                                DemoDataViewModel.Factory(
-                                    DemoDataRepository.getInstance(applicationContext)
-                                )
-                            )[DemoDataViewModel::class.java]
-                            DemoDataScreen(
-                                viewModel = demoViewModel,
-                                onBack = { screen = Screen.Settings },
-                            )
-                        }
+                        Screen.DemoData -> error("Unreachable: DemoData handled above")
                     }
-                } else {
-                    OnboardingScreen(
-                        onComplete = {
-                            prefs.edit().putBoolean("onboarded", true).apply()
-                            onboarded = true
-                        },
-                    )
                 }
             }
         }

@@ -43,8 +43,6 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Settings</string>
     <string name="back_description">Back</string>
-    <string name="notification_access">Notification access</string>
-    <string name="accessibility_service">Accessibility service</string>
     <string name="restricted_settings_note">Notification Access captures notifications in real time. If blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, enable the Accessibility Service (Android 14+).</string>
     <plurals name="capture_blocked_count">
         <item quantity="one">%d app blocked from capture</item>
@@ -208,10 +206,6 @@ Continue?</string>
 
     <!-- OnboardingScreen -->
     <string name="onboarding_description">Search across your notifications and more.\nEverything stays on your device, encrypted.</string>
-    <string name="grant_permissions">Grant permissions for automatic capture:</string>
-    <string name="notification_access_recommended">Notification Access (recommended)</string>
-    <string name="accessibility_service_button">Accessibility Service (Android 14+)</string>
-    <string name="restricted_settings_warning">Note: If Notification Access is blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+.</string>
     <string name="continue_button">Continue</string>
 
     <!-- MainActivity -->

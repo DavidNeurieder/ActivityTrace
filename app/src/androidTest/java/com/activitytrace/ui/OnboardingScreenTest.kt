@@ -37,29 +37,32 @@ class OnboardingScreenTest {
     }
 
     @Test
-    fun showsGrantNotificationButton() {
+    fun showsCaptureStatusCard() {
         composeTestRule.setContent {
             MaterialTheme {
                 OnboardingScreen(onComplete = {})
             }
         }
 
-        composeTestRule.onNodeWithText("Notification Access (recommended)").assertExists()
+        composeTestRule.onNodeWithText("Capture").assertExists()
+        composeTestRule.onNodeWithText("Screen activity").assertExists()
+        composeTestRule.onNodeWithText("Notifications").assertExists()
     }
 
     @Test
-    fun showsAccessibilityServiceButton() {
+    fun captureCardShowsEnableButtonsWhenNothingGranted() {
         composeTestRule.setContent {
             MaterialTheme {
                 OnboardingScreen(onComplete = {})
             }
         }
 
-        composeTestRule.onNodeWithText("Accessibility Service (Android 14+)").assertExists()
+        composeTestRule.onNodeWithText("Enable notifications").assertExists()
+        composeTestRule.onNodeWithText("Enable accessibility").assertExists()
     }
 
     @Test
-    fun showsRestrictedSettingsNote() {
+    fun captureCardShowsRestrictedSettingsNote() {
         composeTestRule.setContent {
             MaterialTheme {
                 OnboardingScreen(onComplete = {})
@@ -67,8 +70,40 @@ class OnboardingScreenTest {
         }
 
         composeTestRule.onNodeWithText(
-            "Note: If Notification Access is blocked by Restricted Settings, go to Settings → Apps → Activity Trace → Allow restricted settings. Alternatively, use the Accessibility Service path above on Android 14+."
+            "Notification Access captures notifications in real time. " +
+            "If blocked by Restricted Settings, go to " +
+            "Settings → Apps → Activity Trace → Allow restricted settings. " +
+            "Alternatively, enable the Accessibility Service (Android 14+)."
         ).assertExists()
+    }
+
+    @Test
+    fun showsDemoDataEntry() {
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Demo data").assertExists()
+        composeTestRule.onNodeWithText(
+            "Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time."
+        ).assertExists()
+    }
+
+    @Test
+    fun demoDataEntryNavigates() {
+        var navigated = false
+        composeTestRule.setContent {
+            MaterialTheme {
+                OnboardingScreen(onComplete = {}, onNavigateToDemoData = { navigated = true })
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "Explore ActivityTrace with fictional activity. Demo data is clearly separated from your real captures, uses the normal search pipeline and can be removed at any time."
+        ).performClick()
+        assert(navigated)
     }
 
     @Test

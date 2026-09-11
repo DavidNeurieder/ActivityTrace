@@ -36,8 +36,6 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Ustawienia</string>
     <string name="back_description">Wstecz</string>
-    <string name="notification_access">Dostęp do powiadomień</string>
-    <string name="accessibility_service">Usługa dostępności</string>
     <string name="restricted_settings_note">Dostęp do powiadomień przechwytuje powiadomienia w czasie rzeczywistym. Jeśli jest zablokowany przez Ograniczone ustawienia, przejdź do Ustawienia → Aplikacje → Activity Trace → Zezwól na ograniczone ustawienia. Alternatywnie włącz Usługę dostępności (Android 14+).</string>
     <string name="retention_title">Okres przechowywania</string>
     <string name="retention_7d">7 dni</string>
@@ -84,10 +82,6 @@
 
     <!-- OnboardingScreen -->
     <string name="onboarding_description">Przeszukuj powiadomienia i nie tylko.\nWszystko pozostaje na urządzeniu, zaszyfrowane.</string>
-    <string name="grant_permissions">Udziel uprawnień do automatycznego przechwytywania:</string>
-    <string name="notification_access_recommended">Dostęp do powiadomień (zalecany)</string>
-    <string name="accessibility_service_button">Usługa dostępności (Android 14+)</string>
-    <string name="restricted_settings_warning">Uwaga: jeśli dostęp do powiadomień jest zablokowany przez Ograniczone ustawienia, przejdź do Ustawienia → Aplikacje → Activity Trace → Zezwól na ograniczone ustawienia. Alternatywnie użyj powyższej Usługi dostępności (Android 14+).</string>
     <string name="continue_button">Kontynuuj</string>
 
     <!-- MainActivity -->

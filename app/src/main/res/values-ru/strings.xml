@@ -36,8 +36,6 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Настройки</string>
     <string name="back_description">Назад</string>
-    <string name="notification_access">Доступ к уведомлениям</string>
-    <string name="accessibility_service">Служба специальных возможностей</string>
     <string name="restricted_settings_note">Доступ к уведомлениям захватывает уведомления в реальном времени. Если заблокировано ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы включите Службу специальных возможностей (Android 14+).</string>
     <string name="retention_title">Срок хранения</string>
     <string name="retention_7d">7 дней</string>
@@ -84,10 +82,6 @@
 
     <!-- OnboardingScreen -->
     <string name="onboarding_description">Поиск по уведомлениям и не только.\nВсе остаётся на вашем устройстве в зашифрованном виде.</string>
-    <string name="grant_permissions">Предоставьте разрешения для автоматического захвата:</string>
-    <string name="notification_access_recommended">Доступ к уведомлениям (рекомендуется)</string>
-    <string name="accessibility_service_button">Служба специальных возможностей (Android 14+)</string>
-    <string name="restricted_settings_warning">Примечание. Если доступ к уведомлениям заблокирован ограниченными настройками, перейдите в Настройки → Приложения → Activity Trace → Разрешить ограниченные настройки. В качестве альтернативы используйте Службу специальных возможностей выше (Android 14+).</string>
     <string name="continue_button">Продолжить</string>
 
     <!-- MainActivity -->

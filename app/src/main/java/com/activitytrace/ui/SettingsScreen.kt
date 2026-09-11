@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,7 +30,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.DropdownMenu
@@ -44,13 +41,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,15 +55,11 @@ import androidx.compose.runtime.setValue
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
-import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -77,9 +68,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.R
-import com.activitytrace.capture.AccessibilityCaptureService
 import com.activitytrace.capture.FileIndexingWorker
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.BackupEnvelope
@@ -93,7 +82,6 @@ import com.activitytrace.store.RetentionCleanupWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.work.WorkInfo
@@ -168,152 +156,6 @@ fun SettingsScreen(
             Spacer(Modifier.height(24.dp))
             AboutSection(context)
         }
-    }
-}
-
-private fun isNotificationListenerGranted(context: Context): Boolean = try {
-    NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-} catch (_: Exception) {
-    false
-}
-
-private fun isAccessibilityServiceGranted(context: Context): Boolean = try {
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-    )
-    val serviceName = "${context.packageName}/${AccessibilityCaptureService::class.java.name}"
-    enabledServices?.split(":")?.any { it.trim() == serviceName } == true
-} catch (_: Exception) {
-    false
-}
-
-@Composable
-private fun CaptureStatusSection(context: Context) {
-    var notificationGranted by remember { mutableStateOf(false) }
-    var accessibilityGranted by remember { mutableStateOf(false) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-
-    LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            notificationGranted = isNotificationListenerGranted(context)
-            accessibilityGranted = isAccessibilityServiceGranted(context)
-        }
-    }
-
-    val blockedAppsFlow = remember {
-        runCatching { ActivityTraceDatabase.getInstance(context).blockedAppDao().blockedAppsFlow() }
-            .getOrNull() ?: emptyFlow()
-    }
-    val blockedApps by blockedAppsFlow.collectAsState(initial = emptyList())
-    val capturePartial = !(notificationGranted && accessibilityGranted)
-
-    Text(
-        text = stringResource(R.string.capture_status_title),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            StatusRow(
-                label = stringResource(R.string.capture_screen_activity),
-                enabled = accessibilityGranted,
-                onClick = {
-                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                },
-            )
-            Spacer(Modifier.height(4.dp))
-            StatusRow(
-                label = stringResource(R.string.capture_notifications),
-                enabled = notificationGranted,
-                onClick = {
-                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                },
-            )
-            Spacer(Modifier.height(12.dp))
-            Divider()
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = pluralStringResource(
-                    R.plurals.capture_blocked_count,
-                    blockedApps.size,
-                    blockedApps.size,
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            if (capturePartial) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.capture_partial_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (!notificationGranted) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.enable_notifications))
-                    }
-                }
-                if (!accessibilityGranted) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(stringResource(R.string.enable_accessibility))
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.restricted_settings_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusRow(
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Surface(
-            modifier = Modifier.size(10.dp),
-            shape = CircleShape,
-            color = if (enabled) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.error,
-        ) {}
-        Spacer(Modifier.width(10.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Text(
-            text = if (enabled) stringResource(R.string.capture_enabled)
-                   else stringResource(R.string.capture_disabled),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.error,
-        )
     }
 }
 
@@ -1050,27 +892,6 @@ private fun BlockedAppsSection(onNavigate: () -> Unit) {
     ) {
         Text(
             text = stringResource(R.string.blocked_apps_description),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Composable
-private fun DemoDataSection(onNavigate: () -> Unit) {
-    Text(
-        text = stringResource(R.string.demo_data_title),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Spacer(Modifier.height(8.dp))
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigate() },
-    ) {
-        Text(
-            text = stringResource(R.string.demo_data_description),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(16.dp),
         )

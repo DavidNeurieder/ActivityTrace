@@ -32,8 +32,6 @@
     <!-- SettingsScreen -->
     <string name="settings_title">Einstellungen</string>
     <string name="back_description">Zurück</string>
-    <string name="notification_access">Benachrichtigungszugriff</string>
-    <string name="accessibility_service">Barrierefreiheitsdienst</string>
     <string name="restricted_settings_note">Benachrichtigungszugriff erfasst Benachrichtigungen in Echtzeit. Falls durch Eingeschränkte Einstellungen blockiert, gehe zu Einstellungen → Apps → Activity Trace → Eingeschränkte Einstellungen erlauben. Alternativ den Barrierefreiheitsdienst aktivieren (Android 14+).</string>
     <string name="retention_title">Aufbewahrungsdauer</string>
     <string name="retention_7d">7 Tage</string>
@@ -78,10 +76,6 @@
 
     <!-- OnboardingScreen -->
     <string name="onboarding_description">Durchsuche deine Benachrichtigungen und mehr.\nAlles bleibt auf deinem Gerät, verschlüsselt.</string>
-    <string name="grant_permissions">Berechtigungen für automatische Erfassung erteilen:</string>
-    <string name="notification_access_recommended">Benachrichtigungszugriff (empfohlen)</string>
-    <string name="accessibility_service_button">Barrierefreiheitsdienst (Android 14+)</string>
-    <string name="restricted_settings_warning">Hinweis: Wenn der Benachrichtigungszugriff durch Eingeschränkte Einstellungen blockiert ist, gehe zu Einstellungen → Apps → Activity Trace → Eingeschränkte Einstellungen erlauben. Alternativ den Barrierefreiheitsdienst oben verwenden (Android 14+).</string>
     <string name="continue_button">Weiter</string>
 
     <!-- MainActivity -->
