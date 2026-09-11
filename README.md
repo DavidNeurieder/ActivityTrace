@@ -62,7 +62,7 @@ Use ordinary language or precise filters to narrow results:
 - `type:notification`
 - `tracking number`
 
-Keywords and filters can be combined (`tracking number type:notification yesterday`). Search matches whole words (a full word always finds it; a partial word returns no hits). Result highlighting is built in.
+Keywords and filters can be combined (`tracking number type:notification yesterday`). Search uses FTS5 with prefix matching — type `whats` to find WhatsApp, or `track` to find any tracking-related item. Results are ranked by relevance and recency.
 
 ## Private by design
 
@@ -79,6 +79,8 @@ Your ActivityTrace database stays on your device.
 ## You control your data
 
 Choose how long captured information is kept — from 7 days to 90 days. Block individual apps from being captured entirely.
+
+Optional encrypted backup and restore keeps a copy of your database, with integrity verification on restore.
 
 ## How it works
 
@@ -147,12 +149,15 @@ Contributions are welcome.
 - Statistics dashboard — activity over time, top apps, content-type breakdown
 - Export as JSON or CSV
 - Encrypted-database backup and restore (plain SQLite)
+- Theme selection — system default, light, dark, or OLED black
+- Demo mode — explore ActivityTrace with fictional data, fully separate from your real captures
 
 ## Technical details
 
 - Android 8.0+ (API 26)
 - Jetpack Compose + Material 3
 - Room + SQLCipher (AES-256-CBC) + Android Keystore
+- SQLite FTS5 full-text search with relevance + recency ranking
 - WorkManager for retention cleanup and file indexing
 - NotificationListener + AccessibilityService capture
 - Storage Access Framework file indexing

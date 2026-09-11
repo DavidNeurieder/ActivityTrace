@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.10.0 — 2026-09-11
+
+### New
+- Demo mode — explore ActivityTrace with curated fictional data (messages, notifications, emails, documents, browsing) via the demo dataset entry; never touches real captures
+- Theme selection — system default, light, dark, and OLED black
+- Search ranking — results now ordered by relevance (BM25) merged with a recency pool (reciprocal-rank fusion)
+- FTS5 full-text search — implicit prefix matching so partial words (`whats`) find matches; FTS5 index backed by content-sync triggers
+- Privacy settings screen — documents what gets captured and how sensitive fields (passwords, credit cards) are excluded
+- Welcome screen with capture status dashboard — summary states (ok/partial/off), "Needs setup" rows, and contextual permission explanations
+
+### Improvements
+- Encrypted backup/restore with integrity verification (backup envelope with authenticated payload)
+- Search results paginated (50/page) instead of loaded at once
+- File indexing extraction budget — avoids excessive memory use on large folder scans
+- Settings screen reorganized: capture status dashboard now includes the blocked-apps row
+- Backup export explicitly labeled as unencrypted plain SQLite
+- SQLCipher upgraded to 4.17.0 with `DatabaseOpener`/`DatabaseKeyStore` recovery seams
+- Security CI: release-manifest and exported-component checks in `.github/workflows/security.yml`
+
+### Fixes
+- Capture toggle no longer shows stale state after toggling permissions
+- Export crash on some Android 16 devices (`MediaStore.Downloads.insert()` null)
+- Export UI improved with explicit backup/restore/JSON/CSV actions
+- SQLite backup no longer fails on retry (stale temp file)
+- Duplicate permissions settings section removed
+
+### Technical
+- `ActivityTraceDatabase` version 7→10 (FTS5 `captured_items_fts`, demo `demo_dataset_id`, encryption-recovery state)
+- `SearchRanker` with RRF merge of BM25 + recency pools
+- Backup envelope replaced plain archive format; restore validates integrity and leaves the live DB unchanged on failure
+- `CaptureLimits`/`ExtractionBudget` bound accessibility and file-indexing work
+
+---
+
 ## v0.9.0 — 2026-08-12
 
 ### New

@@ -1,0 +1,20 @@
+New features:
+- Demo mode — try ActivityTrace with curated fictional activity data
+- Theme selection — system default, light, dark, or OLED black
+- Search ranking — results ordered by relevance and recency (BM25 + FTS5)
+- Privacy settings screen with sensitive-content handling documentation
+- Welcome screen with capture status dashboard and contextual setup guidance
+
+Improvements:
+- Encrypted backup/restore with integrity verification (backup envelope)
+- Search results now paginate instead of loading all at once
+- File indexing uses extraction budget to prevent excessive memory use
+- Settings screen reorganized: capture status, blocked apps, retention, and appearance sections
+- Capture status shows contextual permission explanations when partially enabled
+- Backup export explicitly labeled as unencrypted plain SQLite
+- SQLCipher upgraded to 4.17.0
+
+Fixes:
+- Capture toggle no longer shows incorrect state after enabling/disabling
+- Export crash on some Android 16 devices fixed
+- Duplicate permissions entries removed from settings
