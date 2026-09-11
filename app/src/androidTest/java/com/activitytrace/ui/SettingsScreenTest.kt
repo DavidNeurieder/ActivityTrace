@@ -3,6 +3,8 @@ package com.activitytrace.ui
 import android.content.Context
 import android.os.Environment
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -142,6 +144,24 @@ class SettingsScreenTest {
     @Test
     fun showsExportButton() {
         composeTestRule.onNodeWithText("Backup to SQLite").assertExists()
+    }
+
+    @Test
+    fun passwordVisibilityToggleFlipsBetweenShowAndHide() {
+        val toggle = composeTestRule.onNodeWithTag("backup_password_visibility_toggle")
+        toggle.performScrollTo().assertExists()
+        toggle.assert(hasContentDescription("Show password"))
+
+        toggle.performClick()
+        toggle.assert(hasContentDescription("Hide password"))
+
+        toggle.performClick()
+        toggle.assert(hasContentDescription("Show password"))
+    }
+
+    @Test
+    fun showsPasswordField() {
+        composeTestRule.onNodeWithText("Backup password").assertExists()
     }
 
     @Test

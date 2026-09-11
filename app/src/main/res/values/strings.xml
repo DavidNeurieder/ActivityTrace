@@ -96,6 +96,8 @@
     <string name="backup_password_label">Backup password</string>
     <string name="backup_password_hint">Enter a password for this backup</string>
     <string name="backup_password_required">Enter a backup password first</string>
+    <string name="password_show">Show password</string>
+    <string name="password_hide">Hide password</string>
     <string name="backup_encrypted_action">Backup encrypted</string>
     <string name="restore_encrypted_action">Restore encrypted backup</string>
     <string name="restore_password_hint">Password of the backup</string>

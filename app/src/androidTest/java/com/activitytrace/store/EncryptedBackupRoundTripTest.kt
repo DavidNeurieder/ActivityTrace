@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.activitytrace.model.CapturedItem
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -163,7 +164,7 @@ class EncryptedBackupRoundTripTest {
         }
     }
 
-    @Test
+@Test
     fun encrypted_backup_rejects_a_wrong_password_on_device() = runTest {
         val dao = ActivityTraceDatabase.getInstance(context).captureDao()
         val status = EncryptedBackupExporter.export(context, password)
@@ -175,6 +176,83 @@ class EncryptedBackupRoundTripTest {
             "wrong password must yield InvalidBackup, was $result",
             result is RestoreResult.InvalidBackup,
         )
+    }
+
+    @Test
+    fun encrypted_backup_export_import_round_trips_to_a_fresh_database() = runTest {
+        val dao = ActivityTraceDatabase.getInstance(context).captureDao()
+        val markers = listOf(
+            "roundtrip_alpha_${System.nanoTime()}",
+            "roundtrip_beta_${System.nanoTime()}",
+        )
+        dao.insert(
+            CapturedItem(
+                text = markers[0],
+                appPackage = "com.roundtrip",
+                contentType = "notification",
+                timestamp = 42_000L,
+            ),
+        )
+        dao.insert(
+            CapturedItem(
+                text = markers[1],
+                appPackage = "com.roundtrip",
+                appName = "RoundTrip",
+                contentType = "screen",
+                category = "browsing",
+                timestamp = 43_000L,
+                metadata = "roundtrip metadata",
+            ),
+        )
+
+        val status = EncryptedBackupExporter.export(context, password)
+        assertTrue("export must succeed on device, was $status", status is ExportStatus.Success)
+
+        val uri = requireNotNull(latestBackupUri()) { "backup file not found in MediaStore" }
+
+        val sourceCount = dao.getAllItems().size
+
+        // Restore into a brand-new, empty database — the "other device" half of
+        // the round trip.
+        val unique = System.nanoTime()
+        val freshDbFileName = "fresh_restore_$unique.db"
+        val freshDbFile = context.getDatabasePath(freshDbFileName)
+        freshDbFile.delete()
+        val freshDb = ActivityTraceDatabase.buildDatabase(
+            context,
+            "fresh-restore-passphrase".toByteArray(),
+            freshDbFileName,
+        )
+        try {
+            val freshDao = freshDb.captureDao()
+            val result = EncryptedBackupExporter.import(context, uri, password, freshDao)
+            assertTrue(
+                "restore into a fresh database must succeed, was $result",
+                result is RestoreResult.Success,
+            )
+
+            val exportedTexts = dao.getAllItems().map { it.text }
+            val restoredTexts = freshDao.getAllItems().map { it.text }
+            assertEquals("every exported row must round trip", exportedTexts.sorted(), restoredTexts.sorted())
+            assertEquals("source count must equal import count", sourceCount, (result as RestoreResult.Success).importedCount)
+
+            val alpha = freshDao.getAllItems().first { it.text == markers[0] }
+            assertEquals("com.roundtrip", alpha.appPackage)
+            assertEquals("notification", alpha.contentType)
+            assertEquals(42_000L, alpha.timestamp)
+
+            val beta = freshDao.getAllItems().first { it.text == markers[1] }
+            assertEquals("RoundTrip", beta.appName)
+            assertEquals("screen", beta.contentType)
+            assertEquals("browsing", beta.category)
+            assertEquals(43_000L, beta.timestamp)
+            assertEquals("roundtrip metadata", beta.metadata)
+        } finally {
+            freshDb.close()
+            freshDbFile.delete()
+            File("${freshDbFile.path}-wal").delete()
+            File("${freshDbFile.path}-shm").delete()
+        }
     }
 
     @Test

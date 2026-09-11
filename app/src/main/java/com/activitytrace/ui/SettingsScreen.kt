@@ -25,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -66,12 +68,14 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.activitytrace.R
@@ -756,8 +760,10 @@ private fun DataSection(
     }
 
     var backupPassword by remember { mutableStateOf("") }
+    var backupPasswordVisible by remember { mutableStateOf(false) }
     var restoreUri by remember { mutableStateOf<Uri?>(null) }
     var restorePassword by remember { mutableStateOf("") }
+    var restorePasswordVisible by remember { mutableStateOf(false) }
     var showPlaintextConfirm by remember { mutableStateOf(false) }
 
     val encryptedRestoreLauncher = rememberLauncherForActivityResult(
@@ -807,8 +813,29 @@ private fun DataSection(
                 label = { Text(stringResource(R.string.backup_password_label)) },
                 placeholder = { Text(stringResource(R.string.backup_password_hint)) },
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (backupPasswordVisible) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(
+                        onClick = { backupPasswordVisible = !backupPasswordVisible },
+                        modifier = Modifier.testTag("backup_password_visibility_toggle"),
+                    ) {
+                        Icon(
+                            imageVector = if (backupPasswordVisible) {
+                                Icons.Filled.VisibilityOff
+                            } else {
+                                Icons.Filled.Visibility
+                            },
+                            contentDescription = stringResource(
+                                if (backupPasswordVisible) R.string.password_hide else R.string.password_show,
+                            ),
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(8.dp))
@@ -976,8 +1003,29 @@ private fun DataSection(
                     onValueChange = { restorePassword = it },
                     label = { Text(stringResource(R.string.restore_password_hint)) },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (restorePasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { restorePasswordVisible = !restorePasswordVisible },
+                            modifier = Modifier.testTag("restore_password_visibility_toggle"),
+                        ) {
+                            Icon(
+                                imageVector = if (restorePasswordVisible) {
+                                    Icons.Filled.VisibilityOff
+                                } else {
+                                    Icons.Filled.Visibility
+                                },
+                                contentDescription = stringResource(
+                                    if (restorePasswordVisible) R.string.password_hide else R.string.password_show,
+                                ),
+                            )
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             },
