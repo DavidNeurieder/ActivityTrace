@@ -10,8 +10,6 @@ class AccessibilityTextExtractorTest {
         override val text: CharSequence? = null,
         override val contentDescription: CharSequence? = null,
         override val isPassword: Boolean = false,
-        override val isEditable: Boolean = false,
-        override val className: String? = "android.widget.TextView",
         private val children: List<AccessibilityTextNode?> = emptyList(),
     ) : AccessibilityTextNode {
         override val childCount: Int get() = children.size
@@ -100,43 +98,35 @@ class AccessibilityTextExtractorTest {
     }
 
     @Test
-    fun `ignores sensitive editable fields`() {
+    fun `captures editable fields`() {
         val tree = FakeNode(
             text = "Root",
             children = listOf(
                 FakeNode(
-                    className = "android.widget.EditText",
-                    isEditable = true,
-                    text = "typed-secret",
+                    text = "typed value",
                 )
             ),
         )
 
-        assertEquals("Root", extractor.extract(tree))
+        assertEquals("Root typed value", extractor.extract(tree))
     }
 
     @Test
-    fun `password and editable fields pruned alongside normal siblings`() {
+    fun `password fields pruned alongside normal siblings`() {
         val tree = FakeNode(
             text = "Root",
             children = listOf(
                 FakeNode(text = "Public label"),
                 FakeNode(
-                    className = "android.widget.EditText",
-                    isEditable = true,
                     isPassword = true,
                     text = "password-value",
                 ),
-                FakeNode(
-                    className = "android.widget.EditText",
-                    isEditable = true,
-                    text = "draft-value",
-                ),
+                FakeNode(text = "draft-value"),
                 FakeNode(contentDescription = "Public hint"),
             ),
         )
 
-        assertEquals("Root Public label Public hint", extractor.extract(tree))
+        assertEquals("Root Public label draft-value Public hint", extractor.extract(tree))
     }
 
     @Test

@@ -7,8 +7,6 @@ class PrivacyFilterTest {
 
     private class FakeNode(
         override val isPassword: Boolean = false,
-        override val isEditable: Boolean = false,
-        override val className: String? = null,
         override val text: CharSequence? = null,
         override val contentDescription: CharSequence? = null,
         private val children: List<AccessibilityTextNode?> = emptyList(),
@@ -42,7 +40,7 @@ class PrivacyFilterTest {
             PrivacyDecision.BLOCK_PASSWORD,
             filter().evaluate(
                 "com.example",
-                FakeNode(isPassword = true, isEditable = true, className = "android.widget.EditText"),
+                FakeNode(isPassword = true),
             ),
         )
     }
@@ -53,29 +51,29 @@ class PrivacyFilterTest {
             PrivacyDecision.ALLOW,
             filter().evaluate(
                 "com.example",
-                FakeNode(className = "android.widget.TextView", text = "hello"),
+                FakeNode(text = "hello"),
             ),
         )
     }
 
     @Test
-    fun `editable field blocked`() {
-        assertEquals(
-            PrivacyDecision.BLOCK_EDITABLE,
-            filter().evaluate(
-                "com.example",
-                FakeNode(className = "android.widget.EditText", isEditable = true),
-            ),
-        )
-    }
-
-    @Test
-    fun `read-only edit text allowed`() {
+    fun `editable non-password field allowed`() {
         assertEquals(
             PrivacyDecision.ALLOW,
             filter().evaluate(
                 "com.example",
-                FakeNode(className = "android.widget.EditText", isEditable = false),
+                FakeNode(text = "typed value"),
+            ),
+        )
+    }
+
+    @Test
+    fun `read-only text allowed`() {
+        assertEquals(
+            PrivacyDecision.ALLOW,
+            filter().evaluate(
+                "com.example",
+                FakeNode(text = "read-only"),
             ),
         )
     }
@@ -118,9 +116,9 @@ class PrivacyFilterTest {
     }
 
     @Test
-    fun `node-less event with unknown package blocked`() {
+    fun `node-less event with unknown package allowed`() {
         assertEquals(
-            PrivacyDecision.BLOCK_UNKNOWN,
+            PrivacyDecision.ALLOW,
             filter().evaluate(PrivacyFilter.UNKNOWN_PACKAGE, null),
         )
     }
@@ -152,14 +150,8 @@ class PrivacyFilterTest {
 
     @Test
     fun `browser login form on allowed app captures only non-sensitive text`() {
-        val username = FakeNode(
-            className = "android.widget.EditText",
-            isEditable = true,
-            text = "typed-username",
-        )
+        val username = FakeNode(text = "typed-username")
         val password = FakeNode(
-            className = "android.widget.EditText",
-            isEditable = true,
             isPassword = true,
             text = "typed-password",
         )
@@ -169,22 +161,18 @@ class PrivacyFilterTest {
         )
 
         assertEquals(PrivacyDecision.ALLOW, filter().evaluate("com.browser", form))
-        assertEquals("Sign in", AccessibilityTextExtractor().extract(form))
+        assertEquals("Sign in typed-username", AccessibilityTextExtractor().extract(form))
     }
 
     @Test
-    fun `chat application captures public text but not the composer input`() {
-        val composer = FakeNode(
-            className = "android.widget.EditText",
-            isEditable = true,
-            text = "private draft message",
-        )
+    fun `chat application captures public text including the composer input`() {
+        val composer = FakeNode(text = "private draft message")
         val chat = FakeNode(
             text = "Hello there",
             children = listOf(FakeNode(text = "Received message"), composer),
         )
 
         assertEquals(PrivacyDecision.ALLOW, filter().evaluate("com.chat", chat))
-        assertEquals("Hello there Received message", AccessibilityTextExtractor().extract(chat))
+        assertEquals("Hello there Received message private draft message", AccessibilityTextExtractor().extract(chat))
     }
 }

@@ -4,8 +4,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 interface AccessibilityTextNode {
     val isPassword: Boolean
-    val isEditable: Boolean
-    val className: String?
     val text: CharSequence?
     val contentDescription: CharSequence?
     val childCount: Int
@@ -18,8 +16,6 @@ interface AccessibilityTextNode {
 
 class AccessibilityNodeInfoNode(private val node: AccessibilityNodeInfo) : AccessibilityTextNode {
     override val isPassword: Boolean get() = node.isPassword
-    override val isEditable: Boolean get() = node.isEditable
-    override val className: String? get() = node.className?.toString()
     override val text: CharSequence? get() = node.text
     override val contentDescription: CharSequence? get() = node.contentDescription
     override val childCount: Int get() = node.childCount
@@ -65,7 +61,6 @@ class AccessibilityTextExtractor(
             visited += 1
 
             if (node.isPassword) return
-            if (isSensitiveEditableField(node)) return
 
             append(node.text)
             append(node.contentDescription)

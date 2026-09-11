@@ -65,7 +65,7 @@
     <string name="enable_accessibility">Enable accessibility</string>
     <string name="privacy_title">Privacy</string>
     <string name="privacy_sensitive_title">Sensitive content</string>
-    <string name="privacy_sensitive_body">Screen capture uses Android\'s accessibility service and excludes supported password, credit card and other sensitive fields automatically, the same way system keyboards do. For additional protection, use Blocked apps.</string>
+    <string name="privacy_sensitive_body">Screen capture uses Android\'s accessibility service. ActivityTrace never captures events from apps you\'ve blocked or from password fields. Everything stays on this device.</string>
     <string name="privacy_data_scope_title">What gets captured?</string>
     <string name="privacy_data_scope_body">Text you type and notifications you receive may be captured. Everything stays on this device in an encrypted database and is never sent anywhere.</string>
     <string name="appearance_title">Appearance</string>

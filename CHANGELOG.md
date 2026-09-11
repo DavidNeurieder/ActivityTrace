@@ -7,7 +7,7 @@
 - Theme selection — system default, light, dark, and OLED black
 - Search ranking — results now ordered by relevance (BM25) merged with a recency pool (reciprocal-rank fusion)
 - FTS5 full-text search — implicit prefix matching so partial words (`whats`) find matches; FTS5 index backed by content-sync triggers
-- Privacy settings screen — documents what gets captured and how sensitive fields (passwords, credit cards) are excluded
+- Privacy settings screen — documents what gets captured and that events from blocked apps and password fields are never captured
 - Welcome screen with capture status dashboard — summary states (ok/partial/off), "Needs setup" rows, and contextual permission explanations
 
 ### Improvements

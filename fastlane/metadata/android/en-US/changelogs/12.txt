@@ -2,7 +2,7 @@ New features:
 - Demo mode — try ActivityTrace with curated fictional activity data
 - Theme selection — system default, light, dark, or OLED black
 - Search ranking — results ordered by relevance and recency (BM25 + FTS5)
-- Privacy settings screen with sensitive-content handling documentation
+- Privacy settings screen documenting that events from blocked apps and password fields are never captured
 - Welcome screen with capture status dashboard and contextual setup guidance
 
 Improvements:
