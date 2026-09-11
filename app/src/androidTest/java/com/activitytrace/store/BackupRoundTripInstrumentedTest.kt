@@ -47,6 +47,10 @@ class BackupRoundTripInstrumentedTest {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "ActivityTrace/activity_trace.sqlite",
         ).delete()
+        File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "ActivityTrace",
+        ).deleteRecursively()
         File(context.cacheDir, "export_temp").deleteRecursively()
     }
 

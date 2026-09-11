@@ -148,7 +148,13 @@ object DataExporter {
 
         if (Build.VERSION.SDK_INT >= 30) {
             val finalValues = ContentValues().apply { put("is_pending", 0) }
-            context.contentResolver.update(uri, finalValues, null, null)
+            try {
+                context.contentResolver.update(uri, finalValues, null, null)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to finalize MediaStore item, deleting pending row", e)
+                context.contentResolver.delete(uri, null, null)
+                return false
+            }
         }
         return true
     }
