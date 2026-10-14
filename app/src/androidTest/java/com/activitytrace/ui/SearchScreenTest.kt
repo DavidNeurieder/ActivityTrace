@@ -12,12 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.activitytrace.model.CapturedItem
-import com.activitytrace.search.SearchEngine
+import com.activitytrace.search.SearchEngineApi
 import com.activitytrace.search.SearchPage
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -27,7 +26,34 @@ class SearchScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val searchEngine: SearchEngine = mockk()
+    private class FakeSearchEngine : SearchEngineApi {
+        var recentPages: Flow<SearchPage> = flowOf(SearchPage(emptyList(), true))
+        var onSearch: (query: String, offset: Int) -> Flow<SearchPage> =
+            { _, _ -> flowOf(SearchPage(emptyList(), true)) }
+        val searchCalls = mutableListOf<Pair<String, Int>>()
+
+        override fun recentPaged(
+            contentType: String?,
+            appPackage: String?,
+            dateRange: Pair<Long, Long>?,
+            pageSize: Int,
+            offset: Int,
+        ): Flow<SearchPage> = recentPages
+
+        override fun searchPaged(
+            rawQuery: String,
+            contentType: String?,
+            appPackage: String?,
+            dateRange: Pair<Long, Long>?,
+            pageSize: Int,
+            offset: Int,
+        ): Flow<SearchPage> {
+            searchCalls += rawQuery to offset
+            return onSearch(rawQuery, offset)
+        }
+    }
+
+    private val searchEngine = FakeSearchEngine()
 
     @Before
     fun setUp() {
@@ -37,8 +63,8 @@ class SearchScreenTest {
 
     private fun createViewModel(items: List<CapturedItem> = emptyList()): SearchViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        every { searchEngine.recentPaged(any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
-        every { searchEngine.searchPaged(any(), any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        searchEngine.recentPages = flowOf(SearchPage(items, true))
+        searchEngine.onSearch = { _, _ -> flowOf(SearchPage(emptyList(), true)) }
         return SearchViewModel(searchEngine, app, debounceMillis = 0)
     }
 
@@ -61,7 +87,7 @@ class SearchScreenTest {
                 timestamp = 1000L,
             )
         )
-        every { searchEngine.searchPaged("test", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(items, true))
+        searchEngine.onSearch = { _, _ -> flowOf(SearchPage(items, true)) }
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -112,7 +138,7 @@ class SearchScreenTest {
     @Test
     fun showsNoResultsText() {
         val viewModel = createViewModel()
-        every { searchEngine.searchPaged("xyz", any(), any(), any(), any(), any()) } returns flowOf(SearchPage(emptyList(), true))
+        searchEngine.onSearch = { _, _ -> flowOf(SearchPage(emptyList(), true)) }
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -226,8 +252,9 @@ class SearchScreenTest {
         val viewModel = createViewModel()
         val firstPage = (1..50).map { item(it.toLong(), "item $it") }
         val tailPage = listOf(item(51L, "item 51"))
-        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 0) } returns flowOf(SearchPage(firstPage, false))
-        every { searchEngine.searchPaged("test", any(), any(), any(), any(), 50) } returns flowOf(SearchPage(tailPage, true))
+        searchEngine.onSearch = { _, offset ->
+            if (offset == 0) flowOf(SearchPage(firstPage, false)) else flowOf(SearchPage(tailPage, true))
+        }
 
         composeTestRule.setContent {
             MaterialTheme {
@@ -244,7 +271,7 @@ class SearchScreenTest {
         composeTestRule.onNodeWithText("Load more").performClick()
         composeTestRule.waitForIdle()
 
-        verify { searchEngine.searchPaged("test", any(), any(), any(), any(), 50) }
+        assertTrue(searchEngine.searchCalls.contains("test" to 50))
         composeTestRule.onNodeWithText("51 results").assertExists()
     }
 }

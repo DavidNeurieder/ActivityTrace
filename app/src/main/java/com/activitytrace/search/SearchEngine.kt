@@ -13,10 +13,34 @@ data class SearchPage(
     val isLastPage: Boolean = false,
 )
 
+/**
+ * Read side of the search component, consumed by [com.activitytrace.ui.SearchViewModel].
+ * Extracted so UI tests can substitute a lightweight fake without the MockK
+ * JVMTI agent (whose native library is not 16 KB page aligned).
+ */
+interface SearchEngineApi {
+    fun recentPaged(
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+        pageSize: Int = SearchEngine.PAGE_SIZE,
+        offset: Int = 0,
+    ): Flow<SearchPage>
+
+    fun searchPaged(
+        rawQuery: String,
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+        pageSize: Int = SearchEngine.PAGE_SIZE,
+        offset: Int = 0,
+    ): Flow<SearchPage>
+}
+
 class SearchEngine(
     private val captureDao: CaptureDao,
     private val ranker: SearchRanker = SearchRanker(),
-) {
+) : SearchEngineApi {
 
     fun recentItems(
         contentType: String? = null,
@@ -27,12 +51,12 @@ class SearchEngine(
             .map { it.items }
     }
 
-    fun recentPaged(
-        contentType: String? = null,
-        appPackage: String? = null,
-        dateRange: Pair<Long, Long>? = null,
-        pageSize: Int = PAGE_SIZE,
-        offset: Int = 0,
+    override fun recentPaged(
+        contentType: String?,
+        appPackage: String?,
+        dateRange: Pair<Long, Long>?,
+        pageSize: Int,
+        offset: Int,
     ): Flow<SearchPage> {
         return captureDao.recentPagedQuery(
             contentType = contentType,
@@ -77,13 +101,13 @@ class SearchEngine(
         }
     }
 
-    fun searchPaged(
+    override fun searchPaged(
         rawQuery: String,
-        contentType: String? = null,
-        appPackage: String? = null,
-        dateRange: Pair<Long, Long>? = null,
-        pageSize: Int = PAGE_SIZE,
-        offset: Int = 0,
+        contentType: String?,
+        appPackage: String?,
+        dateRange: Pair<Long, Long>?,
+        pageSize: Int,
+        offset: Int,
     ): Flow<SearchPage> {
         val p = QueryParser.parse(rawQuery)
         val (keywords, effectiveType, effectiveApp, effectiveRange) = resolveFilters(p, contentType, appPackage, dateRange)
@@ -193,7 +217,7 @@ class SearchEngine(
         }
     }
 
-    private companion object {
+    companion object {
         const val PAGE_SIZE: Int = 50
         val FTS_OPERATORS = setOf("and", "or", "not", "near")
     }

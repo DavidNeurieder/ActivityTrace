@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
-import com.activitytrace.search.SearchEngine
+import com.activitytrace.search.SearchEngineApi
 import com.activitytrace.search.SearchPage
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
@@ -29,7 +29,7 @@ import java.util.Calendar
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModel(
-    private val searchEngine: SearchEngine,
+    private val searchEngine: SearchEngineApi,
     application: Application,
     private val debounceMillis: Long = DEBOUNCE_MILLIS_DEFAULT,
 ) : AndroidViewModel(application) {
@@ -283,7 +283,7 @@ class SearchViewModel(
     }
 
     class Factory(
-        private val searchEngine: SearchEngine,
+        private val searchEngine: SearchEngineApi,
         private val application: Application,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
