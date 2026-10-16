@@ -251,6 +251,7 @@ fun SearchScreen(
                 val yesterdayLabel = stringResource(R.string.date_yesterday)
                 val thisWeekLabel = stringResource(R.string.date_this_week)
                 val olderLabel = stringResource(R.string.date_older)
+                val couldNotOpenMessage = stringResource(R.string.could_not_open)
                 val grouped = remember(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel) {
                     groupByDate(results, todayLabel, yesterdayLabel, thisWeekLabel, olderLabel)
                 }
@@ -279,7 +280,7 @@ fun SearchScreen(
                                         onOpenApp = {
                                             if (!openItem(context, captured.appPackage, captured.metadata, captured.category)) {
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar(context.getString(R.string.could_not_open))
+                                                    snackbarHostState.showSnackbar(couldNotOpenMessage)
                                                 }
                                             }
                                         },
@@ -305,6 +306,7 @@ fun SearchScreen(
         }
 
         if (contextMenuTarget != null) {
+            val copiedToClipboardMessage = stringResource(R.string.copied_to_clipboard)
             val target = contextMenuTarget!!
             AlertDialog(
                 onDismissRequest = { contextMenuTarget = null },
@@ -318,7 +320,7 @@ fun SearchScreen(
                                 copyToClipboard(context, target.text)
                                 contextMenuTarget = null
                                 scope.launch {
-                                    snackbarHostState.showSnackbar(context.getString(R.string.copied_to_clipboard))
+                                    snackbarHostState.showSnackbar(copiedToClipboardMessage)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

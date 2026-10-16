@@ -116,11 +116,11 @@ class BackupRoundTripInstrumentedTest {
                 )
                 db.execSQL(
                     "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    arrayOf("new item a", "com.new", "NewApp", "text", null, 30000L, null),
+                    arrayOf<Any?>("new item a", "com.new", "NewApp", "text", null, 30000L, null),
                 )
                 db.execSQL(
                     "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    arrayOf("new item b", "com.new2", "NewApp2", "text", null, 40000L, null),
+                    arrayOf<Any?>("new item b", "com.new2", "NewApp2", "text", null, 40000L, null),
                 )
             }
 

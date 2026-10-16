@@ -8,7 +8,8 @@
 - **Database:** Room + SQLCipher (AES-256-CBC via Android Keystore/StrongBox)
 - **Search:** SQLite FTS5 with porter tokenizer (no AI/ML)
 - **Min SDK:** 26 (Android 8.0)
-- **Target SDK:** 36
+- **Compile SDK:** 37 (Android 17)
+- **Target SDK:** 37 (Android 17)
 - **Package:** com.activitytrace
 
 ## Build
@@ -23,11 +24,13 @@ python3 build_and_test.py   # automate full CI workflow
 ```
 
 ## Dependencies (version catalog: gradle/libs.versions.toml)
-- AGP 8.2.2 / Kotlin 1.9.22 / Compose Compiler 1.5.10
-- Compose BOM 2024.01.00 (Material 3, dynamic color)
-- Room 2.6.1 + KSP for codegen
-- WorkManager 2.9.0 (scheduled retention cleanup)
-- SQLCipher 4.17.0 (net.zetetic:sqlcipher-android; androidx.sqlite forced to 2.4.0 for Kotlin 1.9 compatibility)
+- AGP 9.4.1 / Gradle 9.8.1 / Kotlin 2.3.21 / Compose Compiler plugin 2.3.21
+- AGP 9 opt-outs in `gradle.properties`: `android.builtInKotlin=false` and `android.newDsl=false` keep the standalone Kotlin Android plugin (KGP) and the legacy DSL/variant API. Both are removed in AGP 10 — migrate to built-in Kotlin before then. `android.kotlinOptions` is gone (AGP 9); the build uses a top-level `kotlin { compilerOptions { jvmTarget } }` block
+- Kotlin is capped at 2.3.x because KSP2 (`com.google.devtools.ksp` 2.3.12) tracks the Kotlin `major.minor` line and has no 2.4.x release yet, and Room needs KSP. Verify a matching KSP exists before bumping Kotlin
+- Compose BOM 2026.09.00 (Material 3, dynamic color); the Compose compiler now comes from the Kotlin Compose plugin, not `composeOptions.kotlinCompilerExtensionVersion`
+- Room 2.8.5 + KSP for codegen
+- WorkManager 2.12.0 (scheduled retention cleanup)
+- SQLCipher 4.19.1 (net.zetetic:sqlcipher-android); androidx.sqlite 2.7.1 (the old 2.4.0 force hack was only needed to keep Kotlin 1.9 metadata happy and is gone)
 - FTS5 table created via Room callback (not Room annotation, due to KSP resolution order)
 - Search uses SQL LIKE `%keyword%` (substring match, no FTS5); FTS5 table retained for content sync triggers
 
@@ -54,7 +57,7 @@ python3 build_and_test.py   # automate full CI workflow
 - Disable logging in release builds: `-assumenosideeffects` for `android.util.Log` in `proguard-rules.pro` ✓
 - ProGuard minification enabled for release builds ✓
 - `isDebuggable = false` for release builds ✓
-- Note: `reproducibleBuildEnabled` requires AGP 8.5+; current AGP 8.2.2 uses R8 deterministic mode instead
+- Note: `reproducibleBuildEnabled` requires AGP 8.5+; current AGP 9.4.1 supports it, and `android.r8.minification-repository-mode=true` is kept for deterministic R8 output
 
 ## Security CI (P0.5)
 - `.github/workflows/security.yml`: rebuilds release + unit/lint/instrumented/vuln/secret checks on push/PR

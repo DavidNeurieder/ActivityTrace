@@ -1,37 +1,37 @@
 [versions]
-agp = "8.5.2"
-kotlin = "1.9.22"
-composeBom = "2024.01.00"
-composeAnimation = "1.6.7"
-composeCompiler = "1.5.10"
-activityCompose = "1.8.2"
-coreKtx = "1.12.0"
-lifecycle = "2.7.0"
-navigationCompose = "2.7.7"
-room = "2.6.1"
-work = "2.9.0"
-sqlcipher = "4.17.0"
-sqliteKtx = "2.4.0"
+agp = "9.4.1"
+# KSP2 tracks the Kotlin major.minor line (KSP 2.3.x -> Kotlin 2.3.x); there is
+# no KSP for Kotlin 2.4.x, so Room's codegen caps Kotlin at 2.3.x.
+kotlin = "2.3.21"
+composeBom = "2026.09.00"
+activityCompose = "1.13.0"
+coreKtx = "1.19.1"
+lifecycle = "2.11.0"
+navigationCompose = "2.10.2"
+room = "2.8.5"
+work = "2.12.0"
+sqlcipher = "4.19.1"
+sqliteKtx = "2.7.1"
 pdfbox = "2.0.27.0"
-documentfile = "1.0.1"
+documentfile = "1.1.0"
 
 # Test
 junit = "4.13.2"
-mockk = "1.13.9"
-coroutinesTest = "1.7.3"
-turbine = "1.0.0"
-androidxTestExtJunit = "1.1.5"
-androidxTestRunner = "1.5.2"
+mockk = "1.14.11"
+coroutinesTest = "1.11.0"
+turbine = "1.2.1"
+androidxTestExtJunit = "1.3.0"
+androidxTestRunner = "1.7.0"
 # 3.7.0+ is required for API 37 (Android 17): older Espresso reflects on the
 # hidden InputManager.getInstance(), removed on API 37, which crashes every
 # Compose test in Espresso.onIdle().
 androidxTestEspresso = "3.7.0"
 archCoreTesting = "2.2.0"
-robolectric = "4.11.1"
+robolectric = "4.17"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-compose-animation = { group = "androidx.compose.animation", name = "animation-android", version.ref = "composeAnimation" }
+compose-animation = { group = "androidx.compose.animation", name = "animation-android" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
@@ -66,11 +66,12 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxTestEspresso" }
 arch-core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "archCoreTesting" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
-compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4", version = "1.6.0" }
-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version = "1.6.0" }
+compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "1.9.22-1.0.17" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.12" }

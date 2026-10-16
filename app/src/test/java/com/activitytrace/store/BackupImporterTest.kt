@@ -125,7 +125,7 @@ class BackupImporterTest {
         for (i in 0 until itemCount) {
             db.execSQL(
                 "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                arrayOf("item_$i", "com.test", "TestApp", "notification", null, 1000L * (i + 1), null),
+                arrayOf<Any?>("item_$i", "com.test", "TestApp", "notification", null, 1000L * (i + 1), null),
             )
         }
 
@@ -156,11 +156,11 @@ class BackupImporterTest {
 
         db.execSQL(
             "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            arrayOf("all_null", "com.null", null, "text", null, 100L, null),
+            arrayOf<Any?>("all_null", "com.null", null, "text", null, 100L, null),
         )
         db.execSQL(
             "INSERT INTO captured_items (text, app_package, app_name, content_type, category, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            arrayOf("all_set", "com.notnull", "NotNull", "text", "cat", 200L, "meta"),
+            arrayOf<Any?>("all_set", "com.notnull", "NotNull", "text", "cat", 200L, "meta"),
         )
 
         db.close()
