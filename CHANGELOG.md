@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.11.0 — 2026-11-02
+
+### New
+- Android 17 (API 37) support — `compileSdk`/`targetSdk` raised to 37
+- 16 KB page-size support — the release APK and its bundled SQLCipher native library are 16 KB aligned, so the app runs on 16 KB-page devices without compatibility mode
+
+### Improvements
+- Library updates: Compose BOM 2026.09.00, Room 2.8.5, WorkManager 2.12.0, SQLCipher 4.19.1, androidx.sqlite 2.7.1, Navigation 2.10.2, Lifecycle 2.11.0
+- Kotlin 2.3.21 with the Compose Compiler Gradle plugin (`composeOptions.kotlinCompilerExtensionVersion` removed)
+
+### Technical
+- Search screen resolves localized strings with `stringResource()` instead of `context.getString()` inside click handlers
+- Instrumented tests run on Android 17: Espresso 3.7.0 (3.5.0 crashes on the removed `InputManager.getInstance()`), and androidTest no longer depends on MockK, whose JVMTI agent is only 4 KB aligned
+- `verifyNoInternetPermissionInRelease` is a typed Gradle task again (`Project.exec` was removed in Gradle 9)
+- Build: AGP 9.4.1 / Gradle 9.8.1 / Kotlin 2.3.21 / KSP 2.3.12
+- AGP 9 stopgaps `android.builtInKotlin=false` and `android.newDsl=false` in `gradle.properties` (both removed in AGP 10)
+- Dropped the androidx.sqlite 2.4.0 force-resolution hack; Kotlin 2.x metadata no longer needs it
+- `SearchEngineApi` interface extracted so UI tests can use a plain fake instead of a mocking framework
+- Robolectric 4.17, MockK 1.14.11 (JVM-only), coroutines-test 1.11.0, Turbine 1.2.1
+- Database schema unchanged (version 10); no migration
+
+---
+
 ## v0.10.0 — 2026-09-11
 
 ### New
