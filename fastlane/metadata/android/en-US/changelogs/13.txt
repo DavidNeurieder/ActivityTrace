@@ -1,0 +1,8 @@
+Android 17 support:
+- Targets Android 17 (API 37)
+- Runs correctly on devices that use 16 KB memory pages
+
+Improvements:
+- Updated Compose, Room, WorkManager and SQLCipher to current versions
+
+Your existing data, settings and backups are unchanged by this update.
