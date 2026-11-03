@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.ApplicationExtension
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
@@ -10,7 +11,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-android {
+// Configures the extension through the public ApplicationExtension interface so the
+// script does not use the deprecated Project.android(BaseAppModuleExtension) accessor.
+extensions.configure<ApplicationExtension>("android") {
     namespace = "com.activitytrace"
     compileSdk = 37
 
@@ -70,8 +73,8 @@ android {
     // apk-for-local-test via the variant assets. Robolectric does not serve test
     // source-set assets, and test resources are not on the unit-test classpath.
     sourceSets {
-        getByName("debug").assets.srcDir("$projectDir/schemas")
-        getByName("release").assets.srcDir("$projectDir/schemas")
+        getByName("debug").assets.directories.add("$projectDir/schemas")
+        getByName("release").assets.directories.add("$projectDir/schemas")
     }
 
     packaging {
@@ -154,6 +157,7 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime)
+    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

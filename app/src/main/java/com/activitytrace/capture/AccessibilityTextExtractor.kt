@@ -1,6 +1,18 @@
 package com.activitytrace.capture
 
+import android.os.Build
 import android.view.accessibility.AccessibilityNodeInfo
+
+/**
+ * [AccessibilityNodeInfo.recycle] is deprecated on API 33+ (the framework
+ * manages node recycling itself) but still needed on older releases.
+ */
+@Suppress("DEPRECATION")
+private fun AccessibilityNodeInfo.recycleCompat() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        recycle()
+    }
+}
 
 interface AccessibilityTextNode {
     val isPassword: Boolean
@@ -26,11 +38,11 @@ class AccessibilityNodeInfoNode(private val node: AccessibilityNodeInfo) : Acces
     }
 
     override fun releaseChild(child: AccessibilityTextNode) {
-        (child as? AccessibilityNodeInfoNode)?.node?.recycle()
+        (child as? AccessibilityNodeInfoNode)?.node?.recycleCompat()
     }
 
     fun release() {
-        node.recycle()
+        node.recycleCompat()
     }
 }
 

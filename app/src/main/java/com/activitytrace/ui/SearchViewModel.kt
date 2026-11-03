@@ -16,6 +16,7 @@ import com.activitytrace.search.SearchPage
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -27,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class SearchViewModel(
     private val searchEngine: SearchEngineApi,
     application: Application,

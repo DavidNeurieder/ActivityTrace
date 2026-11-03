@@ -1,10 +1,12 @@
 package com.activitytrace.capture
 
+import android.app.Notification
 import android.graphics.Bitmap
-import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.os.BundleCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,6 +19,13 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
 
     companion object {
         private const val TAG = "ActivityTraceNL"
+
+        /**
+         * Value of the deprecated [Notification.EXTRA_LARGE_ICON]. The extras
+         * key is still the only public way to read the large icon that another
+         * app attached to its notification.
+         */
+        private const val EXTRA_LARGE_ICON = "android.largeIcon"
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -49,23 +58,16 @@ class ActivityTraceNotificationListener : NotificationListenerService() {
 
     private fun extractImage(sbn: StatusBarNotification): ByteArray? {
         try {
-            val extras = sbn.notification.extras ?: return null
-            val picture = extras.get(android.app.Notification.EXTRA_PICTURE)
-            if (picture is Bitmap) {
-                return bitmapToBytes(picture)
-            }
-            if (Build.VERSION.SDK_INT >= 23) {
-                val largeIcon = extras.getParcelable<Bitmap>(
-                    android.app.Notification.EXTRA_LARGE_ICON
-                )
-                if (largeIcon != null) {
-                    return bitmapToBytes(largeIcon)
-                }
-            }
-            val icon = sbn.notification.largeIcon
-            if (icon != null) {
-                return bitmapToBytes(icon)
-            }
+            val notification = sbn.notification
+            val extras = notification.extras ?: return null
+            BundleCompat.getParcelable(extras, Notification.EXTRA_PICTURE, Bitmap::class.java)
+                ?.let { return bitmapToBytes(it) }
+            BundleCompat.getParcelable(extras, EXTRA_LARGE_ICON, Bitmap::class.java)
+                ?.let { return bitmapToBytes(it) }
+            notification.getLargeIcon()
+                ?.loadDrawable(this)
+                ?.toBitmap()
+                ?.let { return bitmapToBytes(it) }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to extract image", e)
         }

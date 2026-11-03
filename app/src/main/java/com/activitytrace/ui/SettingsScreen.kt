@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -182,7 +182,7 @@ private fun PrivacySection() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.privacy_data_scope_title),
@@ -447,7 +447,7 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
                 Text(stringResource(R.string.add_folder))
             }
             Spacer(Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
             // Schedule
@@ -471,7 +471,7 @@ private fun FileIndexingSection(context: Context, scope: CoroutineScope) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
             // Scan now
@@ -597,7 +597,7 @@ private fun DataSection(
                 Text(stringResource(R.string.restore_from_backup))
             }
             Spacer(Modifier.height(8.dp))
-            Divider()
+            HorizontalDivider()
             Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.export_formats_title),
@@ -716,7 +716,7 @@ private fun DataSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))
-                    Divider()
+                    HorizontalDivider()
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.backup_unencrypted_warning),

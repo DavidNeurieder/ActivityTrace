@@ -15,7 +15,9 @@
 - Instrumented tests run on Android 17: Espresso 3.7.0 (3.5.0 crashes on the removed `InputManager.getInstance()`), and androidTest no longer depends on MockK, whose JVMTI agent is only 4 KB aligned
 - `verifyNoInternetPermissionInRelease` is a typed Gradle task again (`Project.exec` was removed in Gradle 9)
 - Build: AGP 9.4.1 / Gradle 9.8.1 / Kotlin 2.3.21 / KSP 2.3.12
-- AGP 9 stopgaps `android.builtInKotlin=false` and `android.newDsl=false` in `gradle.properties` (both removed in AGP 10)
+- AGP 9 stopgaps `android.builtInKotlin=false` and `android.newDsl=false` in `gradle.properties` (both removed in AGP 10); their deprecation notices are silenced with `android.sync.suppressAgpWarnings` and `kotlin.suppressGradlePluginWarnings`, so a normal build is warning-free
+- Deprecated-API sweep: `HorizontalDivider`, `androidx.lifecycle.compose.LocalLifecycleOwner` (new `lifecycle-runtime-compose` dependency), `BundleCompat` + `Icon.toBitmap()` for notification images, accessibility node recycling only below API 33, `@OptIn(FlowPreview::class)` for `debounce`
+- Build script no longer uses the deprecated legacy accessors: Room schema assets are added via `AndroidSourceDirectorySet.directories`, and the `android {}` block is configured through the `ApplicationExtension` interface
 - Dropped the androidx.sqlite 2.4.0 force-resolution hack; Kotlin 2.x metadata no longer needs it
 - `SearchEngineApi` interface extracted so UI tests can use a plain fake instead of a mocking framework
 - Robolectric 4.17, MockK 1.14.11 (JVM-only), coroutines-test 1.11.0, Turbine 1.2.1

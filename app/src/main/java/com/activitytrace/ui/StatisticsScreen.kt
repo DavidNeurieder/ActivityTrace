@@ -180,7 +180,7 @@ fun StatisticsScreen(
             .padding(12.dp),
     ) {
         if (selectedApp != null) {
-            val appName = resolveAppName2(context, selectedApp!!)
+            val appName = resolveAppName2(context, selectedApp)
             Text(
                 text = appName,
                 style = MaterialTheme.typography.titleLarge,
