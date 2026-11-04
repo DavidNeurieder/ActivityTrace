@@ -7,6 +7,7 @@
 - 16 KB page-size support — the release APK and its bundled SQLCipher native library are 16 KB aligned, so the app runs on 16 KB-page devices without compatibility mode
 
 ### Improvements
+- Statistics cover all matching captures even when a search matches more than one page of results
 - Library updates: Compose BOM 2026.09.00, Room 2.8.5, WorkManager 2.12.0, SQLCipher 4.19.1, androidx.sqlite 2.7.1, Navigation 2.10.2, Lifecycle 2.11.0
 - Kotlin 2.3.21 with the Compose Compiler Gradle plugin (`composeOptions.kotlinCompilerExtensionVersion` removed)
 

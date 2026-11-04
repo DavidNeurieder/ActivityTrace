@@ -4,5 +4,9 @@ Android 17 support:
 
 Improvements:
 - Updated Compose, Room, WorkManager and SQLCipher to current versions
+- Statistics now include every matching capture, not just the first page of search results
+
+Fixes:
+- Statistics no longer undercount when a search matches more than 50 captures (results still load 50 at a time)
 
 Your existing data, settings and backups are unchanged by this update.
