@@ -11,8 +11,10 @@ import androidx.room.Update
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.ResolvedSearchCriteria
 import com.activitytrace.search.SearchCandidate
 import com.activitytrace.search.SearchConfig
+import com.activitytrace.search.StatisticsWindow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -160,11 +162,35 @@ interface CaptureDao {
         timeRange: Pair<Long, Long>?,
         contentType: String?,
         appPackage: String?,
+    ): Pair<String, MutableList<Any>> = filterWhere(matchQuery, timeRange, contentType, appPackage)
+
+    /**
+     * The single WHERE builder shared by the paged result queries and the
+     * statistics aggregates, so both always filter on exactly the same rows.
+     * [matchQuery] is null when the search has no keyword component.
+     */
+    private fun filterWhere(
+        matchQuery: String?,
+        timeRange: Pair<Long, Long>?,
+        contentType: String?,
+        appPackage: String?,
+        bookmarkedOnly: Boolean = false,
     ): Pair<String, MutableList<Any>> {
         val conditions = mutableListOf<String>()
-        conditions.add("captured_items_fts MATCH ?")
-        val params = mutableListOf<Any>(matchQuery)
+        val params = mutableListOf<Any>()
 
+        if (matchQuery != null) {
+            if (matchQuery.isBlank()) {
+                // Keywords dissolved into nothing (e.g. a bare `*`): no row can match.
+                conditions.add("0")
+            } else {
+                conditions.add("captured_items_fts MATCH ?")
+                params.add(matchQuery)
+            }
+        }
+        if (bookmarkedOnly) {
+            conditions.add("captured_items.is_bookmarked = 1")
+        }
         if (timeRange != null) {
             conditions.add("captured_items.timestamp BETWEEN ? AND ?")
             params.add(timeRange.first)
@@ -180,7 +206,8 @@ interface CaptureDao {
             params.add("%$appPackage%")
         }
 
-        return " WHERE ${conditions.joinToString(" AND ")}" to params
+        val where = if (conditions.isEmpty()) "" else " WHERE ${conditions.joinToString(" AND ")}"
+        return where to params
     }
 
     companion object {
@@ -248,6 +275,152 @@ interface CaptureDao {
 
         return searchLikeRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
     }
+
+    /**
+     * Statistics: aggregates over *every* row matching the search criteria.
+     *
+     * These deliberately have no `LIMIT` — the paged result queries cap their
+     * candidate pools and page size, and none of that may leak into a count.
+     * The [observedEntities] declaration keeps them live: Room re-runs each
+     * aggregate when `captured_items` changes.
+     */
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsSummaryRaw(query: SupportSQLiteQuery): Flow<StatisticsSummary>
+
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsAppCountsRaw(query: SupportSQLiteQuery): Flow<List<AppCount>>
+
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsDailyCountsRaw(query: SupportSQLiteQuery): Flow<List<DateCount>>
+
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsContentTypesRaw(query: SupportSQLiteQuery): Flow<List<ContentTypeCount>>
+
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsHourlyCountsRaw(query: SupportSQLiteQuery): Flow<List<HourCount>>
+
+    @RawQuery(observedEntities = [CapturedItem::class])
+    fun statisticsDayOfWeekCountsRaw(query: SupportSQLiteQuery): Flow<List<DayOfWeekCount>>
+
+    /** Total / today / week / yesterday / previous week and the timestamp span. */
+    fun statisticsSummary(
+        criteria: ResolvedSearchCriteria,
+        window: StatisticsWindow,
+    ): Flow<StatisticsSummary> {
+        val (whereClause, whereParams) = statisticsWhere(criteria)
+        val params = mutableListOf<Any>(
+            window.todayStart,
+            window.weekStart,
+            window.yesterdayStart,
+            window.todayStart,
+            window.prevWeekStart,
+            window.weekStart,
+        )
+        params.addAll(whereParams)
+
+        val sql = """
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(CASE WHEN captured_items.timestamp >= ? THEN 1 ELSE 0 END), 0) AS today,
+                   COALESCE(SUM(CASE WHEN captured_items.timestamp >= ? THEN 1 ELSE 0 END), 0) AS week,
+                   COALESCE(SUM(CASE WHEN captured_items.timestamp >= ? AND captured_items.timestamp < ? THEN 1 ELSE 0 END), 0) AS yesterday,
+                   COALESCE(SUM(CASE WHEN captured_items.timestamp >= ? AND captured_items.timestamp < ? THEN 1 ELSE 0 END), 0) AS prev_week,
+                   MIN(captured_items.timestamp) AS first_timestamp,
+                   MAX(captured_items.timestamp) AS last_timestamp
+            ${statisticsFrom(criteria)}
+            $whereClause
+        """.trimIndent()
+
+        return statisticsSummaryRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /** Every matching app, most active first. */
+    fun statisticsAppCounts(criteria: ResolvedSearchCriteria): Flow<List<AppCount>> {
+        val params = statisticsWhere(criteria).second
+        val sql = """
+            SELECT captured_items.app_package AS app_package, COUNT(*) AS count
+            ${statisticsFrom(criteria)}
+            ${statisticsWhere(criteria).first}
+            GROUP BY captured_items.app_package
+            ORDER BY count DESC, captured_items.app_package
+        """.trimIndent()
+        return statisticsAppCountsRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /**
+     * Matching items per local calendar day, oldest first, limited to the most
+     * recent [limit] days that actually contain matches.
+     */
+    fun statisticsDailyCounts(criteria: ResolvedSearchCriteria, limit: Int): Flow<List<DateCount>> {
+        val params = statisticsWhere(criteria).second
+        params.add(limit)
+        val sql = """
+            SELECT strftime('%Y-%m-%d', captured_items.timestamp / 1000, 'unixepoch', 'localtime') AS date,
+                   COUNT(*) AS count
+            ${statisticsFrom(criteria)}
+            ${statisticsWhere(criteria).first}
+            GROUP BY date
+            ORDER BY date DESC
+            LIMIT ?
+        """.trimIndent()
+        return statisticsDailyCountsRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /** Matching items per content type. */
+    fun statisticsContentTypes(criteria: ResolvedSearchCriteria): Flow<List<ContentTypeCount>> {
+        val params = statisticsWhere(criteria).second
+        val sql = """
+            SELECT captured_items.content_type AS content_type, COUNT(*) AS count
+            ${statisticsFrom(criteria)}
+            ${statisticsWhere(criteria).first}
+            GROUP BY captured_items.content_type
+            ORDER BY count DESC, captured_items.content_type
+        """.trimIndent()
+        return statisticsContentTypesRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /** Matching items per local hour of day. */
+    fun statisticsHourlyCounts(criteria: ResolvedSearchCriteria): Flow<List<HourCount>> {
+        val params = statisticsWhere(criteria).second
+        val sql = """
+            SELECT CAST(strftime('%H', captured_items.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) AS hour,
+                   COUNT(*) AS count
+            ${statisticsFrom(criteria)}
+            ${statisticsWhere(criteria).first}
+            GROUP BY hour
+            ORDER BY hour
+        """.trimIndent()
+        return statisticsHourlyCountsRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    /** Matching items per local day of week (0 = Sunday, matching the UI). */
+    fun statisticsDayOfWeekCounts(criteria: ResolvedSearchCriteria): Flow<List<DayOfWeekCount>> {
+        val params = statisticsWhere(criteria).second
+        val sql = """
+            SELECT CAST(strftime('%w', captured_items.timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) AS dow,
+                   COUNT(*) AS count
+            ${statisticsFrom(criteria)}
+            ${statisticsWhere(criteria).first}
+            GROUP BY dow
+            ORDER BY dow
+        """.trimIndent()
+        return statisticsDayOfWeekCountsRaw(SimpleSQLiteQuery(sql, params.toTypedArray()))
+    }
+
+    private fun statisticsFrom(criteria: ResolvedSearchCriteria): String =
+        if (criteria.hasKeywordComponent) {
+            "FROM captured_items JOIN captured_items_fts ON captured_items.id = captured_items_fts.rowid"
+        } else {
+            "FROM captured_items"
+        }
+
+    private fun statisticsWhere(criteria: ResolvedSearchCriteria): Pair<String, MutableList<Any>> =
+        filterWhere(
+            matchQuery = if (criteria.hasKeywordComponent) criteria.matchQuery else null,
+            timeRange = criteria.timeRange,
+            contentType = criteria.contentType,
+            appPackage = criteria.appPackage,
+            bookmarkedOnly = criteria.bookmarkedOnly,
+        )
 
     @Query("UPDATE captured_items SET is_bookmarked = :bookmarked WHERE id = :id")
     suspend fun setBookmarked(id: Long, bookmarked: Boolean)
@@ -348,5 +521,16 @@ interface CaptureDao {
     data class DayOfWeekCount(
         val dow: Int,
         val count: Int,
+    )
+
+    /** Scalar aggregate behind [SearchStatistics]: counts plus the timestamp span. */
+    data class StatisticsSummary(
+        val total: Int,
+        val today: Int,
+        val week: Int,
+        val yesterday: Int,
+        @ColumnInfo(name = "prev_week") val prevWeek: Int,
+        @ColumnInfo(name = "first_timestamp") val firstTimestamp: Long?,
+        @ColumnInfo(name = "last_timestamp") val lastTimestamp: Long?,
     )
 }

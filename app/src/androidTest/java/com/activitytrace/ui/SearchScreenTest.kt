@@ -12,8 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.SearchCriteria
 import com.activitytrace.search.SearchEngineApi
 import com.activitytrace.search.SearchPage
+import com.activitytrace.search.SearchStatistics
+import com.activitytrace.search.StatisticsWindow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertTrue
@@ -30,27 +33,24 @@ class SearchScreenTest {
         var recentPages: Flow<SearchPage> = flowOf(SearchPage(emptyList(), true))
         var onSearch: (query: String, offset: Int) -> Flow<SearchPage> =
             { _, _ -> flowOf(SearchPage(emptyList(), true)) }
+        var statisticsFlow: Flow<SearchStatistics> = flowOf(SearchStatistics.EMPTY)
         val searchCalls = mutableListOf<Pair<String, Int>>()
 
-        override fun recentPaged(
-            contentType: String?,
-            appPackage: String?,
-            dateRange: Pair<Long, Long>?,
-            pageSize: Int,
-            offset: Int,
-        ): Flow<SearchPage> = recentPages
-
-        override fun searchPaged(
-            rawQuery: String,
-            contentType: String?,
-            appPackage: String?,
-            dateRange: Pair<Long, Long>?,
+        override fun results(
+            criteria: SearchCriteria,
             pageSize: Int,
             offset: Int,
         ): Flow<SearchPage> {
-            searchCalls += rawQuery to offset
-            return onSearch(rawQuery, offset)
+            if (criteria.rawQuery.isBlank()) return recentPages
+            searchCalls += criteria.rawQuery to offset
+            return onSearch(criteria.rawQuery, offset)
         }
+
+        override fun statistics(
+            criteria: SearchCriteria,
+            window: StatisticsWindow,
+            dailyLimit: Int,
+        ): Flow<SearchStatistics> = statisticsFlow
     }
 
     private val searchEngine = FakeSearchEngine()

@@ -6,7 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.SearchStatistics
+import com.activitytrace.store.CaptureDao
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -16,25 +17,44 @@ class StatisticsScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun item(text: String, pkg: String, type: String, ts: Long) =
-        CapturedItem(
-            text = text,
-            appPackage = pkg,
-            appName = null,
-            contentType = type,
-            category = null,
-            timestamp = ts,
-            metadata = null,
-        )
+    private fun stats(
+        total: Int = 0,
+        today: Int = 0,
+        week: Int = 0,
+        apps: List<Pair<String, Int>> = emptyList(),
+        types: List<Pair<String, Int>> = emptyList(),
+        daily: List<CaptureDao.DateCount> = emptyList(),
+        hourly: List<CaptureDao.HourCount> = emptyList(),
+        dayOfWeek: List<CaptureDao.DayOfWeekCount> = emptyList(),
+    ) = SearchStatistics(
+        totalCount = total,
+        todayCount = today,
+        weekCount = week,
+        yesterdayCount = 0,
+        prevWeekCount = 0,
+        firstTimestamp = null,
+        lastTimestamp = null,
+        topApps = apps.map { (pkg, count) -> CaptureDao.AppCount(pkg, count) },
+        dailyCounts = daily,
+        contentTypeBreakdown = types.map { (type, count) -> CaptureDao.ContentTypeCount(type, count) },
+        hourlyCounts = hourly,
+        dayOfWeekCounts = dayOfWeek,
+    )
 
     @Test
     fun showsSectionHeaders() {
-        val items = listOf(
-            item("a", "com.a", "text", System.currentTimeMillis()),
-            item("b", "com.b", "image", System.currentTimeMillis()),
+        val statistics = stats(
+            total = 2,
+            today = 2,
+            week = 2,
+            apps = listOf("com.a" to 1, "com.b" to 1),
+            types = listOf("text" to 1, "image" to 1),
+            daily = listOf(CaptureDao.DateCount("2026-11-03", 2)),
+            hourly = listOf(CaptureDao.HourCount(9, 2)),
+            dayOfWeek = listOf(CaptureDao.DayOfWeekCount(2, 2)),
         )
         composeTestRule.setContent {
-            MaterialTheme { StatisticsScreen(items) }
+            MaterialTheme { StatisticsScreen(statistics) }
         }
         composeTestRule.onNodeWithText("Top apps").assertIsDisplayed()
         composeTestRule.onNodeWithText("Timeline").assertIsDisplayed()
@@ -43,11 +63,9 @@ class StatisticsScreenTest {
 
     @Test
     fun showsTotalCount() {
-        val items = List(5) { i ->
-            item("text$i", "com.app$i", "text", System.currentTimeMillis())
-        }
+        val statistics = stats(total = 5, today = 5, week = 5)
         composeTestRule.setContent {
-            MaterialTheme { StatisticsScreen(items) }
+            MaterialTheme { StatisticsScreen(statistics) }
         }
         composeTestRule.onNodeWithText("Total captured").assertIsDisplayed()
         composeTestRule.onNodeWithText("Today").assertIsDisplayed()
@@ -56,12 +74,14 @@ class StatisticsScreenTest {
 
     @Test
     fun showsTopAppsList() {
-        val items = listOf(
-            item("a", "com.alpha", "text", System.currentTimeMillis()),
-            item("b", "com.beta", "text", System.currentTimeMillis()),
+        val statistics = stats(
+            total = 2,
+            today = 2,
+            week = 2,
+            apps = listOf("com.alpha" to 1, "com.beta" to 1),
         )
         composeTestRule.setContent {
-            MaterialTheme { StatisticsScreen(items) }
+            MaterialTheme { StatisticsScreen(statistics) }
         }
         composeTestRule.onNodeWithText("Top apps").assertIsDisplayed()
     }
@@ -69,19 +89,17 @@ class StatisticsScreenTest {
     @Test
     fun showsNoDataWhenEmpty() {
         composeTestRule.setContent {
-            MaterialTheme { StatisticsScreen(emptyList()) }
+            MaterialTheme { StatisticsScreen(SearchStatistics.EMPTY) }
         }
         composeTestRule.onNodeWithText("Not enough data for chart").assertIsDisplayed()
     }
 
     @Test
     fun showsAppNameWhenFiltered() {
-        val items = listOf(
-            item("a", "com.test", "text", System.currentTimeMillis()),
-        )
+        val statistics = stats(total = 1, today = 1, week = 1, apps = listOf("com.test" to 1))
         composeTestRule.setContent {
             MaterialTheme {
-                StatisticsScreen(items, selectedApp = "com.test")
+                StatisticsScreen(statistics, selectedApp = "com.test")
             }
         }
         composeTestRule.onNodeWithText("Top apps").assertIsDisplayed()
@@ -90,11 +108,10 @@ class StatisticsScreenTest {
 
     @Test
     fun topAppsHeaderClickExpandsAndShowLessCollapses() {
-        val items = List(7) { i ->
-            item("text$i", "com.app$i", "text", System.currentTimeMillis())
-        }
+        val apps = List(7) { i -> "com.app$i" to 1 }
+        val statistics = stats(total = 7, today = 7, week = 7, apps = apps)
         composeTestRule.setContent {
-            MaterialTheme { StatisticsScreen(items) }
+            MaterialTheme { StatisticsScreen(statistics) }
         }
 
         composeTestRule.onNodeWithText("Show all 7").performScrollTo().assertIsDisplayed()
@@ -111,14 +128,16 @@ class StatisticsScreenTest {
 
     @Test
     fun topAppsRowClickInvokesCallback() {
-        val items = listOf(
-            item("a", "com.alpha", "text", System.currentTimeMillis()),
-            item("b", "com.beta", "text", System.currentTimeMillis()),
+        val statistics = stats(
+            total = 2,
+            today = 2,
+            week = 2,
+            apps = listOf("com.alpha" to 1, "com.beta" to 1),
         )
         var clicked: String? = null
         composeTestRule.setContent {
             MaterialTheme {
-                StatisticsScreen(items, onAppClick = { clicked = it })
+                StatisticsScreen(statistics, onAppClick = { clicked = it })
             }
         }
 

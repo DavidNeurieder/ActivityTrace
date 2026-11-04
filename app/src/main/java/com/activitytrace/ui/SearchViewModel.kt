@@ -11,8 +11,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.SearchCriteria
 import com.activitytrace.search.SearchEngineApi
 import com.activitytrace.search.SearchPage
+import com.activitytrace.search.SearchStatistics
+import com.activitytrace.search.StatisticsWindow
+import com.activitytrace.search.dailyBucketCount
 import com.activitytrace.store.ActivityTraceDatabase
 import com.activitytrace.store.CaptureDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -64,6 +69,9 @@ class SearchViewModel(
     private val _showStats = MutableStateFlow(prefs.getBoolean("show_stats", false))
     val showStats = _showStats.asStateFlow()
 
+    private val _statistics = MutableStateFlow(SearchStatistics.EMPTY)
+    val statistics = _statistics.asStateFlow()
+
     private val _appFilter = MutableStateFlow<String?>(null)
     val appFilter = _appFilter.asStateFlow()
 
@@ -99,6 +107,12 @@ class SearchViewModel(
         ) { q, type, bookmarked, app, date ->
             FilterState(q, type, bookmarked, app, date, 0)
         }
+        // One search definition, two execution paths: the paged result query and
+        // the SQL statistics aggregates both start from this criteria.
+        val criteriaFlow = baseInputs
+            .map { it.toCriteria() }
+            .distinctUntilChanged()
+
         val searchInputs = combine(baseInputs, _offset) { state, offset ->
             state.copy(offset = offset)
         }
@@ -115,20 +129,9 @@ class SearchViewModel(
                         val dao = getCaptureDao()
                         if (dao != null) dao.bookmarkedItems().map { SearchPage(it, true) }
                         else flowOf(SearchPage(emptyList(), true))
-                    } else if (state.query.isBlank()) {
-                        searchEngine.recentPaged(
-                            contentType = state.contentType,
-                            appPackage = state.appPackage,
-                            dateRange = state.dateRange,
-                            pageSize = PAGE_SIZE,
-                            offset = state.offset,
-                        )
                     } else {
-                        searchEngine.searchPaged(
-                            rawQuery = state.query,
-                            contentType = state.contentType,
-                            appPackage = state.appPackage,
-                            dateRange = state.dateRange,
+                        searchEngine.results(
+                            criteria = state.toCriteria(),
                             pageSize = PAGE_SIZE,
                             offset = state.offset,
                         )
@@ -155,6 +158,30 @@ class SearchViewModel(
                     _hasMore.value = !page.isLastPage && page.items.isNotEmpty()
                     _loadingMore.value = false
                 }
+        }
+
+        // Statistics are only computed while the stats view is visible. They are
+        // keyed on the same criteria as the results — never on the loaded page,
+        // so scrolling (`_offset`) does not recompute them.
+        viewModelScope.launch {
+            combine(criteriaFlow, _showStats) { criteria, show -> criteria to show }
+                .flatMapLatest { (criteria, show) ->
+                    if (!show) {
+                        flowOf(SearchStatistics.EMPTY)
+                    } else {
+                        searchEngine
+                            .statistics(
+                                criteria = criteria,
+                                window = StatisticsWindow.now(),
+                                dailyLimit = criteria.dailyBucketCount(),
+                            )
+                            .catch { e ->
+                                Log.e(TAG, "Statistics failed", e)
+                                emit(SearchStatistics.EMPTY)
+                            }
+                    }
+                }
+                .collect { _statistics.value = it }
         }
 
         viewModelScope.launch {
@@ -300,7 +327,15 @@ class SearchViewModel(
         val appPackage: String?,
         val dateRange: Pair<Long, Long>?,
         val offset: Int,
-    )
+    ) {
+        fun toCriteria() = SearchCriteria(
+            rawQuery = query,
+            contentType = contentType,
+            appPackage = appPackage,
+            dateRange = dateRange,
+            bookmarkedOnly = bookmarked,
+        )
+    }
 
     companion object {
         private const val TAG = "SearchViewModel"

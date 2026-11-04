@@ -39,7 +39,7 @@ python3 build_and_test.py   # automate full CI workflow
 - **Entry point:** `MainActivity.kt` → `SearchScreen.kt`
 - **Capture:** `ActivityTraceNotificationListener.kt`, `AccessibilityCaptureService.kt`
 - **Store:** `ActivityTraceDatabase.kt` (Room + SQLCipher), `CaptureDao.kt`, `EncryptionManager.kt`, `RetentionCleanupWorker.kt`
-- **Search:** `QueryParser.kt`, `SearchEngine.kt`
+- **Search:** `QueryParser.kt`, `SearchCriteria.kt` (shared search definition + resolver), `SearchEngine.kt`, `SearchStatistics.kt` (statistics model/window)
 - **Demo mode:** `demo/` package — curated deterministic showcase (`DemoAppCatalog`, `DemoClock` anchored `2026-09-08T06:30:00Z`, `DemoStories` ×4, `DemoDocuments` ≤15, `DemoBackgroundActivity`) assembled+validated by `DemoDataGenerator.showcaseDataset()`/`DemoDatasetValidator`, benchmark corpus in `DemoRecordFactory` (dev-only `SearchBenchmark`), `DemoDataRepository` facade, `ui/DemoDataScreen.kt`. Schema column `demo_dataset_id` (`activitytrace_showcase_v1`), never touches real captures.
 - **File indexing:** `FileIndexer.kt`, `FileIndexingWorker.kt`
 - **Model:** `CapturedItem.kt`
@@ -71,6 +71,9 @@ python3 build_and_test.py   # automate full CI workflow
 - Run lint: `./gradlew lint`
 - Run tests: `./gradlew test`
 - Compose reports at `app/build/reports/`
+- Search results and statistics share one `SearchCriteria` definition, but execute independently: `SearchEngine.results()` is paged (50/page) while `SearchEngine.statistics()` runs `COUNT`/`GROUP BY` aggregates in SQLite over every matching row (`CaptureDao.filterWhere` is the single WHERE builder). Never compute statistics from the loaded result list, and never add a `LIMIT` to an aggregate query
+- Statistics are gated on `showStats` and keyed on criteria only (not `offset`), so scrolling does not recompute them; `ui/StatisticsScreen.kt` is a pure renderer of `SearchStatistics`
+- FTS5 is unavailable under Robolectric (`no such module: fts5`), so full-stack statistics with keywords are covered by instrumented tests (`store/SearchStatisticsTest.kt`); unit tests cover the filter-only path against an in-memory Room DB and assert the aggregate SQL shape with MockK
 - PRs and tags used for release; no APK uploads (F-Droid builds from source)
 
 ## Room schema & migrations

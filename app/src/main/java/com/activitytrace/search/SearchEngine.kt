@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import java.util.Locale
 
 data class SearchPage(
     val items: List<CapturedItem>,
@@ -17,24 +16,24 @@ data class SearchPage(
  * Read side of the search component, consumed by [com.activitytrace.ui.SearchViewModel].
  * Extracted so UI tests can substitute a lightweight fake without the MockK
  * JVMTI agent (whose native library is not 16 KB page aligned).
+ *
+ * The two methods are deliberately independent: [results] is capped by the
+ * page size, while [statistics] aggregates over every matching row in SQLite.
+ * Both take the *same* [SearchCriteria], so a count can never disagree with the
+ * search it describes.
  */
 interface SearchEngineApi {
-    fun recentPaged(
-        contentType: String? = null,
-        appPackage: String? = null,
-        dateRange: Pair<Long, Long>? = null,
+    fun results(
+        criteria: SearchCriteria,
         pageSize: Int = SearchEngine.PAGE_SIZE,
         offset: Int = 0,
     ): Flow<SearchPage>
 
-    fun searchPaged(
-        rawQuery: String,
-        contentType: String? = null,
-        appPackage: String? = null,
-        dateRange: Pair<Long, Long>? = null,
-        pageSize: Int = SearchEngine.PAGE_SIZE,
-        offset: Int = 0,
-    ): Flow<SearchPage>
+    fun statistics(
+        criteria: SearchCriteria,
+        window: StatisticsWindow = StatisticsWindow.now(),
+        dailyLimit: Int = DEFAULT_DAILY_BUCKETS,
+    ): Flow<SearchStatistics>
 }
 
 class SearchEngine(
@@ -51,89 +50,165 @@ class SearchEngine(
             .map { it.items }
     }
 
-    override fun recentPaged(
-        contentType: String?,
-        appPackage: String?,
-        dateRange: Pair<Long, Long>?,
-        pageSize: Int,
-        offset: Int,
+    /** Legacy signature kept for existing callers and tests. */
+    fun recentPaged(
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+        pageSize: Int = PAGE_SIZE,
+        offset: Int = 0,
     ): Flow<SearchPage> {
-        return captureDao.recentPagedQuery(
-            contentType = contentType,
-            appPackage = appPackage,
-            startTime = dateRange?.first,
-            endTime = dateRange?.second,
-            queryLimit = pageSize.toLong(),
-            queryOffset = offset.toLong(),
-        ).map { SearchPage(it, it.size < pageSize) }
+        val resolved = SearchCriteriaResolver.resolve(
+            SearchCriteria(contentType = contentType, appPackage = appPackage, dateRange = dateRange),
+        )
+        return pagedResults(resolved, pageSize, offset, browseWhenUnfiltered = true)
     }
 
+    /** Legacy signature kept for existing callers and tests. */
     fun search(
         rawQuery: String,
         contentType: String? = null,
         appPackage: String? = null,
         dateRange: Pair<Long, Long>? = null,
     ): Flow<List<CapturedItem>> {
-        val p = QueryParser.parse(rawQuery)
-        val (keywords, effectiveType, effectiveApp, effectiveRange) = resolveFilters(p, contentType, appPackage, dateRange)
-
-        if (keywords.isEmpty()) {
-            if (effectiveRange == null && effectiveType == null && effectiveApp == null) {
-                return flowOf(emptyList())
-            }
-            return captureDao.recentPagedQuery(
-                contentType = effectiveType,
-                appPackage = effectiveApp,
-                startTime = effectiveRange?.first,
-                endTime = effectiveRange?.second,
-                queryLimit = Long.MAX_VALUE,
-                queryOffset = 0L,
-            )
-        }
-
-        val matchQuery = matchQueryFor(keywords)
-        if (matchQuery.isBlank()) {
-            return flowOf(emptyList())
-        }
-
-        return rankAndMap(matchQuery, effectiveRange, effectiveType, effectiveApp) { ranked ->
-            ranked.map { it.item }
-        }
+        val resolved = SearchCriteriaResolver.resolve(
+            SearchCriteria(
+                rawQuery = rawQuery,
+                contentType = contentType,
+                appPackage = appPackage,
+                dateRange = dateRange,
+            ),
+        )
+        return pagedResults(resolved, PAGE_SIZE, offset = 0, browseWhenUnfiltered = false, unlimited = true)
+            .map { it.items }
     }
 
-    override fun searchPaged(
+    /** Legacy signature kept for existing callers and tests. */
+    fun searchPaged(
         rawQuery: String,
-        contentType: String?,
-        appPackage: String?,
-        dateRange: Pair<Long, Long>?,
+        contentType: String? = null,
+        appPackage: String? = null,
+        dateRange: Pair<Long, Long>? = null,
+        pageSize: Int = PAGE_SIZE,
+        offset: Int = 0,
+    ): Flow<SearchPage> {
+        val resolved = SearchCriteriaResolver.resolve(
+            SearchCriteria(
+                rawQuery = rawQuery,
+                contentType = contentType,
+                appPackage = appPackage,
+                dateRange = dateRange,
+            ),
+        )
+        return pagedResults(resolved, pageSize, offset, browseWhenUnfiltered = false)
+    }
+
+    override fun results(
+        criteria: SearchCriteria,
         pageSize: Int,
         offset: Int,
     ): Flow<SearchPage> {
-        val p = QueryParser.parse(rawQuery)
-        val (keywords, effectiveType, effectiveApp, effectiveRange) = resolveFilters(p, contentType, appPackage, dateRange)
+        val resolved = SearchCriteriaResolver.resolve(criteria)
+        // A blank query browses the recent list; a query with text keeps the
+        // search semantics (nothing to search for means no matches).
+        return pagedResults(
+            resolved = resolved,
+            pageSize = pageSize,
+            offset = offset,
+            browseWhenUnfiltered = criteria.rawQuery.isBlank(),
+        )
+    }
 
-        if (keywords.isEmpty()) {
-            if (effectiveRange == null && effectiveType == null && effectiveApp == null) {
+    override fun statistics(
+        criteria: SearchCriteria,
+        window: StatisticsWindow,
+        dailyLimit: Int,
+    ): Flow<SearchStatistics> {
+        val resolved = SearchCriteriaResolver.resolve(criteria)
+        if (resolved.matchesNothing) return flowOf(SearchStatistics.EMPTY)
+        if (!resolved.hasKeywordComponent && !resolved.hasAnyFilter && criteria.rawQuery.isNotBlank()) {
+            return flowOf(SearchStatistics.EMPTY)
+        }
+
+        val summary = captureDao.statisticsSummary(resolved, window)
+        val appCounts = captureDao.statisticsAppCounts(resolved)
+        val dailyCounts = captureDao.statisticsDailyCounts(resolved, dailyLimit)
+        val contentTypes = captureDao.statisticsContentTypes(resolved)
+
+        return combine(summary, appCounts, dailyCounts, contentTypes) { s, apps, daily, types ->
+            StatisticsParts(s, apps, daily, types)
+        }.combine(captureDao.statisticsHourlyCounts(resolved)) { parts, hourly ->
+            parts to hourly
+        }.combine(captureDao.statisticsDayOfWeekCounts(resolved)) { (parts, hourly), dow ->
+            SearchStatistics(
+                totalCount = parts.summary.total,
+                todayCount = parts.summary.today,
+                weekCount = parts.summary.week,
+                yesterdayCount = parts.summary.yesterday,
+                prevWeekCount = parts.summary.prevWeek,
+                firstTimestamp = parts.summary.firstTimestamp,
+                lastTimestamp = parts.summary.lastTimestamp,
+                topApps = parts.apps,
+                dailyCounts = parts.daily,
+                contentTypeBreakdown = parts.types,
+                hourlyCounts = hourly,
+                dayOfWeekCounts = dow,
+            )
+        }
+    }
+
+    private data class StatisticsParts(
+        val summary: CaptureDao.StatisticsSummary,
+        val apps: List<CaptureDao.AppCount>,
+        val daily: List<CaptureDao.DateCount>,
+        val types: List<CaptureDao.ContentTypeCount>,
+    )
+
+    /**
+     * Shared execution path for paged results. [browseWhenUnfiltered] selects
+     * what "no keyword, no filter" means: the recent list (browsing) or an
+     * empty page (a query that filters nothing). [unlimited] removes the page
+     * cap and is only used by the legacy result API.
+     */
+    private fun pagedResults(
+        resolved: ResolvedSearchCriteria,
+        pageSize: Int,
+        offset: Int,
+        browseWhenUnfiltered: Boolean,
+        unlimited: Boolean = false,
+    ): Flow<SearchPage> {
+        if (!resolved.hasKeywordComponent) {
+            if (!resolved.hasAnyFilter && !browseWhenUnfiltered) {
                 return flowOf(SearchPage(emptyList(), isLastPage = true))
             }
             return captureDao.recentPagedQuery(
-                contentType = effectiveType,
-                appPackage = effectiveApp,
-                startTime = effectiveRange?.first,
-                endTime = effectiveRange?.second,
-                queryLimit = pageSize.toLong(),
+                contentType = resolved.contentType,
+                appPackage = resolved.appPackage,
+                startTime = resolved.timeRange?.first,
+                endTime = resolved.timeRange?.second,
+                queryLimit = if (unlimited) Long.MAX_VALUE else pageSize.toLong(),
                 queryOffset = offset.toLong(),
-            ).map { SearchPage(it, it.size < pageSize) }
+            ).map { page ->
+                SearchPage(page, isLastPage = !unlimited && page.size < pageSize)
+            }
         }
 
-        val matchQuery = matchQueryFor(keywords)
-        if (matchQuery.isBlank()) {
+        if (resolved.matchQuery.isBlank()) {
             return flowOf(SearchPage(emptyList(), isLastPage = true))
         }
 
-        return rankAndMap(matchQuery, effectiveRange, effectiveType, effectiveApp) { ranked ->
-            val page = ranked.drop(offset).take(pageSize).map { it.item }
-            SearchPage(page, page.size < pageSize)
+        return rankAndMap(
+            resolved.matchQuery,
+            resolved.timeRange,
+            resolved.contentType,
+            resolved.appPackage,
+        ) { ranked ->
+            val page = if (unlimited) {
+                ranked.map { it.item }
+            } else {
+                ranked.drop(offset).take(pageSize).map { it.item }
+            }
+            SearchPage(page, isLastPage = !unlimited && page.size < pageSize)
         }
     }
 
@@ -163,62 +238,7 @@ class SearchEngine(
         }.map { mapResults(it) }
     }
 
-    private data class ResolvedQuery(
-        val keywords: List<String>,
-        val type: String?,
-        val app: String?,
-        val range: Pair<Long, Long>?,
-    )
-
-    private fun resolveFilters(
-        parsed: ParsedQuery,
-        contentType: String?,
-        appPackage: String?,
-        dateRange: Pair<Long, Long>?,
-    ): ResolvedQuery {
-        return ResolvedQuery(
-            keywords = parsed.keywords,
-            type = contentType ?: parsed.typeFilter,
-            app = appPackage ?: parsed.appFilter,
-            range = dateRange ?: parsed.timeRange,
-        )
-    }
-
-    /**
-     * Builds the FTS5 MATCH expression for the parsed keywords, or an empty
-     * string when every keyword dissolves into nothing (for example a bare
-     * `*`). An empty result means "no matches".
-     */
-    private fun matchQueryFor(keywords: List<String>): String {
-        return keywords.asSequence()
-            .map { it.replace("*", "") }
-            .filter { it.isNotBlank() }
-            .map { ftsToken(it) }
-            .joinToString(" ")
-    }
-
-    /**
-     * Maps a single search keyword to an FTS5 MATCH token. Every keyword gets
-     * an implicit prefix marker so bare input (`chat`) finds partial words
-     * (`chatterbox`) — the same mechanism that makes `whats` find WhatsApp
-     * instead of silently returning nothing. Tokens containing FTS5 operators
-     * or operator keywords (AND, OR, NOT, NEAR) are quoted with double quotes —
-     * quoting is also a natural way to search literal punctuation and keeps
-     * operator words (`or`) from being parsed as operators. The prefix marker
-     * is applied outside the quotes (`"c++"*`).
-     */
-    private fun ftsToken(token: String): String {
-        val lower = token.lowercase(Locale.ROOT)
-        val isPlainWord = token.all { it.isLetterOrDigit() || it == '_' } && lower !in FTS_OPERATORS
-        return if (isPlainWord) {
-            token + "*"
-        } else {
-            "\"" + token.replace("\"", "\"\"") + "\"*"
-        }
-    }
-
     companion object {
         const val PAGE_SIZE: Int = 50
-        val FTS_OPERATORS = setOf("and", "or", "not", "near")
     }
 }

@@ -121,6 +121,7 @@ fun SearchScreen(
     val appFilter by viewModel.appFilter.collectAsState()
     val dateFilter by viewModel.dateFilter.collectAsState()
     val loadedCount by viewModel.loadedCount.collectAsState()
+    val statistics by viewModel.statistics.collectAsState()
     val hasMore by viewModel.hasMore.collectAsState()
     val loadingMore by viewModel.loadingMore.collectAsState()
     val keywords = remember(query) {
@@ -225,7 +226,7 @@ fun SearchScreen(
 
             if (showStats) {
                 StatisticsScreen(
-                    items = results,
+                    statistics = statistics,
                     selectedType = contentTypeFilter,
                     selectedApp = appFilter,
                     dateRangeMs = dateFilter,

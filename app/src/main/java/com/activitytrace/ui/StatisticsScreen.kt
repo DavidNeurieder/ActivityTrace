@@ -40,7 +40,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +64,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.activitytrace.R
-import com.activitytrace.model.CapturedItem
+import com.activitytrace.search.SearchStatistics
 import com.activitytrace.store.CaptureDao
 import com.activitytrace.store.CaptureDao.ContentTypeCount
 import com.activitytrace.store.CaptureDao.HourCount
@@ -75,7 +74,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun StatisticsScreen(
-    items: List<CapturedItem>,
+    statistics: SearchStatistics,
     selectedType: String? = null,
     selectedApp: String? = null,
     dateRangeMs: Pair<Long, Long>? = null,
@@ -84,94 +83,8 @@ fun StatisticsScreen(
 ) {
     val context = LocalContext.current
 
-    var totalCount by remember { mutableStateOf(0) }
-    var todayCount by remember { mutableStateOf(0) }
-    var weekCount by remember { mutableStateOf(0) }
-    var yesterdayCount by remember { mutableStateOf(0) }
-    var prevWeekCount by remember { mutableStateOf(0) }
-    var topApps by remember { mutableStateOf<List<CaptureDao.AppCount>>(emptyList()) }
-    var dailyCounts by remember { mutableStateOf<List<CaptureDao.DateCount>>(emptyList()) }
-    var typeBreakdown by remember { mutableStateOf<List<ContentTypeCount>>(emptyList()) }
-    var hourly by remember { mutableStateOf<List<HourCount>>(emptyList()) }
-    var dayOfWeekData by remember { mutableStateOf<List<CaptureDao.DayOfWeekCount>>(emptyList()) }
-
-    var appDaily by remember { mutableStateOf<List<CaptureDao.DateCount>>(emptyList()) }
-    var appTotal by remember { mutableStateOf(0) }
-    var appToday by remember { mutableStateOf(0) }
-    var appWeek by remember { mutableStateOf(0) }
-
     var showAllApps by remember { mutableStateOf(false) }
     var timelineTab by remember { mutableStateOf("daily") }
-
-    LaunchedEffect(items.size, items.hashCode(), selectedType, selectedApp, dateRangeMs) {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val todayStart = cal.timeInMillis
-        cal.add(Calendar.DAY_OF_YEAR, -6)
-        val weekStart = cal.timeInMillis
-        cal.add(Calendar.DAY_OF_YEAR, -7)
-        val prevWeekStart = cal.timeInMillis
-
-        val yesterdayStart = todayStart - 86_400_000L
-        val rangeDays = dateRangeMs?.let { (s, e) -> ((e - s) / 86_400_000L).toInt() }
-        val rangeStartMs = dateRangeMs?.first ?: 0L
-        val rangeEndMs = dateRangeMs?.second ?: Long.MAX_VALUE
-
-        val filtered = items.filter { item ->
-            (selectedType == null || item.contentType == selectedType) &&
-            (selectedApp == null || item.appPackage == selectedApp)
-        }
-
-        val ranged = if (dateRangeMs != null) filtered.filter { it.timestamp in rangeStartMs until rangeEndMs } else filtered
-
-        val simpleDate: (Long) -> String = { ts ->
-            val c = Calendar.getInstance().apply { timeInMillis = ts }
-            String.format(Locale.US, "%04d-%02d-%02d", c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH))
-        }
-        val toHour: (Long) -> Int = { ts ->
-            Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.HOUR_OF_DAY)
-        }
-        val toDow: (Long) -> Int = { ts ->
-            (Calendar.getInstance().apply { timeInMillis = ts }.get(Calendar.DAY_OF_WEEK) + 6) % 7
-        }
-
-        totalCount = ranged.size
-        todayCount = ranged.count { it.timestamp >= todayStart }
-        weekCount = ranged.count { it.timestamp >= weekStart }
-        yesterdayCount = ranged.count { it.timestamp in yesterdayStart until todayStart }
-        prevWeekCount = ranged.count { it.timestamp in prevWeekStart until weekStart }
-
-        val dailyLimit = rangeDays ?: 30
-        topApps = ranged.groupBy { it.appPackage }
-            .map { (pkg, group) -> CaptureDao.AppCount(pkg, group.size) }
-            .sortedByDescending { it.count }
-        typeBreakdown = ranged.groupBy { it.contentType }
-            .map { (type, group) -> ContentTypeCount(type, group.size) }
-        hourly = ranged.groupBy { toHour(it.timestamp) }
-            .map { (hour, group) -> HourCount(hour, group.size) }
-            .sortedBy { it.hour }
-
-        if (selectedApp != null) {
-            appTotal = ranged.size
-            appToday = ranged.count { it.timestamp >= todayStart }
-            appWeek = ranged.count { it.timestamp >= weekStart }
-            appDaily = ranged.groupBy { simpleDate(it.timestamp) }
-                .map { (date, group) -> CaptureDao.DateCount(date, group.size) }
-                .sortedBy { it.date }
-                .takeLast(dailyLimit)
-        } else {
-            dailyCounts = ranged.groupBy { simpleDate(it.timestamp) }
-                .map { (date, group) -> CaptureDao.DateCount(date, group.size) }
-                .sortedBy { it.date }
-                .takeLast(dailyLimit)
-        }
-
-        dayOfWeekData = ranged.groupBy { toDow(it.timestamp) }
-            .map { (dow, group) -> CaptureDao.DayOfWeekCount(dow, group.size) }
-    }
 
     Column(
         modifier = modifier
@@ -187,10 +100,15 @@ fun StatisticsScreen(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(6.dp))
-            SummaryCards(appTotal, appToday, appWeek, yesterdayCount, prevWeekCount, dateRangeMs)
-        } else {
-            SummaryCards(totalCount, todayCount, weekCount, yesterdayCount, prevWeekCount, dateRangeMs)
         }
+        SummaryCards(
+            statistics.totalCount,
+            statistics.todayCount,
+            statistics.weekCount,
+            statistics.yesterdayCount,
+            statistics.prevWeekCount,
+            dateRangeMs,
+        )
         Spacer(Modifier.height(10.dp))
 
         SectionHeader(
@@ -199,22 +117,22 @@ fun StatisticsScreen(
             onClick = { showAllApps = !showAllApps },
         )
         Spacer(Modifier.height(6.dp))
-        TopAppsList(topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = onAppClick)
+        TopAppsList(statistics.topApps, showAll = showAllApps, onShowAllChange = { showAllApps = it }, onAppClick = onAppClick)
 
         TimelineSection(
             timelineTab = timelineTab,
             onTabChange = { timelineTab = it },
             dailyChart = {
-                val dailyData = if (selectedApp != null) appDaily else dailyCounts
+                val dailyData = statistics.dailyCounts
                 if (dailyData.isNotEmpty()) DailyChart(fillDailyGaps(dailyData, dateRangeMs), dateRangeMs)
                 else NoDataText()
             },
             hourlyChart = {
-                if (hourly.isNotEmpty()) HourlyChart(hourly)
+                if (statistics.hourlyCounts.isNotEmpty()) HourlyChart(statistics.hourlyCounts)
                 else NoDataText()
             },
             dowChart = {
-                if (dayOfWeekData.any { it.count > 0 }) DayOfWeekCard(dayOfWeekData)
+                if (statistics.dayOfWeekCounts.any { it.count > 0 }) DayOfWeekCard(statistics.dayOfWeekCounts)
                 else NoDataText()
             },
         )
@@ -225,10 +143,10 @@ fun StatisticsScreen(
             title = { Text(stringResource(R.string.statistics_breakdown), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) },
         )
         Spacer(Modifier.height(6.dp))
-        if (typeBreakdown.isEmpty()) {
+        if (statistics.contentTypeBreakdown.isEmpty()) {
             EmptyBreakdown(typeLabel(selectedType))
         } else {
-            BreakdownDonutCard(typeBreakdown)
+            BreakdownDonutCard(statistics.contentTypeBreakdown)
         }
     }
 }

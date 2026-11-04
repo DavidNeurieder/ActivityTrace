@@ -20,8 +20,12 @@
 - Build script no longer uses the deprecated legacy accessors: Room schema assets are added via `AndroidSourceDirectorySet.directories`, and the `android {}` block is configured through the `ApplicationExtension` interface
 - Dropped the androidx.sqlite 2.4.0 force-resolution hack; Kotlin 2.x metadata no longer needs it
 - `SearchEngineApi` interface extracted so UI tests can use a plain fake instead of a mocking framework
+- Statistics are computed by SQLite aggregates over the shared search criteria (`SearchCriteria.kt`, `SearchStatistics.kt`) instead of in-memory grouping over the loaded page; they are only queried while the statistics view is visible and never recomputed by scrolling
 - Robolectric 4.17, MockK 1.14.11 (JVM-only), coroutines-test 1.11.0, Turbine 1.2.1
 - Database schema unchanged (version 10); no migration
+
+### Fixes
+- Statistics now aggregate over every matching record in SQLite instead of only the loaded result page; the search list itself stays capped at 50 results per page
 
 ---
 
